@@ -1,0 +1,276 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --radius-sm: 0;
+  --radius-md: 0;
+  --radius-lg: 0;
+  --radius-xl: 0;
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-bsky-blue: var(--bsky-blue);
+  --color-sentiment-positive: var(--sentiment-positive);
+  --color-sentiment-negative: var(--sentiment-negative);
+  --color-sentiment-neutral: var(--sentiment-neutral);
+}
+
+:root {
+  /* Swiss Design - Stark Minimalism */
+  --radius: 0;
+  --background: oklch(1 0 0); /* Pure white */
+  --foreground: oklch(0 0 0); /* Pure black */
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0 0 0);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0 0 0);
+  --primary: oklch(0 0 0); /* Black */
+  --primary-foreground: oklch(1 0 0); /* White */
+  --secondary: oklch(0.93 0 0); /* Light gray #EEEEEE */
+  --secondary-foreground: oklch(0 0 0);
+  --muted: oklch(0.93 0 0);
+  --muted-foreground: oklch(0.2 0 0); /* Dark gray #333333 */
+  --accent: oklch(0.55 0.22 27); /* Swiss red #E30613 */
+  --accent-foreground: oklch(1 0 0);
+  --destructive: oklch(0.55 0.22 27);
+  --destructive-foreground: oklch(1 0 0);
+  --border: oklch(0 0 0); /* Black borders */
+  --input: oklch(0.93 0 0);
+  --ring: oklch(0 0 0);
+  
+  /* Bluesky brand */
+  --bsky-blue: oklch(0.6 0.2 250); /* #1185FE */
+  
+  /* Sentiment colors */
+  --sentiment-positive: oklch(0.6 0.2 250); /* Bluesky blue */
+  --sentiment-negative: oklch(0.55 0.22 27); /* Swiss red */
+  --sentiment-neutral: oklch(0.6 0 0); /* Mid gray #999999 */
+  
+  /* Chart colors */
+  --chart-1: oklch(0.6 0.2 250);
+  --chart-2: oklch(0.55 0.22 27);
+  --chart-3: oklch(0.6 0 0);
+  --chart-4: oklch(0.2 0 0);
+  --chart-5: oklch(0.93 0 0);
+}
+
+.dark {
+  /* Dark mode: Inverted Swiss style */
+  --background: oklch(0 0 0);
+  --foreground: oklch(1 0 0);
+  --card: oklch(0 0 0);
+  --card-foreground: oklch(1 0 0);
+  --popover: oklch(0 0 0);
+  --popover-foreground: oklch(1 0 0);
+  --primary: oklch(1 0 0);
+  --primary-foreground: oklch(0 0 0);
+  --secondary: oklch(0.2 0 0);
+  --secondary-foreground: oklch(1 0 0);
+  --muted: oklch(0.2 0 0);
+  --muted-foreground: oklch(0.93 0 0);
+  --accent: oklch(0.55 0.22 27);
+  --accent-foreground: oklch(1 0 0);
+  --destructive: oklch(0.55 0.22 27);
+  --destructive-foreground: oklch(1 0 0);
+  --border: oklch(1 0 0);
+  --input: oklch(0.2 0 0);
+  --ring: oklch(1 0 0);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  
+  body {
+    @apply bg-background text-foreground;
+    /* Helvetica-first typography stack */
+    font-family: 'Helvetica Neue', Helvetica, Arial, system-ui, sans-serif;
+    font-size: 15px;
+    line-height: 1.5;
+    font-weight: 400;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+  
+  h1, h2, h3, h4, h5, h6 {
+    font-weight: 700;
+  }
+  
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]),
+  [type="button"]:not(:disabled),
+  [type="submit"]:not(:disabled),
+  [type="reset"]:not(:disabled),
+  a[href],
+  select:not(:disabled),
+  input[type="checkbox"]:not(:disabled),
+  input[type="radio"]:not(:disabled) {
+    @apply cursor-pointer;
+  }
+}
+
+@layer components {
+  .container {
+    width: 100%;
+    margin-left: auto;
+    margin-right: auto;
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+
+  .flex {
+    min-height: 0;
+    min-width: 0;
+  }
+
+  @media (min-width: 640px) {
+    .container {
+      padding-left: 1.5rem;
+      padding-right: 1.5rem;
+    }
+  }
+
+  @media (min-width: 1024px) {
+    .container {
+      padding-left: 2rem;
+      padding-right: 2rem;
+      max-width: 1400px;
+    }
+  }
+  
+  /* Swiss Typography Classes */
+  .text-display {
+    font-size: 4rem;
+    font-weight: 700;
+    line-height: 0.9;
+    letter-spacing: -0.05em;
+    text-transform: uppercase;
+  }
+  
+  .text-stat-value {
+    font-size: 3rem;
+    font-weight: 700;
+    line-height: 1;
+    letter-spacing: -0.02em;
+    font-variant-numeric: tabular-nums;
+  }
+  
+  .text-stat-label {
+    font-size: 0.625rem;
+    font-weight: 700;
+    line-height: 1.2;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+  }
+  
+  .text-section-title {
+    font-size: 0.75rem;
+    font-weight: 700;
+    line-height: 1.2;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+  }
+  
+  .text-subtitle {
+    font-size: 0.875rem;
+    font-weight: 400;
+    line-height: 1.4;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+  
+  /* Swiss Card */
+  .swiss-card {
+    @apply border border-border bg-card p-6;
+  }
+  
+  /* Sentiment Bars */
+  .sentiment-bar {
+    height: 4px;
+    @apply bg-secondary relative overflow-hidden;
+  }
+  
+  .sentiment-bar-fill {
+    @apply h-full transition-all duration-300 ease-out;
+  }
+  
+  /* Feed Items */
+  .feed-item {
+    @apply border-l-4 pl-4 py-3 transition-colors duration-200;
+    @apply hover:bg-secondary;
+  }
+  
+  .feed-item-positive {
+    border-left-color: oklch(0.6 0.2 250);
+  }
+  
+  .feed-item-negative {
+    border-left-color: oklch(0.55 0.22 27);
+  }
+  
+  .feed-item-neutral {
+    border-left-color: oklch(0.6 0 0);
+  }
+}
+
+@layer utilities {
+  .tabular-nums {
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+/* Custom scrollbar - minimal */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: oklch(var(--background));
+}
+
+::-webkit-scrollbar-thumb {
+  background: oklch(var(--muted-foreground));
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: oklch(var(--foreground));
+}
+
+/* Animation for pulse dot */
+@keyframes pulse-dot {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.3;
+  }
+}
+
+.animate-pulse-dot {
+  animation: pulse-dot 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}

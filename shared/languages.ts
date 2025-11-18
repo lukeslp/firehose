@@ -1,0 +1,56 @@
+// ISO 639-1 language code to full name mapping
+export const LANGUAGE_NAMES: Record<string, string> = {
+  'en': 'English',
+  'ja': 'Japanese',
+  'de': 'German',
+  'es': 'Spanish',
+  'fr': 'French',
+  'ko': 'Korean',
+  'nl': 'Dutch',
+  'tr': 'Turkish',
+  'pt': 'Portuguese',
+  'it': 'Italian',
+  'pl': 'Polish',
+  'ru': 'Russian',
+  'ar': 'Arabic',
+  'zh': 'Chinese',
+  'hi': 'Hindi',
+  'id': 'Indonesian',
+  'th': 'Thai',
+  'vi': 'Vietnamese',
+  'sv': 'Swedish',
+  'no': 'Norwegian',
+  'da': 'Danish',
+  'fi': 'Finnish',
+  'cs': 'Czech',
+  'hu': 'Hungarian',
+  'ro': 'Romanian',
+  'uk': 'Ukrainian',
+  'el': 'Greek',
+  'he': 'Hebrew',
+  'fa': 'Persian',
+  'bn': 'Bengali',
+  'ta': 'Tamil',
+  'te': 'Telugu',
+  'mr': 'Marathi',
+  'ur': 'Urdu',
+  'ms': 'Malay',
+  'tl': 'Tagalog',
+  'ca': 'Catalan',
+  'sk': 'Slovak',
+  'bg': 'Bulgarian',
+  'hr': 'Croatian',
+  'sr': 'Serbian',
+  'lt': 'Lithuanian',
+  'lv': 'Latvian',
+  'et': 'Estonian',
+  'sl': 'Slovenian',
+  'unknown': 'Unknown',
+};
+
+export function getLanguageName(code: string | null | undefined): string {
+  if (!code) return 'Unknown';
+  // Handle formats like "ja-JP" by taking the first part
+  const baseCode = code.toLowerCase().split('-')[0];
+  return LANGUAGE_NAMES[baseCode] || code.toUpperCase();
+}
