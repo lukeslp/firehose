@@ -124,6 +124,39 @@ export const appRouter = router({
         sentiment: post.sentiment as 'positive' | 'negative' | 'neutral'
       }));
     }),
+
+    // Enable collection for a specific window
+    enableCollection: publicProcedure
+      .input(z.object({
+        window: z.enum(['02:00', '08:00', '13:00', '19:00']),
+      }))
+      .mutation(({ input }) => {
+        firehoseService.enableCollection(input.window);
+        return {
+          success: true,
+          window: input.window,
+          message: `Collection enabled for window ${input.window}`,
+        };
+      }),
+
+    // Disable collection
+    disableCollection: publicProcedure.mutation(() => {
+      const window = firehoseService.getCurrentWindow();
+      firehoseService.disableCollection();
+      return {
+        success: true,
+        previousWindow: window,
+        message: 'Collection disabled',
+      };
+    }),
+
+    // Get collection status
+    collectionStatus: publicProcedure.query(() => {
+      return {
+        enabled: firehoseService.isCollecting(),
+        currentWindow: firehoseService.getCurrentWindow(),
+      };
+    }),
   }),
 
   posts: router({

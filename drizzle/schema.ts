@@ -47,6 +47,7 @@ export const posts = sqliteTable("posts", {
   mentions: text("mentions"), // JSON array
   links: text("links"), // JSON array
   facets: text("facets"), // JSON array
+  collectionWindow: text("collectionWindow"), // Collection time window (02:00, 08:00, 13:00, 19:00)
 });
 
 export type Post = typeof posts.$inferSelect;

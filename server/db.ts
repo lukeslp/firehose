@@ -115,13 +115,10 @@ export async function insertPost(post: InsertPost) {
   if (!db) return null;
 
   try {
-    await db.insert(posts).values(post);
+    // Use onConflictDoNothing to silently skip duplicates (prevents log spam)
+    await db.insert(posts).values(post).onConflictDoNothing();
     return post;
   } catch (error) {
-    // Ignore duplicate key errors (post already exists)
-    if (error instanceof Error && error.message.includes('Duplicate entry')) {
-      return null;
-    }
     console.error("[Database] Failed to insert post:", error);
     throw error;
   }

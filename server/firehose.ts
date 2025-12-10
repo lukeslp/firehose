@@ -51,6 +51,19 @@ export class FirehoseService extends EventEmitter {
   private handleCache: Map<string, string> = new Map(); // DID → handle mapping
   private reconnectTimer: NodeJS.Timeout | null = null;
 
+  // Collection window tracking
+  private collectionEnabled = false;
+  private currentWindow: string | null = null; // e.g., "02:00", "08:00", "13:00", "19:00"
+  private filteredCounts = {
+    notCollecting: 0,
+    nonEnglish: 0,
+    quotesReplies: 0,
+    wordCount: 0,
+    tooManyLinks: 0,
+    saved: 0,
+  };
+  private lastFilterLog = Date.now();
+
   // Statistics
   private totalProcessed = 0;
   private sentimentCounts = {
@@ -107,10 +120,46 @@ export class FirehoseService extends EventEmitter {
   }
 
   public stop() {
-    console.warn('[Firehose] Stop method is deprecated - firehose should always run');
-    console.warn('[Firehose] Ignoring stop request to maintain continuous data collection');
-    // Firehose should always run - this is now a no-op
-    return;
+    console.log('[Firehose] Stopping firehose connection...');
+    this.running = false;
+    this.collectionEnabled = false;
+    this.currentWindow = null;
+    
+    if (this.ws) {
+      this.ws.close();
+      this.ws = null;
+    }
+    
+    if (this.reconnectTimer) {
+      clearTimeout(this.reconnectTimer);
+      this.reconnectTimer = null;
+    }
+    
+    console.log('[Firehose] Stopped');
+    this.emit('stopped');
+  }
+
+  public enableCollection(window: string) {
+    console.log(`[Firehose] Enabling collection for window: ${window}`);
+    this.collectionEnabled = true;
+    this.currentWindow = window;
+    this.emit('collection_started', { window });
+  }
+
+  public disableCollection() {
+    console.log('[Firehose] Disabling collection');
+    const window = this.currentWindow;
+    this.collectionEnabled = false;
+    this.currentWindow = null;
+    this.emit('collection_stopped', { window });
+  }
+
+  public isCollecting(): boolean {
+    return this.collectionEnabled;
+  }
+
+  public getCurrentWindow(): string | null {
+    return this.currentWindow;
   }
 
   public reset() {
@@ -228,14 +277,53 @@ export class FirehoseService extends EventEmitter {
         text = text.substring(0, MAX_TEXT_LENGTH);
       }
 
-      // Server-side filtering removed - all posts are sent to all clients
-      // Clients implement their own filtering based on user preferences
+      // CORPUS RESEARCH FILTERING: Only save posts during collection windows
+      // This creates stratified hourly samples for linguistic analysis
+      if (!this.collectionEnabled) {
+        // Firehose still runs to maintain connection, but posts aren't saved
+        this.filteredCounts.notCollecting++;
+        this.logFilterStats();
+        return;
+      }
 
-      // Analyze sentiment
+      // Analyze sentiment and features first to apply filters
       const sentimentResult = analyzeSentiment(text);
-      
-      // Extract features
       const features = extractFeatures(text, record);
+
+      // FILTER 1: English only for corpus research (accept en, en-US, en-GB, etc.)
+      if (!features.language || !features.language.toLowerCase().startsWith('en')) {
+        this.filteredCounts.nonEnglish++;
+        this.logFilterStats();
+        return;
+      }
+
+      // FILTER 2: Original posts only (no quotes, no reposts)
+      // Skip if it's a reply, quote, or has a parent
+      if (record.reply || features.isQuote || record.embed?.record) {
+        this.filteredCounts.quotesReplies++;
+        this.logFilterStats();
+        return;
+      }
+
+      // FILTER 3: Word count between 10-500 words for quality corpus data
+      const wordCount = features.wordCount || 0;
+      if (wordCount < 10 || wordCount > 500) {
+        this.filteredCounts.wordCount++;
+        this.logFilterStats();
+        return;
+      }
+
+      // FILTER 4: Skip posts that are mostly URLs/mentions (low linguistic value)
+      const linkCount = features.links ? JSON.parse(features.links).length : 0;
+      const mentionCount = features.mentions ? JSON.parse(features.mentions).length : 0;
+      if (linkCount > 3 || mentionCount > 5) {
+        this.filteredCounts.tooManyLinks++;
+        this.logFilterStats();
+        return;
+      }
+
+      // Post passed all filters - proceed with processing (features already extracted above for filtering)
+      this.filteredCounts.saved++;
 
       // Create post object
       const authorDid = message.did || '';
@@ -316,6 +404,7 @@ export class FirehoseService extends EventEmitter {
         mentions: features.mentions,
         links: features.links,
         facets: record.facets ? JSON.stringify(record.facets) : null,
+        collectionWindow: this.currentWindow, // Track which hourly window this post came from
       };
 
       // Try to insert post, but continue with stats updates even if it fails
@@ -361,6 +450,35 @@ export class FirehoseService extends EventEmitter {
 
   public isRunning(): boolean {
     return this.running;
+  }
+
+  private logFilterStats() {
+    // Log filter stats every 60 seconds
+    const now = Date.now();
+    if (now - this.lastFilterLog > 60000) {
+      const total = Object.values(this.filteredCounts).reduce((a, b) => a + b, 0);
+      console.log('[Filtering] Stats (last minute):', {
+        total,
+        saved: this.filteredCounts.saved,
+        notCollecting: this.filteredCounts.notCollecting,
+        nonEnglish: this.filteredCounts.nonEnglish,
+        quotesReplies: this.filteredCounts.quotesReplies,
+        wordCount: this.filteredCounts.wordCount,
+        tooManyLinks: this.filteredCounts.tooManyLinks,
+        saveRate: total > 0 ? `${(100 * this.filteredCounts.saved / total).toFixed(1)}%` : '0%'
+      });
+      
+      // Reset counters
+      this.filteredCounts = {
+        notCollecting: 0,
+        nonEnglish: 0,
+        quotesReplies: 0,
+        wordCount: 0,
+        tooManyLinks: 0,
+        saved: 0,
+      };
+      this.lastFilterLog = now;
+    }
   }
 }
 
