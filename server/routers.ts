@@ -126,9 +126,10 @@ export const appRouter = router({
     }),
 
     // Enable collection for a specific window
+    // Accepts predefined windows (02:00, 08:00, 13:00, 19:00) or custom names for special collection periods
     enableCollection: publicProcedure
       .input(z.object({
-        window: z.enum(['02:00', '08:00', '13:00', '19:00']),
+        window: z.string().min(1).max(50),
       }))
       .mutation(({ input }) => {
         firehoseService.enableCollection(input.window);
@@ -155,6 +156,24 @@ export const appRouter = router({
       return {
         enabled: firehoseService.isCollecting(),
         currentWindow: firehoseService.getCurrentWindow(),
+      };
+    }),
+
+    // Start the firehose stream
+    startStream: publicProcedure.mutation(() => {
+      firehoseService.start();
+      return {
+        success: true,
+        message: 'Firehose stream started',
+      };
+    }),
+
+    // Stop the firehose stream
+    stopStream: publicProcedure.mutation(() => {
+      firehoseService.stop();
+      return {
+        success: true,
+        message: 'Firehose stream stopped',
       };
     }),
   }),

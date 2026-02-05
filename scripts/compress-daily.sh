@@ -10,6 +10,11 @@ DB_PATH="/home/coolhand/html/firehose/firehose.db"
 ARCHIVE_DIR="/home/coolhand/html/firehose/archives/daily"
 LOG_FILE="/home/coolhand/html/firehose/scripts/compression.log"
 
+# Helper function to get file size (works on both Linux and macOS)
+get_file_size() {
+  stat -c%s "$1" 2>/dev/null || stat -f%z "$1" 2>/dev/null || echo "0"
+}
+
 # Create archive directory if it doesn't exist
 mkdir -p "$ARCHIVE_DIR"
 
@@ -24,14 +29,14 @@ echo "[$(date '+%Y-%m-%d %H:%M:%S')] Exporting posts from $YESTERDAY..." | tee -
 
 sqlite3 "$DB_PATH" <<EOF > "$EXPORT_FILE"
 .mode json
-SELECT * FROM posts 
-WHERE DATE(timestamp) = '$YESTERDAY'
+SELECT * FROM posts
+WHERE DATE(timestamp/1000, 'unixepoch') = '$YESTERDAY'
 ORDER BY timestamp;
 EOF
 
 # Check if export has data
-EXPORT_SIZE=$(stat -f%z "$EXPORT_FILE" 2>/dev/null || stat -c%s "$EXPORT_FILE")
-POST_COUNT=$(sqlite3 "$DB_PATH" "SELECT COUNT(*) FROM posts WHERE DATE(timestamp) = '$YESTERDAY';")
+EXPORT_SIZE=$(get_file_size "$EXPORT_FILE")
+POST_COUNT=$(sqlite3 "$DB_PATH" "SELECT COUNT(*) FROM posts WHERE DATE(timestamp/1000, 'unixepoch') = '$YESTERDAY';")
 
 if [ "$EXPORT_SIZE" -lt 100 ]; then
   echo "[$(date '+%Y-%m-%d %H:%M:%S')] No posts from $YESTERDAY, skipping compression" | tee -a "$LOG_FILE"
@@ -45,18 +50,18 @@ echo "[$(date '+%Y-%m-%d %H:%M:%S')] Exported $POST_COUNT posts ($EXPORT_SIZE by
 echo "[$(date '+%Y-%m-%d %H:%M:%S')] Compressing..." | tee -a "$LOG_FILE"
 gzip -9 "$EXPORT_FILE"
 
-COMPRESSED_SIZE=$(stat -f%z "$EXPORT_FILE.gz" 2>/dev/null || stat -c%s "$EXPORT_FILE.gz")
+COMPRESSED_SIZE=$(get_file_size "$EXPORT_FILE.gz")
 RATIO=$(echo "scale=1; 100 * (1 - $COMPRESSED_SIZE / $EXPORT_SIZE)" | bc)
 
 echo "[$(date '+%Y-%m-%d %H:%M:%S')] ✓ Compressed to $COMPRESSED_SIZE bytes (${RATIO}% reduction)" | tee -a "$LOG_FILE"
 
 # Run VACUUM on database to reclaim space (if posts are being deleted elsewhere)
 echo "[$(date '+%Y-%m-%d %H:%M:%S')] Running VACUUM on database..." | tee -a "$LOG_FILE"
-DB_SIZE_BEFORE=$(stat -f%z "$DB_PATH" 2>/dev/null || stat -c%s "$DB_PATH")
+DB_SIZE_BEFORE=$(get_file_size "$DB_PATH")
 
 sqlite3 "$DB_PATH" "VACUUM;"
 
-DB_SIZE_AFTER=$(stat -f%z "$DB_PATH" 2>/dev/null || stat -c%s "$DB_PATH")
+DB_SIZE_AFTER=$(get_file_size "$DB_PATH")
 DB_SAVED=$(echo "scale=2; ($DB_SIZE_BEFORE - $DB_SIZE_AFTER) / 1024 / 1024" | bc)
 
 echo "[$(date '+%Y-%m-%d %H:%M:%S')] ✓ VACUUM complete (saved ${DB_SAVED} MB)" | tee -a "$LOG_FILE"
@@ -67,4 +72,3 @@ DB_SIZE_MB=$(echo "scale=2; $DB_SIZE_AFTER / 1024 / 1024" | bc)
 
 echo "[$(date '+%Y-%m-%d %H:%M:%S')] Database status: $TOTAL_POSTS posts, ${DB_SIZE_MB} MB" | tee -a "$LOG_FILE"
 echo "---" | tee -a "$LOG_FILE"
-

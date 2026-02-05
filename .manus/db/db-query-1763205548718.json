@@ -1,0 +1,14 @@
+{
+  "query": "SELECT language, COUNT(*) as count FROM posts GROUP BY language ORDER BY count DESC LIMIT 10",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user JbM2hayTdKmoNxv.3e65367dd03c --database XRaTxZMJUTeBNeAqXeSwDB --execute SELECT language, COUNT(*) as count FROM posts GROUP BY language ORDER BY count DESC LIMIT 10",
+  "rows": [
+    {
+      "language": "ja-JP",
+      "count": "1"
+    }
+  ],
+  "messages": [],
+  "stdout": "language\tcount\nja-JP\t1\n",
+  "stderr": "",
+  "execution_time_ms": 1508
+}

@@ -1,18 +1,27 @@
 import WebSocket from 'ws';
 import { EventEmitter } from 'events';
+import fs from 'fs';
+import path from 'path';
 import { analyzeSentiment, extractFeatures } from './sentiment';
-import { 
-  insertPost, 
-  updateGlobalStats, 
-  updateLanguageStats, 
+import {
+  insertPost,
+  updateGlobalStats,
+  updateLanguageStats,
   updateHashtagStats,
-  getGlobalStats 
+  getGlobalStats
 } from './db';
 import { InsertPost } from '../drizzle/schema';
 
 const FIREHOSE_URI = 'wss://jetstream2.us-east.bsky.network/subscribe?wantedCollections=app.bsky.feed.post&wantedEvents=identity';
 const MAX_TEXT_LENGTH = 10000;
 const RECONNECT_DELAY = 5000;
+const COLLECTION_STATE_FILE = path.join(process.cwd(), 'collection-state.json');
+
+interface CollectionState {
+  enabled: boolean;
+  window: string | null;
+  enabledAt: string | null;
+}
 
 export interface FirehosePost {
   text: string;
@@ -79,6 +88,7 @@ export class FirehoseService extends EventEmitter {
   constructor() {
     super();
     this.loadGlobalStats();
+    this.loadCollectionState(); // Restore collection state from disk
 
     // Auto-start the firehose - it should always run
     // Small delay to ensure stats are loaded first
@@ -88,6 +98,36 @@ export class FirehoseService extends EventEmitter {
         this.start();
       }
     }, 1000);
+  }
+
+  private loadCollectionState() {
+    try {
+      if (fs.existsSync(COLLECTION_STATE_FILE)) {
+        const data = fs.readFileSync(COLLECTION_STATE_FILE, 'utf-8');
+        const state: CollectionState = JSON.parse(data);
+        if (state.enabled && state.window) {
+          this.collectionEnabled = true;
+          this.currentWindow = state.window;
+          console.log(`[Firehose] Restored collection state: window=${state.window}, enabledAt=${state.enabledAt}`);
+        }
+      }
+    } catch (error) {
+      console.error('[Firehose] Error loading collection state:', error);
+    }
+  }
+
+  private saveCollectionState() {
+    try {
+      const state: CollectionState = {
+        enabled: this.collectionEnabled,
+        window: this.currentWindow,
+        enabledAt: this.collectionEnabled ? new Date().toISOString() : null,
+      };
+      fs.writeFileSync(COLLECTION_STATE_FILE, JSON.stringify(state, null, 2));
+      console.log(`[Firehose] Saved collection state: enabled=${state.enabled}, window=${state.window}`);
+    } catch (error) {
+      console.error('[Firehose] Error saving collection state:', error);
+    }
   }
 
   private async loadGlobalStats() {
@@ -143,6 +183,7 @@ export class FirehoseService extends EventEmitter {
     console.log(`[Firehose] Enabling collection for window: ${window}`);
     this.collectionEnabled = true;
     this.currentWindow = window;
+    this.saveCollectionState(); // Persist to disk
     this.emit('collection_started', { window });
   }
 
@@ -151,6 +192,7 @@ export class FirehoseService extends EventEmitter {
     const window = this.currentWindow;
     this.collectionEnabled = false;
     this.currentWindow = null;
+    this.saveCollectionState(); // Persist to disk
     this.emit('collection_stopped', { window });
   }
 
@@ -277,61 +319,22 @@ export class FirehoseService extends EventEmitter {
         text = text.substring(0, MAX_TEXT_LENGTH);
       }
 
-      // CORPUS RESEARCH FILTERING: Only save posts during collection windows
-      // This creates stratified hourly samples for linguistic analysis
-      if (!this.collectionEnabled) {
-        // Firehose still runs to maintain connection, but posts aren't saved
-        this.filteredCounts.notCollecting++;
-        this.logFilterStats();
-        return;
-      }
-
-      // Analyze sentiment and features first to apply filters
+      // Analyze sentiment and features for all posts
       const sentimentResult = analyzeSentiment(text);
       const features = extractFeatures(text, record);
 
-      // FILTER 1: English only for corpus research (accept en, en-US, en-GB, etc.)
-      if (!features.language || !features.language.toLowerCase().startsWith('en')) {
-        this.filteredCounts.nonEnglish++;
-        this.logFilterStats();
-        return;
-      }
-
-      // FILTER 2: Original posts only (no quotes, no reposts)
-      // Skip if it's a reply, quote, or has a parent
-      if (record.reply || features.isQuote || record.embed?.record) {
-        this.filteredCounts.quotesReplies++;
-        this.logFilterStats();
-        return;
-      }
-
-      // FILTER 3: Word count between 10-500 words for quality corpus data
-      const wordCount = features.wordCount || 0;
-      if (wordCount < 10 || wordCount > 500) {
-        this.filteredCounts.wordCount++;
-        this.logFilterStats();
-        return;
-      }
-
-      // FILTER 4: Skip posts that are mostly URLs/mentions (low linguistic value)
-      const linkCount = features.links ? JSON.parse(features.links).length : 0;
-      const mentionCount = features.mentions ? JSON.parse(features.mentions).length : 0;
-      if (linkCount > 3 || mentionCount > 5) {
-        this.filteredCounts.tooManyLinks++;
-        this.logFilterStats();
-        return;
-      }
-
-      // Post passed all filters - proceed with processing (features already extracted above for filtering)
-      this.filteredCounts.saved++;
-
-      // Create post object
+      // Create post object for UI (always emit to Socket.IO for real-time display)
       const authorDid = message.did || '';
-      const authorHandle = this.handleCache.get(authorDid) || authorDid; // Fallback to DID if handle not cached
-      
+      const authorHandle = this.handleCache.get(authorDid) || authorDid;
+
+      // Construct AT URI from message components if not provided
+      // Format: at://did/collection/rkey
+      const uri = message.commit?.uri ||
+        `at://${message.did}/app.bsky.feed.post/${message.commit?.rkey || ''}`;
+
       const post: FirehosePost = {
         text,
-        uri: message.commit.uri || '',
+        uri: uri,
         cid: message.commit.cid || '',
         author: {
           did: authorDid,
@@ -348,21 +351,71 @@ export class FirehoseService extends EventEmitter {
         isQuote: features.isQuote,
       };
 
-      // Update statistics
+      // ALWAYS update statistics and emit for UI (even if not saving to database)
       this.totalProcessed++;
       this.sentimentCounts[sentimentResult.classification]++;
       this.postsLastMinute.push(Date.now());
-      
-      // Keep only recent posts in memory
+
+      // Keep recent posts in memory for UI
       this.recentPosts.unshift(post);
       if (this.recentPosts.length > 100) {
         this.recentPosts.pop();
       }
 
-      // Emit post event
+      // ALWAYS emit post event for real-time UI updates
       this.emit('post', post);
 
-      // Save to database (async, don't wait)
+      // DATABASE FILTERING: Only save posts during collection windows
+      // This creates stratified hourly samples for corpus research
+      if (!this.collectionEnabled) {
+        this.filteredCounts.notCollecting++;
+        this.logFilterStats();
+        return; // Don't save to DB, but stats and UI already updated above
+      }
+
+      // FILTER 1: English only for corpus research
+      // Accept if: (a) language explicitly English, or (b) language unknown but text is ASCII-heavy (heuristic)
+      const langLower = (features.language || '').toLowerCase();
+      const isExplicitEnglish = langLower.startsWith('en');
+      const isUnknownLanguage = !features.language || features.language === 'unknown';
+
+      // ASCII heuristic: if >85% of characters are ASCII, likely English
+      const asciiCount = text.replace(/[^\x00-\x7F]/g, '').length;
+      const asciiRatio = text.length > 0 ? asciiCount / text.length : 0;
+      const isLikelyEnglish = isUnknownLanguage && asciiRatio > 0.85;
+
+      if (!isExplicitEnglish && !isLikelyEnglish) {
+        this.filteredCounts.nonEnglish++;
+        this.logFilterStats();
+        return;
+      }
+
+      // FILTER 2: Original posts only (no quotes, no replies)
+      if (record.reply || features.isQuote || record.embed?.record) {
+        this.filteredCounts.quotesReplies++;
+        this.logFilterStats();
+        return;
+      }
+
+      // FILTER 3: Word count between 10-500 words for quality corpus data
+      const wordCount = features.wordCount || 0;
+      if (wordCount < 10 || wordCount > 500) {
+        this.filteredCounts.wordCount++;
+        this.logFilterStats();
+        return;
+      }
+
+      // FILTER 4: Skip posts that are mostly URLs/mentions
+      const linkCount = features.links ? JSON.parse(features.links).length : 0;
+      const mentionCount = features.mentions ? JSON.parse(features.mentions).length : 0;
+      if (linkCount > 3 || mentionCount > 5) {
+        this.filteredCounts.tooManyLinks++;
+        this.logFilterStats();
+        return;
+      }
+
+      // Post passed all filters - save to database
+      this.filteredCounts.saved++;
       this.savePost(post, record, features, sentimentResult).catch(err => {
         console.error('[Firehose] Error saving post:', err.message);
       });

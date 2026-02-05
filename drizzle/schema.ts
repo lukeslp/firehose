@@ -1,4 +1,4 @@
-import { integer, sqliteTable, text, real } from "drizzle-orm/sqlite-core";
+import { integer, sqliteTable, text, real, index } from "drizzle-orm/sqlite-core";
 
 /**
  * Core user table backing auth flow.
@@ -20,6 +20,7 @@ export type InsertUser = typeof users.$inferInsert;
 
 /**
  * Main posts table with enhanced metadata for corpus analysis
+ * Optimized for 5M posts/day throughput with proper indexes
  */
 export const posts = sqliteTable("posts", {
   id: integer("id").primaryKey({ autoIncrement: true }),
@@ -48,7 +49,22 @@ export const posts = sqliteTable("posts", {
   links: text("links"), // JSON array
   facets: text("facets"), // JSON array
   collectionWindow: text("collectionWindow"), // Collection time window (02:00, 08:00, 13:00, 19:00)
-});
+}, (table) => [
+  // Primary query index: timestamp for time-range queries and ORDER BY
+  index("idx_posts_timestamp").on(table.timestamp),
+  // Sentiment filtering (common dashboard query)
+  index("idx_posts_sentiment").on(table.sentiment),
+  // Language filtering (corpus research)
+  index("idx_posts_language").on(table.language),
+  // Collection window tracking (stratified sampling analysis)
+  index("idx_posts_collection_window").on(table.collectionWindow),
+  // Author analysis
+  index("idx_posts_author_did").on(table.authorDid),
+  // Compound index for common query pattern: time + sentiment
+  index("idx_posts_timestamp_sentiment").on(table.timestamp, table.sentiment),
+  // Compound index for corpus queries: time + language + window
+  index("idx_posts_corpus").on(table.timestamp, table.language, table.collectionWindow),
+]);
 
 export type Post = typeof posts.$inferSelect;
 export type InsertPost = typeof posts.$inferInsert;

@@ -32,7 +32,7 @@ export function setupSocketIO(httpServer: HTTPServer) {
 
     // Attach listeners
     firehose.on('post', handlePost);
-    
+
     // Send stats updates every second
     const statsInterval = setInterval(handleStats, 1000);
 

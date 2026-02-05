@@ -29,7 +29,6 @@ interface Post {
 export default function Dashboard() {
   const [filters, setFilters] = useState("");
   const [appliedFilters, setAppliedFilters] = useState<string[]>([]);
-  const [samplingRate, setSamplingRate] = useState(1);
   const [posts, setPosts] = useState<Post[]>([]);
   
   // Live feed filters
@@ -53,16 +52,25 @@ export default function Dashboard() {
   // Toggle full screen mode
   const toggleFullScreen = async () => {
     try {
-      if (!document.fullscreenElement) {
-        await document.documentElement.requestFullscreen();
-        setFeedFullScreen(true);
+      // On mobile, always use CSS fullscreen (more reliable)
+      const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+
+      if (isMobile) {
+        // CSS-only fullscreen for mobile
+        setFeedFullScreen(!feedFullScreen);
       } else {
-        await document.exitFullscreen();
-        setFeedFullScreen(false);
+        // Try native fullscreen API on desktop
+        if (!document.fullscreenElement) {
+          await document.documentElement.requestFullscreen();
+          setFeedFullScreen(true);
+        } else {
+          await document.exitFullscreen();
+          setFeedFullScreen(false);
+        }
       }
     } catch (error) {
       console.error('Error toggling fullscreen:', error);
-      // Fallback to CSS-only full screen if Fullscreen API fails
+      // Fallback to CSS-only full screen
       setFeedFullScreen(!feedFullScreen);
     }
   };
@@ -276,17 +284,27 @@ export default function Dashboard() {
     }
   }, [recentPostsQuery.data]);
 
-  // Handle incoming posts from Socket.IO with sampling
+  // Handle incoming posts from Socket.IO
   useEffect(() => {
     if (latestPost) {
-      if (Math.random() < (1 / samplingRate)) {
-        setPosts(prev => [latestPost, ...prev].slice(0, 50));
-      }
+      setPosts(prev => [latestPost, ...prev].slice(0, 50));
     }
-  }, [latestPost, samplingRate]);
+  }, [latestPost]);
 
   const utils = trpc.useUtils();
-  
+
+  // Firehose control mutations
+  const startMutation = trpc.firehose.startStream.useMutation();
+  const stopMutation = trpc.firehose.stopStream.useMutation();
+
+  const handleToggleFirehose = () => {
+    if (stats.running) {
+      stopMutation.mutate();
+    } else {
+      startMutation.mutate();
+    }
+  };
+
   const handleExportCSV = async () => {
     try {
       const result = await utils.firehose.exportCSV.fetch();
@@ -404,11 +422,21 @@ export default function Dashboard() {
               REAL-TIME SENTIMENT ANALYSIS · AT PROTOCOL NETWORK
             </p>
           </div>
-          <div className={`px-4 py-2 border-2 self-start sm:self-auto ${stats.running ? 'bg-[#01AAFF]/10' : ''}`} style={{ borderColor: stats.running ? '#01AAFF' : 'currentColor' }}>
+          <button
+            onClick={handleToggleFirehose}
+            disabled={startMutation.isPending || stopMutation.isPending}
+            className={`px-4 py-2 border-2 self-start sm:self-auto cursor-pointer transition-all hover:opacity-80 active:scale-95 ${stats.running ? 'bg-[#01AAFF]/10' : 'bg-red-500/10'}`}
+            style={{ borderColor: stats.running ? '#01AAFF' : '#ef4444' }}
+            title={stats.running ? 'Click to pause firehose' : 'Click to resume firehose'}
+          >
             <span className="text-xs font-bold uppercase tracking-widest">
-              {stats.running ? '● RUNNING' : '○ STOPPED'}
+              {startMutation.isPending || stopMutation.isPending
+                ? '◐ UPDATING...'
+                : stats.running
+                  ? '▶ RUNNING'
+                  : '⏸ PAUSED'}
             </span>
-          </div>
+          </button>
         </div>
       </header>
 
@@ -416,7 +444,7 @@ export default function Dashboard() {
       <div className="border-b-2 border-foreground px-4 py-4 sm:px-6 md:px-8">
         <div className="flex flex-col gap-3">
           <p className="text-xs uppercase tracking-widest font-bold">
-            FIREHOSE STREAM IS ALWAYS LIVE · SEARCH FILTERS ONLY IMPACT YOUR VIEW
+            {stats.running ? 'FIREHOSE STREAM IS LIVE' : 'FIREHOSE PAUSED'} · SEARCH FILTERS ONLY IMPACT YOUR VIEW
           </p>
 
           <div className="flex flex-col gap-2 sm:flex-row sm:gap-3">
@@ -646,8 +674,7 @@ export default function Dashboard() {
         <div className={feedFullScreen ? "w-full" : "w-full lg:w-3/4 order-1 lg:order-2"}>
           {/* Live Feed - Full Height */}
           <div className="border-b-2 border-foreground">
-            <div className="px-4 py-3 sm:px-6 sm:py-4 md:px-8 border-b-2 border-foreground flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <div className="text-xs font-bold uppercase tracking-widest">LIVE FEED</div>
+            <div className="px-4 py-3 sm:px-6 sm:py-4 md:px-8 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex flex-col gap-2 sm:flex-row sm:gap-3">
                 <select
                   value={feedLanguageFilter}
@@ -665,19 +692,6 @@ export default function Dashboard() {
                   <option value="pt">PORTUGUESE</option>
                   <option value="ko">KOREAN</option>
                   <option value="zh">CHINESE</option>
-                </select>
-                <select
-                  value={samplingRate}
-                  onChange={(e) => setSamplingRate(Number(e.target.value))}
-                  className="px-3 py-2 font-bold uppercase text-xs tracking-wider border-2 border-foreground bg-background text-foreground min-h-[44px]"
-                  style={{ borderRadius: 0 }}
-                >
-                  <option value={1}>SHOW ALL</option>
-                  <option value={10}>1/10</option>
-                  <option value={100}>1/100</option>
-                  <option value={1000}>1/1000</option>
-                  <option value={10000}>1/10000</option>
-                  <option value={50000}>1/50000</option>
                 </select>
                 <button
                   onClick={toggleFullScreen}

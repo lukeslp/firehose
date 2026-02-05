@@ -12,6 +12,11 @@ DAILY_DIR="/home/coolhand/html/firehose/archives/daily"
 WEEKLY_DIR="/home/coolhand/html/firehose/archives/weekly"
 LOG_FILE="/home/coolhand/html/firehose/scripts/compression.log"
 
+# Helper function to get file size (works on both Linux and macOS)
+get_file_size() {
+  stat -c%s "$1" 2>/dev/null || stat -f%z "$1" 2>/dev/null || echo "0"
+}
+
 # Create archive directories
 mkdir -p "$DAILY_DIR" "$WEEKLY_DIR"
 
@@ -22,9 +27,9 @@ WEEK_END=$(date -d "yesterday" +%Y-%m-%d)
 
 echo "[$(date '+%Y-%m-%d %H:%M:%S')] Starting weekly archive for $WEEK ($WEEK_START to $WEEK_END)" | tee -a "$LOG_FILE"
 
-# Count posts in date range
+# Count posts in date range (timestamps stored as milliseconds)
 POST_COUNT=$(sqlite3 "$DB_PATH" \
-  "SELECT COUNT(*) FROM posts WHERE DATE(timestamp) BETWEEN '$WEEK_START' AND '$WEEK_END';" 2>/dev/null || echo "0")
+  "SELECT COUNT(*) FROM posts WHERE DATE(timestamp/1000, 'unixepoch') BETWEEN '$WEEK_START' AND '$WEEK_END';" 2>/dev/null || echo "0")
 
 echo "[$(date '+%Y-%m-%d %H:%M:%S')] Posts in week: $POST_COUNT" | tee -a "$LOG_FILE"
 
@@ -44,14 +49,14 @@ if [ -z "$DAILY_FILES" ]; then
   echo "[$(date '+%Y-%m-%d %H:%M:%S')] Warning: No daily archives found for this week" | tee -a "$LOG_FILE"
 else
   # Create tar.gz of daily archives
-  echo "$DAILY_FILES" | tar -czf "$ARCHIVE_FILE" -T - 2>/dev/null || {
-    echo "[$(date '+%Y-%m-%d %H:%M:%S')] Warning: tar creation failed, trying alternative method" | tee -a "$LOG_FILE"
-    tar -czf "$ARCHIVE_FILE" -C "$DAILY_DIR" $(basename -a $DAILY_FILES) 2>/dev/null
+  cd "$DAILY_DIR"
+  tar -czf "$ARCHIVE_FILE" *.json.gz 2>/dev/null || {
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] Warning: tar creation failed" | tee -a "$LOG_FILE"
   }
-  
-  ARCHIVE_SIZE=$(stat -f%z "$ARCHIVE_FILE" 2>/dev/null || stat -c%s "$ARCHIVE_FILE")
+
+  ARCHIVE_SIZE=$(get_file_size "$ARCHIVE_FILE")
   ARCHIVE_MB=$(echo "scale=2; $ARCHIVE_SIZE / 1024 / 1024" | bc)
-  
+
   echo "[$(date '+%Y-%m-%d %H:%M:%S')] ✓ Weekly archive created: ${ARCHIVE_MB} MB" | tee -a "$LOG_FILE"
 fi
 
@@ -60,17 +65,17 @@ CUTOFF_DATE=$(date -d "7 days ago" +%Y-%m-%d)
 echo "[$(date '+%Y-%m-%d %H:%M:%S')] Deleting posts older than $CUTOFF_DATE..." | tee -a "$LOG_FILE"
 
 DELETED=$(sqlite3 "$DB_PATH" \
-  "DELETE FROM posts WHERE DATE(timestamp) < '$CUTOFF_DATE'; SELECT changes();" | tail -1)
+  "DELETE FROM posts WHERE DATE(timestamp/1000, 'unixepoch') < '$CUTOFF_DATE'; SELECT changes();" | tail -1)
 
 echo "[$(date '+%Y-%m-%d %H:%M:%S')] ✓ Deleted $DELETED old posts" | tee -a "$LOG_FILE"
 
 # Vacuum database to reclaim space
 echo "[$(date '+%Y-%m-%d %H:%M:%S')] Running VACUUM..." | tee -a "$LOG_FILE"
-DB_SIZE_BEFORE=$(stat -f%z "$DB_PATH" 2>/dev/null || stat -c%s "$DB_PATH")
+DB_SIZE_BEFORE=$(get_file_size "$DB_PATH")
 
 sqlite3 "$DB_PATH" "VACUUM; PRAGMA optimize;"
 
-DB_SIZE_AFTER=$(stat -f%z "$DB_PATH" 2>/dev/null || stat -c%s "$DB_PATH")
+DB_SIZE_AFTER=$(get_file_size "$DB_PATH")
 DB_SAVED_MB=$(echo "scale=2; ($DB_SIZE_BEFORE - $DB_SIZE_AFTER) / 1024 / 1024" | bc)
 
 echo "[$(date '+%Y-%m-%d %H:%M:%S')] ✓ Reclaimed ${DB_SAVED_MB} MB" | tee -a "$LOG_FILE"
@@ -90,4 +95,3 @@ sqlite3 "$DB_PATH" "SELECT collectionWindow, COUNT(*) FROM posts GROUP BY collec
 
 echo "[$(date '+%Y-%m-%d %H:%M:%S')] Weekly archival complete" | tee -a "$LOG_FILE"
 echo "===" | tee -a "$LOG_FILE"
-

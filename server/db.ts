@@ -26,6 +26,15 @@ export async function getDb() {
       const dbPath = process.env.DATABASE_URL;
       console.log("[Database] Connecting to SQLite at:", dbPath);
       _sqlite = new Database(dbPath);
+
+      // Enable WAL mode for better concurrent read/write performance
+      // Critical for 5M posts/day throughput
+      _sqlite.pragma('journal_mode = WAL');
+      _sqlite.pragma('synchronous = NORMAL');
+      _sqlite.pragma('cache_size = -64000'); // 64MB cache
+      _sqlite.pragma('temp_store = MEMORY');
+      console.log("[Database] WAL mode enabled for high-throughput writes");
+
       _db = drizzle(_sqlite);
       console.log("[Database] Connected successfully");
     } catch (error) {
@@ -115,7 +124,7 @@ export async function insertPost(post: InsertPost) {
   if (!db) return null;
 
   try {
-    // Use onConflictDoNothing to silently skip duplicates (prevents log spam)
+    // Use onConflictDoNothing to silently skip duplicates
     await db.insert(posts).values(post).onConflictDoNothing();
     return post;
   } catch (error) {

@@ -88,15 +88,6 @@ export function extractFeatures(text: string, record?: any) {
     language = record.langs[0];
   }
   
-  // Debug logging - remove after verification
-  if (hashtags.length > 0 || language !== 'unknown') {
-    console.log('[Features] Extracted:', { 
-      language, 
-      hashtags: hashtags.slice(0, 3), 
-      hasLangs: !!record?.langs,
-      hasFacets: !!record?.facets 
-    });
-  }
 
   // Check for media and embeds
   const embed = record?.embed || {};
