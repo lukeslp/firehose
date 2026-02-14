@@ -667,29 +667,38 @@ export default function RetroArcade({ onNavigateBack }: VariantProps) {
           </CardWall>
         </div>
 
-        {/* Post Feed - Swiss Grid */}
+        {/* Post Feed - Gradient Cards */}
         <div style={{
           gridColumn: '1 / -1',
-          padding: '32px',
-          border: '1px solid #000000',
-          background: '#f5f5f5',
+          padding: '40px',
+          background: 'rgba(255, 255, 255, 0.12)',
+          backdropFilter: 'blur(20px)',
+          borderRadius: '24px',
+          border: '1px solid rgba(255, 255, 255, 0.25)',
+          boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)',
           minHeight: '400px',
         }}>
           <div style={{
-            fontSize: '10px',
-            fontWeight: 100,
+            fontSize: '13px',
+            fontWeight: 600,
             letterSpacing: '2px',
             textTransform: 'uppercase',
-            marginBottom: '24px',
-            color: '#000000',
+            marginBottom: '32px',
+            color: 'rgba(255, 255, 255, 0.95)',
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'center',
-            paddingBottom: '16px',
-            borderBottom: '1px solid #000000',
+            paddingBottom: '20px',
+            borderBottom: '1px solid rgba(255, 255, 255, 0.2)',
           }}>
             <span>Data Stream</span>
-            <span style={{ fontFamily: 'monospace', fontWeight: 400 }}>
+            <span style={{
+              fontFamily: 'monospace',
+              fontWeight: 600,
+              background: 'rgba(255, 255, 255, 0.2)',
+              padding: '8px 16px',
+              borderRadius: '8px',
+            }}>
               {posts.length.toString().padStart(3, '0')} Items
             </span>
           </div>
@@ -697,69 +706,89 @@ export default function RetroArcade({ onNavigateBack }: VariantProps) {
           <div style={{
             display: 'grid',
             gridTemplateColumns: 'repeat(1, 1fr)',
-            gap: '8px',
+            gap: '16px',
           }}>
             {posts.length === 0 ? (
               <div style={{
                 textAlign: 'center',
-                padding: '64px 32px',
-                color: '#000000',
+                padding: '80px 32px',
+                color: 'rgba(255, 255, 255, 0.7)',
                 fontSize: '14px',
-                fontWeight: 100,
+                fontWeight: 500,
                 letterSpacing: '2px',
+                textTransform: 'uppercase',
               }}>
-                AWAITING DATA TRANSMISSION
+                Awaiting Data Transmission
               </div>
             ) : (
               posts.map((post, index) => {
-                // Golden ratio for post width/height relationship
                 const isHighlighted = index === 0;
+                const sentimentColor =
+                  post.sentiment === 'positive' ? 'rgba(56, 239, 125, 0.3)' :
+                  post.sentiment === 'negative' ? 'rgba(255, 107, 157, 0.3)' :
+                  'rgba(255, 255, 255, 0.15)';
 
                 return (
                   <div
                     key={post.uri || index}
                     style={{
-                      border: `${isHighlighted ? '2' : '1'}px solid ${
-                        isHighlighted && post.sentiment === 'positive' ? '#ff0000' : '#000000'
-                      }`,
-                      padding: '24px',
-                      background: '#ffffff',
+                      padding: '28px',
+                      background: isHighlighted
+                        ? `linear-gradient(135deg, ${sentimentColor}, rgba(255, 255, 255, 0.1))`
+                        : 'rgba(255, 255, 255, 0.1)',
+                      backdropFilter: 'blur(20px)',
+                      borderRadius: '20px',
+                      border: `1px solid ${isHighlighted ? sentimentColor : 'rgba(255, 255, 255, 0.2)'}`,
+                      boxShadow: isHighlighted
+                        ? '0 8px 32px rgba(0, 0, 0, 0.15)'
+                        : '0 4px 16px rgba(0, 0, 0, 0.1)',
                       position: 'relative',
-                      transition: 'all 0.2s ease',
+                      transition: 'all 0.3s ease',
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.transform = 'translateY(-4px)';
+                      e.currentTarget.style.boxShadow = '0 12px 40px rgba(0, 0, 0, 0.2)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.transform = 'translateY(0)';
+                      e.currentTarget.style.boxShadow = isHighlighted
+                        ? '0 8px 32px rgba(0, 0, 0, 0.15)'
+                        : '0 4px 16px rgba(0, 0, 0, 0.1)';
                     }}
                   >
                     {/* Sentiment Geometry Indicator */}
                     <div style={{
                       position: 'absolute',
-                      top: '24px',
-                      right: '24px',
-                      fontSize: '32px',
-                      color: '#000000',
+                      top: '28px',
+                      right: '28px',
+                      fontSize: '36px',
+                      color: '#ffffff',
                       lineHeight: 1,
+                      textShadow: '0 2px 8px rgba(0, 0, 0, 0.2)',
                     }}>
                       {getSentimentGeometry(post.sentiment)}
                     </div>
 
                     {/* Author */}
                     <div style={{
-                      fontSize: '10px',
-                      fontWeight: 100,
+                      fontSize: '11px',
+                      fontWeight: 600,
                       letterSpacing: '2px',
                       textTransform: 'uppercase',
                       marginBottom: '16px',
-                      color: '#000000',
+                      color: 'rgba(255, 255, 255, 0.8)',
                     }}>
                       {post.author?.handle || 'Anonymous'}
                     </div>
 
                     {/* Content */}
                     <div style={{
-                      fontSize: '14px',
+                      fontSize: '15px',
                       fontWeight: 400,
-                      lineHeight: 1.618, // Golden ratio
-                      color: '#000000',
+                      lineHeight: 1.6,
+                      color: '#ffffff',
                       marginBottom: '16px',
-                      paddingRight: '48px', // Space for geometry
+                      paddingRight: '56px',
                     }}>
                       {post.text.length > 280 ? `${post.text.slice(0, 280)}...` : post.text}
                     </div>
@@ -776,24 +805,26 @@ export default function RetroArcade({ onNavigateBack }: VariantProps) {
                       </div>
                     )}
 
-                    {/* Hashtags - Minimal Geometric Tags */}
+                    {/* Hashtags - Modern Rounded Tags */}
                     {post.hashtags && post.hashtags.length > 0 && (
                       <div style={{
                         display: 'flex',
                         gap: '8px',
                         flexWrap: 'wrap',
                         paddingTop: '16px',
-                        borderTop: '1px solid #000000',
+                        borderTop: '1px solid rgba(255, 255, 255, 0.2)',
                       }}>
                         {post.hashtags.slice(0, 5).map(tag => (
                           <span key={tag} style={{
                             padding: '8px 16px',
-                            border: '1px solid #000000',
-                            fontSize: '10px',
-                            fontWeight: 100,
+                            background: 'rgba(255, 255, 255, 0.2)',
+                            backdropFilter: 'blur(10px)',
+                            border: '1px solid rgba(255, 255, 255, 0.3)',
+                            borderRadius: '12px',
+                            fontSize: '11px',
+                            fontWeight: 500,
                             letterSpacing: '1px',
-                            color: '#000000',
-                            background: '#f5f5f5',
+                            color: '#ffffff',
                           }}>
                             {tag}
                           </span>
@@ -811,173 +842,183 @@ export default function RetroArcade({ onNavigateBack }: VariantProps) {
         <footer style={{
           gridColumn: '1 / -1',
           textAlign: 'center',
-          padding: '24px',
-          borderTop: '1px solid #000000',
-          marginTop: '16px',
+          padding: '32px',
+          background: 'rgba(255, 255, 255, 0.1)',
+          backdropFilter: 'blur(20px)',
+          borderRadius: '24px',
+          border: '1px solid rgba(255, 255, 255, 0.2)',
+          marginTop: '20px',
         }}>
           <div style={{
-            fontSize: '10px',
-            fontWeight: 100,
+            fontSize: '11px',
+            fontWeight: 500,
             letterSpacing: '3px',
             textTransform: 'uppercase',
-            color: '#000000',
+            color: 'rgba(255, 255, 255, 0.8)',
           }}>
             Real-Time Data Visualization System
           </div>
         </footer>
       </div>
 
-      {/* Swiss Modernism Chart Styles */}
+      {/* Modern Gradient Chart Styles */}
       <style>{`
-        /* Swiss-themed DataCard overrides - Mathematical Precision */
-        .swiss-cards [class*="DataCard"] {
-          background: #ffffff !important;
-          border: 1px solid #000000 !important;
-          border-radius: 0 !important;
-          box-shadow: none !important;
-          font-family: 'Helvetica Neue', Arial, sans-serif !important;
-          padding: 24px !important;
+        /* Gradient-themed DataCard overrides */
+        .gradient-cards [class*="DataCard"] {
+          background: rgba(255, 255, 255, 0.1) !important;
+          backdrop-filter: blur(20px) !important;
+          border: 1px solid rgba(255, 255, 255, 0.2) !important;
+          border-radius: 20px !important;
+          box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1) !important;
+          font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif !important;
+          padding: 28px !important;
+          transition: all 0.3s ease !important;
         }
 
-        /* Card titles - Helvetica, uppercase, thin weight */
-        .swiss-cards [class*="DataCard"] h3,
-        .swiss-cards [class*="DataCard"] h2 {
-          color: #000000 !important;
+        /* Card titles - Modern, clean */
+        .gradient-cards [class*="DataCard"] h3,
+        .gradient-cards [class*="DataCard"] h2 {
+          color: rgba(255, 255, 255, 0.95) !important;
           text-transform: uppercase !important;
-          font-size: 10px !important;
-          font-weight: 100 !important;
+          font-size: 11px !important;
+          font-weight: 600 !important;
           letter-spacing: 2px !important;
-          font-family: 'Helvetica Neue', Arial, sans-serif !important;
-          margin-bottom: 24px !important;
+          font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif !important;
+          margin-bottom: 20px !important;
           padding-bottom: 16px !important;
-          border-bottom: 1px solid #000000 !important;
+          border-bottom: 1px solid rgba(255, 255, 255, 0.2) !important;
         }
 
-        /* Card text - Clean, minimal */
-        .swiss-cards [class*="DataCard"] p,
-        .swiss-cards [class*="DataCard"] span,
-        .swiss-cards [class*="DataCard"] div {
-          font-family: 'Helvetica Neue', Arial, sans-serif !important;
-          font-size: 12px !important;
-          line-height: 1.618 !important; /* Golden ratio */
-          color: #000000 !important;
+        /* Card text - White on gradient */
+        .gradient-cards [class*="DataCard"] p,
+        .gradient-cards [class*="DataCard"] span,
+        .gradient-cards [class*="DataCard"] div {
+          font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif !important;
+          font-size: 13px !important;
+          line-height: 1.6 !important;
+          color: rgba(255, 255, 255, 0.9) !important;
         }
 
-        /* Numbers - Bold, monospace for precision */
-        .swiss-cards [class*="DataCard"] [class*="text-lg"],
-        .swiss-cards [class*="DataCard"] [class*="text-xl"],
-        .swiss-cards [class*="DataCard"] [class*="text-2xl"] {
-          color: #000000 !important;
-          font-family: monospace !important;
+        /* Numbers - Bold, modern */
+        .gradient-cards [class*="DataCard"] [class*="text-lg"],
+        .gradient-cards [class*="DataCard"] [class*="text-xl"],
+        .gradient-cards [class*="DataCard"] [class*="text-2xl"] {
+          color: #ffffff !important;
+          font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif !important;
           font-weight: 700 !important;
+          text-shadow: 0 2px 8px rgba(0, 0, 0, 0.2) !important;
         }
 
-        /* Legend items - Minimal borders */
-        .swiss-cards [class*="DataCard"] [class*="flex items-center"] {
-          padding: 8px !important;
-          border: 1px solid #f5f5f5 !important;
-          background: #ffffff !important;
-          margin: 4px 0 !important;
+        /* Legend items - Glassmorphic */
+        .gradient-cards [class*="DataCard"] [class*="flex items-center"] {
+          padding: 10px !important;
+          background: rgba(255, 255, 255, 0.08) !important;
+          backdrop-filter: blur(10px) !important;
+          border: 1px solid rgba(255, 255, 255, 0.15) !important;
+          border-radius: 12px !important;
+          margin: 6px 0 !important;
         }
 
-        /* Chart SVG elements - Monochrome with single red accent */
-        .swiss-cards svg text {
-          fill: #000000 !important;
-          font-family: 'Helvetica Neue', Arial, sans-serif !important;
-          font-size: 10px !important;
-          font-weight: 100 !important;
+        /* Chart SVG elements - Light colors for dark background */
+        .gradient-cards svg text {
+          fill: rgba(255, 255, 255, 0.9) !important;
+          font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif !important;
+          font-size: 11px !important;
+          font-weight: 500 !important;
         }
 
-        .swiss-cards svg line,
-        .swiss-cards svg path[class*="CartesianGrid"] {
-          stroke: #f5f5f5 !important;
+        .gradient-cards svg line,
+        .gradient-cards svg path[class*="CartesianGrid"] {
+          stroke: rgba(255, 255, 255, 0.15) !important;
           stroke-width: 1 !important;
         }
 
-        /* Recharts - Monochrome palette with RED ACCENT */
-        .swiss-cards svg path[class*="area"],
-        .swiss-cards svg path[class*="line"] {
-          filter: none !important;
+        /* Recharts - Vibrant gradient palette */
+        .gradient-cards svg path[class*="area"],
+        .gradient-cards svg path[class*="line"] {
+          filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.2)) !important;
         }
 
-        /* First area/bar gets red, others black/gray */
-        .swiss-cards svg path[class*="area"]:first-of-type,
-        .swiss-cards svg rect[class*="recharts-bar"]:first-of-type {
-          fill: #ff0000 !important;
-          stroke: #ff0000 !important;
+        /* Vibrant color scheme */
+        .gradient-cards svg path[class*="area"]:nth-of-type(1),
+        .gradient-cards svg rect[class*="recharts-bar"]:nth-of-type(1) {
+          fill: rgba(56, 239, 125, 0.6) !important;
+          stroke: #38ef7d !important;
         }
 
-        .swiss-cards svg path[class*="area"]:not(:first-of-type),
-        .swiss-cards svg rect[class*="recharts-bar"]:not(:first-of-type) {
-          fill: #000000 !important;
-          stroke: #000000 !important;
+        .gradient-cards svg path[class*="area"]:nth-of-type(2),
+        .gradient-cards svg rect[class*="recharts-bar"]:nth-of-type(2) {
+          fill: rgba(255, 107, 157, 0.6) !important;
+          stroke: #ff6b9d !important;
         }
 
-        .swiss-cards svg path[class*="line"]:first-of-type {
-          stroke: #ff0000 !important;
+        .gradient-cards svg path[class*="area"]:nth-of-type(3),
+        .gradient-cards svg rect[class*="recharts-bar"]:nth-of-type(3) {
+          fill: rgba(102, 126, 234, 0.6) !important;
+          stroke: #667eea !important;
+        }
+
+        .gradient-cards svg path[class*="line"]:nth-of-type(1) {
+          stroke: #38ef7d !important;
+          stroke-width: 3 !important;
+        }
+
+        .gradient-cards svg path[class*="line"]:nth-of-type(2) {
+          stroke: #ff6b9d !important;
           stroke-width: 2 !important;
         }
 
-        .swiss-cards svg path[class*="line"]:not(:first-of-type) {
-          stroke: #000000 !important;
-          stroke-width: 1 !important;
+        .gradient-cards svg path[class*="line"]:nth-of-type(3) {
+          stroke: #667eea !important;
+          stroke-width: 2 !important;
         }
 
-        /* Bar chart bars - Flat, no effects */
-        .swiss-cards svg rect[class*="recharts-bar"] {
-          filter: none !important;
+        /* Bar chart bars - Gradient fills */
+        .gradient-cards svg rect[class*="recharts-bar"] {
+          filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.2)) !important;
         }
 
-        /* Hover effects - Minimal, geometric */
-        .swiss-cards [class*="DataCard"]:hover {
-          border: 2px solid #000000 !important;
-          box-shadow: none !important;
-          transform: none !important;
-          padding: 23px !important; /* Compensate for border change */
+        /* Hover effects - Lift and glow */
+        .gradient-cards [class*="DataCard"]:hover {
+          transform: translateY(-4px) !important;
+          box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15) !important;
+          border: 1px solid rgba(255, 255, 255, 0.3) !important;
         }
 
-        /* Percentage text - Regular weight */
-        .swiss-cards [class*="DataCard"] [class*="opacity-60"] {
-          color: #000000 !important;
-          opacity: 0.6 !important;
-          font-weight: 100 !important;
+        /* Percentage text - Lighter */
+        .gradient-cards [class*="DataCard"] [class*="opacity-60"] {
+          color: rgba(255, 255, 255, 0.7) !important;
+          opacity: 1 !important;
+          font-weight: 400 !important;
         }
 
-        /* Color squares in legends - Pure geometric shapes */
-        .swiss-cards [class*="DataCard"] [class*="w-4 h-4"],
-        .swiss-cards [class*="DataCard"] [class*="w-3 h-3"] {
-          border: 1px solid #000000 !important;
-          border-radius: 0 !important;
-          box-shadow: none !important;
+        /* Color squares in legends - Rounded with glow */
+        .gradient-cards [class*="DataCard"] [class*="w-4 h-4"],
+        .gradient-cards [class*="DataCard"] [class*="w-3 h-3"] {
+          border: 1px solid rgba(255, 255, 255, 0.3) !important;
+          border-radius: 6px !important;
+          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2) !important;
         }
 
-        /* Tooltip styling - Clean, minimal */
+        /* Tooltip styling - Glassmorphic */
         .recharts-tooltip-wrapper {
-          border: 1px solid #000000 !important;
-          background: #ffffff !important;
-          box-shadow: none !important;
+          border: 1px solid rgba(255, 255, 255, 0.3) !important;
+          background: rgba(255, 255, 255, 0.1) !important;
+          backdrop-filter: blur(20px) !important;
+          box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2) !important;
         }
 
         .recharts-default-tooltip {
-          background: #ffffff !important;
-          border: 1px solid #000000 !important;
-          border-radius: 0 !important;
+          background: rgba(255, 255, 255, 0.15) !important;
+          backdrop-filter: blur(20px) !important;
+          border: 1px solid rgba(255, 255, 255, 0.25) !important;
+          border-radius: 12px !important;
           padding: 16px !important;
         }
 
-        /* Remove all gradients and rounded corners */
-        * {
-          border-radius: 0 !important;
-        }
-
-        /* Ensure 8px grid alignment */
-        .swiss-cards [class*="DataCard"] > * {
-          margin-bottom: 8px !important;
-        }
-
-        /* Last element no margin */
-        .swiss-cards [class*="DataCard"] > *:last-child {
-          margin-bottom: 0 !important;
+        /* Smooth animations */
+        .gradient-cards [class*="DataCard"] * {
+          transition: all 0.3s ease !important;
         }
       `}</style>
     </div>

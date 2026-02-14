@@ -473,42 +473,29 @@ export function MissionControl({ className }: VariantProps) {
           </div>
         </motion.div>
 
-        {/* Garden Sentiment - Plant labels style */}
+        {/* Sentiment Analysis - geometric bars */}
         <motion.div
-          initial={!prefersReducedMotion ? { scale: 0.9, opacity: 0 } : {}}
+          initial={!prefersReducedMotion ? { scale: 0.95, opacity: 0 } : {}}
           animate={{ scale: 1, opacity: 1 }}
           transition={{ ...springTransition, delay: 0.4 }}
-          className="mb-12 p-8 bg-white/70 backdrop-blur-sm"
-          style={{
-            borderRadius: '55% 45% 58% 42% / 49% 56% 44% 51%',
-            boxShadow: '0 8px 32px rgba(95, 113, 97, 0.12)',
-            border: '2px solid #5f7161',
-          }}
+          className="mb-12 p-6 bg-[#2d2d2d] border-2 border-[#0080ff]/20"
         >
-          <h2
-            className="text-3xl font-bold text-[#2d4a2b] mb-8"
-            style={{ fontFamily: '"Caveat", cursive' }}
-          >
-            Garden Sentiment
+          <h2 className="text-2xl font-bold text-white mb-8 tracking-wide uppercase">
+            SENTIMENT ANALYSIS
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {/* Positive - Growing */}
-            <div className="text-center">
-              <div
-                className="text-sm mb-2 text-[#5f7161] uppercase"
-                style={{ fontFamily: '"Indie Flower", cursive' }}
-              >
-                🌻 Growing
+            {/* Positive */}
+            <div className="relative">
+              <div className="text-xs mb-3 text-gray-400 uppercase tracking-widest font-mono flex items-center gap-2">
+                <div className="w-3 h-3 bg-[#00d9ff]" />
+                POSITIVE
               </div>
-              <div
-                className="text-5xl font-bold text-[#2d4a2b] mb-4"
-                style={{ fontFamily: '"Caveat", cursive' }}
-              >
+              <div className="text-4xl font-bold text-white mb-4 tabular-nums font-mono">
                 {(stats?.sentimentCounts?.positive || 0).toLocaleString()}
               </div>
-              <div className="h-3 bg-[#8fbc8f]/20 rounded-full overflow-hidden">
+              <div className="h-2 bg-[#1a1a1a] overflow-hidden relative">
                 <motion.div
-                  className="h-full bg-[#2d4a2b] rounded-full"
+                  className="h-full bg-[#00d9ff] absolute top-0 left-0"
                   initial={{ width: 0 }}
                   animate={{
                     width: stats?.totalPosts
@@ -517,29 +504,30 @@ export function MissionControl({ className }: VariantProps) {
                   }}
                   transition={{ duration: 1, ease: "easeOut" }}
                   style={{
-                    boxShadow: '0 2px 8px rgba(45, 74, 43, 0.3)',
+                    boxShadow: '0 0 10px rgba(0, 217, 255, 0.5)',
                   }}
                 />
+                {/* Geometric notches */}
+                <div className="absolute inset-0 flex">
+                  {[...Array(10)].map((_, i) => (
+                    <div key={i} className="flex-1 border-r border-[#2d2d2d]" />
+                  ))}
+                </div>
               </div>
             </div>
 
-            {/* Neutral - Sprouting */}
-            <div className="text-center">
-              <div
-                className="text-sm mb-2 text-[#5f7161] uppercase"
-                style={{ fontFamily: '"Indie Flower", cursive' }}
-              >
-                🌿 Sprouting
+            {/* Neutral */}
+            <div className="relative">
+              <div className="text-xs mb-3 text-gray-400 uppercase tracking-widest font-mono flex items-center gap-2">
+                <div className="w-3 h-3 bg-[#a0a0a0]" />
+                NEUTRAL
               </div>
-              <div
-                className="text-5xl font-bold text-[#5f7161] mb-4"
-                style={{ fontFamily: '"Caveat", cursive' }}
-              >
+              <div className="text-4xl font-bold text-white mb-4 tabular-nums font-mono">
                 {(stats?.sentimentCounts?.neutral || 0).toLocaleString()}
               </div>
-              <div className="h-3 bg-[#5f7161]/20 rounded-full overflow-hidden">
+              <div className="h-2 bg-[#1a1a1a] overflow-hidden relative">
                 <motion.div
-                  className="h-full bg-[#5f7161] rounded-full"
+                  className="h-full bg-[#a0a0a0] absolute top-0 left-0"
                   initial={{ width: 0 }}
                   animate={{
                     width: stats?.totalPosts
@@ -548,29 +536,30 @@ export function MissionControl({ className }: VariantProps) {
                   }}
                   transition={{ duration: 1, ease: "easeOut" }}
                   style={{
-                    boxShadow: '0 2px 8px rgba(95, 113, 97, 0.3)',
+                    boxShadow: '0 0 10px rgba(160, 160, 160, 0.5)',
                   }}
                 />
+                {/* Geometric notches */}
+                <div className="absolute inset-0 flex">
+                  {[...Array(10)].map((_, i) => (
+                    <div key={i} className="flex-1 border-r border-[#2d2d2d]" />
+                  ))}
+                </div>
               </div>
             </div>
 
-            {/* Negative - Wilting */}
-            <div className="text-center">
-              <div
-                className="text-sm mb-2 text-[#5f7161] uppercase"
-                style={{ fontFamily: '"Indie Flower", cursive' }}
-              >
-                🍂 Wilting
+            {/* Negative */}
+            <div className="relative">
+              <div className="text-xs mb-3 text-gray-400 uppercase tracking-widest font-mono flex items-center gap-2">
+                <div className="w-3 h-3 bg-[#ff4d6d]" />
+                NEGATIVE
               </div>
-              <div
-                className="text-5xl font-bold text-[#d4a574] mb-4"
-                style={{ fontFamily: '"Caveat", cursive' }}
-              >
+              <div className="text-4xl font-bold text-white mb-4 tabular-nums font-mono">
                 {(stats?.sentimentCounts?.negative || 0).toLocaleString()}
               </div>
-              <div className="h-3 bg-[#d4a574]/20 rounded-full overflow-hidden">
+              <div className="h-2 bg-[#1a1a1a] overflow-hidden relative">
                 <motion.div
-                  className="h-full bg-[#d4a574] rounded-full"
+                  className="h-full bg-[#ff4d6d] absolute top-0 left-0"
                   initial={{ width: 0 }}
                   animate={{
                     width: stats?.totalPosts
@@ -579,140 +568,127 @@ export function MissionControl({ className }: VariantProps) {
                   }}
                   transition={{ duration: 1, ease: "easeOut" }}
                   style={{
-                    boxShadow: '0 2px 8px rgba(212, 165, 116, 0.3)',
+                    boxShadow: '0 0 10px rgba(255, 77, 109, 0.5)',
                   }}
                 />
+                {/* Geometric notches */}
+                <div className="absolute inset-0 flex">
+                  {[...Array(10)].map((_, i) => (
+                    <div key={i} className="flex-1 border-r border-[#2d2d2d]" />
+                  ))}
+                </div>
               </div>
             </div>
           </div>
         </motion.div>
 
-        {/* Data Visualization Garden Beds */}
+        {/* Data Visualization - geometric grid */}
         <motion.div
           initial={!prefersReducedMotion ? { y: 30, opacity: 0 } : {}}
           animate={{ y: 0, opacity: 1 }}
           transition={{ ...springTransition, delay: 0.5 }}
-          className="mb-12 p-8 bg-white/60 backdrop-blur-sm"
-          style={{
-            borderRadius: '42% 58% 51% 49% / 56% 47% 53% 44%',
-            boxShadow: '0 8px 32px rgba(143, 188, 143, 0.12)',
-            border: '2px dashed #2d4a2b',
-          }}
+          className="mb-12 p-6 bg-[#2d2d2d] border-2 border-[#00d9ff]/20"
         >
-          <h2
-            className="text-3xl font-bold text-[#2d4a2b] mb-8"
-            style={{ fontFamily: '"Caveat", cursive' }}
-          >
-            Garden Analytics
+          <h2 className="text-2xl font-bold text-white mb-8 tracking-wide uppercase">
+            DATA ANALYTICS
           </h2>
-          <CardWall className="organic-garden-cards">
+          <CardWall className="geometric-analytics-grid">
             <SentimentDistributionCard
               sentimentCounts={stats?.sentimentCounts || { positive: 0, neutral: 0, negative: 0 }}
-              className="bg-white/80 backdrop-blur-sm border-2 border-[#8fbc8f] rounded-3xl shadow-lg"
+              className="bg-[#1a1a1a] border border-[#00d9ff]/30 shadow-lg"
             />
             <SentimentTimelineCard
               data={sentimentTimeline}
-              className="bg-white/80 backdrop-blur-sm border-2 border-[#5f7161] rounded-3xl shadow-lg"
+              className="bg-[#1a1a1a] border border-[#0080ff]/30 shadow-lg"
             />
             <PostsPerMinuteCard
               data={postsPerMinuteTimeline}
               currentRate={stats?.postsPerMinute}
-              className="bg-white/80 backdrop-blur-sm border-2 border-[#2d4a2b] rounded-3xl shadow-lg"
+              className="bg-[#1a1a1a] border border-[#00d9ff]/30 shadow-lg"
             />
             <LanguagesCard
               languageCounts={languageCounts}
-              className="bg-white/80 backdrop-blur-sm border-2 border-[#d4a574] rounded-3xl shadow-lg"
+              className="bg-[#1a1a1a] border border-[#0080ff]/30 shadow-lg"
             />
             <ContentTypesCard
               contentTypeCounts={contentTypeCounts}
-              className="bg-white/80 backdrop-blur-sm border-2 border-[#8fbc8f] rounded-3xl shadow-lg"
+              className="bg-[#1a1a1a] border border-[#00d9ff]/30 shadow-lg"
             />
           </CardWall>
         </motion.div>
 
-        {/* Living Garden Feed */}
+        {/* Live Data Feed */}
         <motion.div
           initial={!prefersReducedMotion ? { y: 30, opacity: 0 } : {}}
           animate={{ y: 0, opacity: 1 }}
           transition={{ ...springTransition, delay: 0.6 }}
-          className="p-8 bg-white/70 backdrop-blur-sm"
-          style={{
-            borderRadius: '46% 54% 49% 51% / 52% 48% 52% 48%',
-            boxShadow: '0 8px 32px rgba(45, 74, 43, 0.15)',
-            border: '2px solid #8fbc8f',
-          }}
+          className="p-6 bg-[#2d2d2d] border-2 border-[#0080ff]/20"
         >
           <div className="flex items-center justify-between mb-6">
-            <h2
-              className="text-3xl font-bold text-[#2d4a2b]"
-              style={{ fontFamily: '"Caveat", cursive' }}
-            >
-              Living Garden Feed
+            <h2 className="text-2xl font-bold text-white tracking-wide uppercase">
+              LIVE DATA FEED
             </h2>
-            <span
-              className="text-sm text-[#5f7161]"
-              style={{ fontFamily: '"Indie Flower", cursive' }}
-            >
-              Showing {filteredPosts.length} of {posts.length} seeds
+            <span className="text-xs text-gray-400 font-mono">
+              {filteredPosts.length} / {posts.length} ENTRIES
             </span>
           </div>
 
-          <div className="space-y-4 max-h-[800px] overflow-y-auto pr-2">
+          <div className="space-y-3 max-h-[800px] overflow-y-auto pr-2 geometric-scrollbar">
             <AnimatePresence mode="popLayout">
               {filteredPosts.map((post, index) => (
                 <motion.div
                   key={post.uri || index}
-                  initial={!prefersReducedMotion ? { x: -30, opacity: 0, scale: 0.95 } : {}}
-                  animate={{ x: 0, opacity: 1, scale: 1 }}
-                  exit={!prefersReducedMotion ? { x: 30, opacity: 0, scale: 0.95 } : {}}
+                  initial={!prefersReducedMotion ? { x: -20, opacity: 0 } : {}}
+                  animate={{ x: 0, opacity: 1 }}
+                  exit={!prefersReducedMotion ? { x: 20, opacity: 0 } : {}}
                   transition={springTransition}
-                  className="p-5 bg-white/90 backdrop-blur-sm"
+                  className="p-4 bg-[#1a1a1a] border-l-4"
                   style={{
-                    borderRadius: '20px',
-                    boxShadow: '0 4px 16px rgba(45, 74, 43, 0.1)',
-                    border: '1px solid #8fbc8f',
+                    borderLeftColor: post.sentiment === 'positive'
+                      ? '#00d9ff'
+                      : post.sentiment === 'negative'
+                      ? '#ff4d6d'
+                      : '#a0a0a0',
                   }}
                 >
                   <div className="flex items-start gap-4">
-                    {/* Sentiment indicator - organic blob */}
-                    <motion.div
-                      className={`w-3 h-3 mt-1.5 flex-shrink-0 ${getSentimentBg(post.sentiment)}`}
-                      style={{
-                        borderRadius: '63% 37% 54% 46% / 55% 48% 52% 45%',
-                        boxShadow: `0 2px 8px ${
-                          post.sentiment === 'positive'
-                            ? 'rgba(45, 74, 43, 0.3)'
-                            : post.sentiment === 'negative'
-                            ? 'rgba(212, 165, 116, 0.3)'
-                            : 'rgba(95, 113, 97, 0.3)'
-                        }`,
-                      }}
-                      animate={
-                        !prefersReducedMotion
-                          ? {
-                              rotate: [0, 360],
-                            }
-                          : {}
-                      }
-                      transition={{
-                        duration: 20,
-                        repeat: Infinity,
-                        ease: "linear",
-                      }}
-                    />
+                    {/* Sentiment indicator - geometric */}
+                    <div className="flex flex-col items-center gap-1 mt-1">
+                      <motion.div
+                        className={`w-2 h-2 flex-shrink-0 ${getSentimentBg(post.sentiment)}`}
+                        style={{
+                          boxShadow: `0 0 10px ${
+                            post.sentiment === 'positive'
+                              ? 'rgba(0, 217, 255, 0.6)'
+                              : post.sentiment === 'negative'
+                              ? 'rgba(255, 77, 109, 0.6)'
+                              : 'rgba(160, 160, 160, 0.6)'
+                          }`,
+                        }}
+                        animate={
+                          !prefersReducedMotion
+                            ? {
+                                opacity: [0.5, 1, 0.5],
+                              }
+                            : {}
+                        }
+                        transition={{
+                          duration: 2,
+                          repeat: Infinity,
+                          ease: "linear",
+                        }}
+                      />
+                    </div>
 
                     {/* Post content */}
                     <div className="flex-1 min-w-0">
-                      <div
-                        className="text-xs mb-2 text-[#5f7161]"
-                        style={{ fontFamily: '"Indie Flower", cursive' }}
-                      >
+                      <div className="text-[10px] mb-2 text-gray-500 uppercase tracking-wider font-mono">
                         {new Date(post.createdAt).toLocaleString()}
-                        {' ~ '}
-                        {post.author?.handle || 'unknown'}
-                        {post.language && ` ~ ${post.language.toUpperCase()}`}
+                        {' | '}
+                        {post.author?.handle || 'UNKNOWN'}
+                        {post.language && ` | ${post.language.toUpperCase()}`}
                       </div>
-                      <div className={`${getSentimentColor(post.sentiment)} leading-relaxed text-base mb-3`}>
+                      <div className={`${getSentimentColor(post.sentiment)} leading-relaxed text-sm mb-3`}>
                         {post.text}
                       </div>
 
@@ -727,54 +703,36 @@ export function MissionControl({ className }: VariantProps) {
                         </div>
                       )}
 
-                      {/* Post metadata tags */}
+                      {/* Post metadata tags - geometric badges */}
                       <div className="flex flex-wrap gap-2">
                         {post.hasImages && (
-                          <span
-                            className="px-2 py-1 bg-[#8fbc8f]/20 text-[#2d4a2b] text-xs rounded-full"
-                            style={{ fontFamily: '"Indie Flower", cursive' }}
-                          >
-                            📷 Image
+                          <span className="px-2 py-1 bg-[#00d9ff]/10 text-[#00d9ff] text-[10px] uppercase tracking-wider font-mono border border-[#00d9ff]/30">
+                            IMG
                           </span>
                         )}
                         {post.hasVideo && (
-                          <span
-                            className="px-2 py-1 bg-[#5f7161]/20 text-[#2d4a2b] text-xs rounded-full"
-                            style={{ fontFamily: '"Indie Flower", cursive' }}
-                          >
-                            🎥 Video
+                          <span className="px-2 py-1 bg-[#0080ff]/10 text-[#0080ff] text-[10px] uppercase tracking-wider font-mono border border-[#0080ff]/30">
+                            VID
                           </span>
                         )}
                         {post.hasLink && (
-                          <span
-                            className="px-2 py-1 bg-[#d4a574]/20 text-[#2d4a2b] text-xs rounded-full"
-                            style={{ fontFamily: '"Indie Flower", cursive' }}
-                          >
-                            🔗 Link
+                          <span className="px-2 py-1 bg-[#00d9ff]/10 text-[#00d9ff] text-[10px] uppercase tracking-wider font-mono border border-[#00d9ff]/30">
+                            LINK
                           </span>
                         )}
                         {post.isReply && (
-                          <span
-                            className="px-2 py-1 bg-[#8fbc8f]/30 text-[#2d4a2b] text-xs rounded-full"
-                            style={{ fontFamily: '"Indie Flower", cursive' }}
-                          >
-                            💬 Reply
+                          <span className="px-2 py-1 bg-gray-700/50 text-gray-400 text-[10px] uppercase tracking-wider font-mono border border-gray-600">
+                            REPLY
                           </span>
                         )}
                         {post.isQuote && (
-                          <span
-                            className="px-2 py-1 bg-[#5f7161]/30 text-[#2d4a2b] text-xs rounded-full"
-                            style={{ fontFamily: '"Indie Flower", cursive' }}
-                          >
-                            ✨ Quote
+                          <span className="px-2 py-1 bg-gray-700/50 text-gray-400 text-[10px] uppercase tracking-wider font-mono border border-gray-600">
+                            QUOTE
                           </span>
                         )}
                         {post.images?.some(img => !img.alt) && (
-                          <span
-                            className="px-2 py-1 bg-[#d4a574]/40 text-[#2d4a2b] text-xs rounded-full"
-                            style={{ fontFamily: '"Indie Flower", cursive' }}
-                          >
-                            ⚠️ No Alt
+                          <span className="px-2 py-1 bg-[#ff4d6d]/10 text-[#ff4d6d] text-[10px] uppercase tracking-wider font-mono border border-[#ff4d6d]/30">
+                            NO ALT
                           </span>
                         )}
                       </div>
@@ -786,45 +744,49 @@ export function MissionControl({ className }: VariantProps) {
           </div>
         </motion.div>
 
-        {/* Footer - handwritten */}
+        {/* Footer - technical */}
         <motion.div
           initial={!prefersReducedMotion ? { opacity: 0 } : {}}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.8, duration: 1 }}
-          className="mt-12 text-center text-sm text-[#5f7161]"
-          style={{ fontFamily: '"Indie Flower", cursive' }}
+          className="mt-12 text-center text-xs text-gray-600 font-mono uppercase tracking-widest"
         >
-          <p>🌱 Cultivated with care ~ where every voice blooms 🌻</p>
+          <div className="flex items-center justify-center gap-3">
+            <div className="w-1 h-1 bg-[#00d9ff]" />
+            <span>BLUESKY FIREHOSE MONITORING SYSTEM</span>
+            <div className="w-1 h-1 bg-[#00d9ff]" />
+          </div>
         </motion.div>
       </div>
 
-      {/* Add font imports via inline style tag */}
+      {/* Geometric styling */}
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Caveat:wght@400;700&family=Indie+Flower&family=Lora:ital,wght@0,400;0,600;1,400&display=swap');
-
-        /* Custom scrollbar for organic feel */
-        .organic-garden ::-webkit-scrollbar {
-          width: 12px;
+        /* Custom scrollbar - geometric */
+        .geometric-scrollbar::-webkit-scrollbar {
+          width: 8px;
         }
 
-        .organic-garden ::-webkit-scrollbar-track {
-          background: rgba(143, 188, 143, 0.1);
-          border-radius: 10px;
+        .geometric-scrollbar::-webkit-scrollbar-track {
+          background: #1a1a1a;
         }
 
-        .organic-garden ::-webkit-scrollbar-thumb {
-          background: #8fbc8f;
-          border-radius: 10px;
-          border: 2px solid #f0ead6;
+        .geometric-scrollbar::-webkit-scrollbar-thumb {
+          background: #00d9ff;
+          border: 2px solid #1a1a1a;
         }
 
-        .organic-garden ::-webkit-scrollbar-thumb:hover {
-          background: #2d4a2b;
+        .geometric-scrollbar::-webkit-scrollbar-thumb:hover {
+          background: #0080ff;
         }
 
-        /* Smooth spring animations for card wall */
-        .organic-garden-cards > * {
-          transition: all 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+        /* Precise animations for geometric grid */
+        .geometric-analytics-grid > * {
+          transition: all 0.3s cubic-bezier(0.4, 0.0, 0.2, 1);
+        }
+
+        /* Hexagon clip path utility */
+        .clip-hexagon {
+          clip-path: polygon(30% 0%, 70% 0%, 100% 50%, 70% 100%, 30% 100%, 0% 50%);
         }
       `}</style>
     </div>

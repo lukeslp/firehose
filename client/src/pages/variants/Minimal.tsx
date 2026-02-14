@@ -596,26 +596,24 @@ export function Minimal({ className }: VariantProps) {
           </div>
         </div>
 
-        {/* Posts Feed - STAMPED CONCRETE POSTS */}
-        <div style={{ display: 'grid', gap: '2px', backgroundColor: '#1a1a1a' }}>
+        {/* Posts Feed - Glassmorphic Cards */}
+        <div style={{ display: 'grid', gap: '16px' }}>
           {filteredPosts.length === 0 ? (
             <div
               style={{
+                ...glassCard,
                 textAlign: 'center',
                 padding: '64px 24px',
-                backgroundColor: '#808080',
-                border: '2px solid #1a1a1a',
               }}
             >
               <p
                 style={{
-                  color: '#1a1a1a',
+                  color: 'rgba(107, 114, 128, 0.8)',
                   fontSize: '14px',
-                  fontWeight: 'bold',
-                  letterSpacing: '2px',
+                  fontWeight: '500',
                 }}
               >
-                NO POSTS MATCH YOUR FILTERS
+                No posts match your filters
               </p>
             </div>
           ) : (
@@ -623,42 +621,41 @@ export function Minimal({ className }: VariantProps) {
               <article
                 key={post.uri || index}
                 style={{
-                  backgroundColor: getSentimentBg(post.sentiment),
-                  border: '2px solid #1a1a1a',
+                  ...glassCard,
                   padding: '24px',
-                  boxShadow: 'inset 2px 2px 4px rgba(0, 0, 0, 0.4)',
+                  borderLeft: `4px solid ${getSentimentColor(post.sentiment)}`,
                 }}
               >
-                {/* Post Header - STAMPED */}
+                {/* Post Header */}
                 <div
                   style={{
                     display: 'flex',
                     justifyContent: 'space-between',
                     alignItems: 'baseline',
                     marginBottom: '16px',
-                    paddingBottom: '8px',
-                    borderBottom: '2px solid ' + getSentimentColor(post.sentiment),
+                    paddingBottom: '12px',
+                    borderBottom: '1px solid rgba(209, 213, 219, 0.2)',
                   }}
                 >
-                  <div style={{ display: 'flex', alignItems: 'baseline', gap: '12px' }}>
+                  <div style={{ display: 'flex', alignItems: 'baseline', gap: '12px', flexWrap: 'wrap' }}>
                     <span
                       style={{
-                        fontSize: '12px',
-                        fontWeight: 'bold',
-                        color: getSentimentColor(post.sentiment),
-                        letterSpacing: '1px',
+                        fontSize: '13px',
+                        fontWeight: '600',
+                        color: 'rgba(31, 41, 55, 0.9)',
                       }}
                     >
-                      @{post.author?.handle || 'ANONYMOUS'}
+                      @{post.author?.handle || 'Anonymous'}
                     </span>
                     {post.language && (
                       <span
                         style={{
-                          fontSize: '10px',
-                          color: '#808080',
-                          letterSpacing: '1px',
-                          border: '1px solid #808080',
-                          padding: '2px 6px',
+                          fontSize: '11px',
+                          color: 'rgba(107, 114, 128, 0.7)',
+                          backgroundColor: 'rgba(209, 213, 219, 0.2)',
+                          padding: '3px 8px',
+                          borderRadius: '6px',
+                          fontWeight: '500',
                         }}
                       >
                         {post.language.toUpperCase()}
@@ -667,9 +664,9 @@ export function Minimal({ className }: VariantProps) {
                   </div>
                   <time
                     style={{
-                      fontSize: '10px',
-                      color: '#808080',
-                      letterSpacing: '1px',
+                      fontSize: '12px',
+                      color: 'rgba(107, 114, 128, 0.7)',
+                      fontWeight: '400',
                     }}
                   >
                     {new Date(post.createdAt).toLocaleTimeString()}
@@ -680,8 +677,8 @@ export function Minimal({ className }: VariantProps) {
                 <p
                   style={{
                     fontSize: '14px',
-                    lineHeight: '1.6',
-                    color: getSentimentColor(post.sentiment),
+                    lineHeight: '1.65',
+                    color: 'rgba(31, 41, 55, 0.85)',
                     marginBottom: '16px',
                     wordBreak: 'break-word',
                   }}
@@ -691,7 +688,12 @@ export function Minimal({ className }: VariantProps) {
 
                 {/* Media */}
                 {(post.images || post.videos) && (
-                  <div style={{ marginBottom: '16px', border: '2px solid #808080' }}>
+                  <div style={{
+                    marginBottom: '16px',
+                    borderRadius: '12px',
+                    overflow: 'hidden',
+                    border: '1px solid rgba(209, 213, 219, 0.2)'
+                  }}>
                     <MediaDisplay
                       images={post.images}
                       videos={post.videos}
@@ -701,105 +703,105 @@ export function Minimal({ className }: VariantProps) {
                   </div>
                 )}
 
-                {/* Post Meta - EMBOSSED STAMPS */}
+                {/* Post Meta - Soft Pills */}
                 <div
                   style={{
                     display: 'flex',
                     flexWrap: 'wrap',
                     gap: '8px',
-                    fontSize: '10px',
+                    fontSize: '11px',
                   }}
                 >
                   {post.hasImages && (
                     <span
                       style={{
-                        color: '#1a1a1a',
-                        backgroundColor: '#808080',
-                        padding: '4px 8px',
-                        border: '1px solid #1a1a1a',
-                        letterSpacing: '1px',
+                        color: 'rgba(59, 130, 246, 0.8)',
+                        backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                        padding: '5px 10px',
+                        borderRadius: '8px',
+                        fontWeight: '500',
                       }}
                     >
-                      IMAGE
+                      📷 Image
                     </span>
                   )}
                   {post.hasVideo && (
                     <span
                       style={{
-                        color: '#1a1a1a',
-                        backgroundColor: '#808080',
-                        padding: '4px 8px',
-                        border: '1px solid #1a1a1a',
-                        letterSpacing: '1px',
+                        color: 'rgba(139, 92, 246, 0.8)',
+                        backgroundColor: 'rgba(139, 92, 246, 0.1)',
+                        padding: '5px 10px',
+                        borderRadius: '8px',
+                        fontWeight: '500',
                       }}
                     >
-                      VIDEO
+                      🎬 Video
                     </span>
                   )}
                   {post.hasLink && (
                     <span
                       style={{
-                        color: '#1a1a1a',
-                        backgroundColor: '#808080',
-                        padding: '4px 8px',
-                        border: '1px solid #1a1a1a',
-                        letterSpacing: '1px',
+                        color: 'rgba(14, 165, 233, 0.8)',
+                        backgroundColor: 'rgba(14, 165, 233, 0.1)',
+                        padding: '5px 10px',
+                        borderRadius: '8px',
+                        fontWeight: '500',
                       }}
                     >
-                      LINK
+                      🔗 Link
                     </span>
                   )}
                   {post.isReply && (
                     <span
                       style={{
-                        color: '#1a1a1a',
-                        backgroundColor: '#808080',
-                        padding: '4px 8px',
-                        border: '1px solid #1a1a1a',
-                        letterSpacing: '1px',
+                        color: 'rgba(107, 114, 128, 0.8)',
+                        backgroundColor: 'rgba(107, 114, 128, 0.1)',
+                        padding: '5px 10px',
+                        borderRadius: '8px',
+                        fontWeight: '500',
                       }}
                     >
-                      REPLY
+                      💬 Reply
                     </span>
                   )}
                   {post.isQuote && (
                     <span
                       style={{
-                        color: '#1a1a1a',
-                        backgroundColor: '#808080',
-                        padding: '4px 8px',
-                        border: '1px solid #1a1a1a',
-                        letterSpacing: '1px',
+                        color: 'rgba(107, 114, 128, 0.8)',
+                        backgroundColor: 'rgba(107, 114, 128, 0.1)',
+                        padding: '5px 10px',
+                        borderRadius: '8px',
+                        fontWeight: '500',
                       }}
                     >
-                      QUOTE
+                      🔄 Quote
                     </span>
                   )}
                   {post.hashtags && post.hashtags.length > 0 && (
                     <span
                       style={{
-                        color: '#1a1a1a',
-                        backgroundColor: '#808080',
-                        padding: '4px 8px',
-                        border: '1px solid #1a1a1a',
-                        letterSpacing: '1px',
+                        color: 'rgba(16, 185, 129, 0.8)',
+                        backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                        padding: '5px 10px',
+                        borderRadius: '8px',
+                        fontWeight: '500',
                       }}
                     >
-                      {post.hashtags.length} HASHTAG{post.hashtags.length !== 1 ? 'S' : ''}
+                      # {post.hashtags.length} tag{post.hashtags.length !== 1 ? 's' : ''}
                     </span>
                   )}
                   {post.images?.some(img => !img.alt) && (
                     <span
                       style={{
-                        color: '#1a1a1a',
-                        backgroundColor: '#ff0000',
-                        padding: '4px 8px',
-                        border: '2px solid #1a1a1a',
-                        fontWeight: 'bold',
-                        letterSpacing: '1px',
+                        color: 'rgba(239, 68, 68, 0.9)',
+                        backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                        padding: '5px 10px',
+                        borderRadius: '8px',
+                        fontWeight: '600',
+                        border: '1px solid rgba(239, 68, 68, 0.3)',
                       }}
                     >
-                      ⚠ NO ALT TEXT
+                      ⚠ No alt text
                     </span>
                   )}
                 </div>
@@ -809,26 +811,30 @@ export function Minimal({ className }: VariantProps) {
         </div>
       </main>
 
-      {/* Footer - FOUNDATION STAMP */}
+      {/* Footer - Glassmorphic */}
       <footer
         style={{
-          borderTop: '2px solid #1a1a1a',
           marginTop: '64px',
-          backgroundColor: '#1a1a1a',
         }}
       >
-        <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '24px' }}>
-          <p
+        <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '0 16px 32px' }}>
+          <div
             style={{
-              fontSize: '10px',
-              color: '#808080',
-              textAlign: 'center',
-              fontWeight: 'bold',
-              letterSpacing: '3px',
+              ...glassCard,
+              padding: '20px',
             }}
           >
-            BRUTALIST CONCRETE DESIGN
-          </p>
+            <p
+              style={{
+                fontSize: '12px',
+                color: 'rgba(107, 114, 128, 0.7)',
+                textAlign: 'center',
+                fontWeight: '400',
+              }}
+            >
+              Glassmorphic Design
+            </p>
+          </div>
         </div>
       </footer>
     </div>

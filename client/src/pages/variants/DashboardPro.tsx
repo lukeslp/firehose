@@ -215,11 +215,11 @@ export function DashboardPro({ className }: VariantProps) {
   const getSentimentColor = (sentiment: string): string => {
     switch (sentiment) {
       case 'positive':
-        return 'text-[#4ade80]';
+        return 'text-[#22c55e]';
       case 'negative':
-        return 'text-[#f87171]';
+        return 'text-[#ef4444]';
       case 'neutral':
-        return 'text-[#94a3b8]';
+        return 'text-[#64748b]';
       default:
         return 'text-[#64748b]';
     }
@@ -590,32 +590,32 @@ export function DashboardPro({ className }: VariantProps) {
           </div>
 
           {/* Live Feed Table */}
-          <div className="art-deco-card overflow-hidden">
-            <div className="p-6 border-b-2 border-[#d4af37] flex items-center justify-between bg-gradient-to-b from-[#0a0e27] to-[#0d1230]">
-              <div className="art-deco-heading text-lg font-bold text-[#d4af37] uppercase tracking-[0.2em]">
-                Live Broadcast Feed
+          <div className="neuro-card overflow-hidden">
+            <div className="p-6 neuro-card-inset flex items-center justify-between">
+              <div className="text-lg font-semibold text-[#1e293b] uppercase tracking-wider">
+                Live Feed
               </div>
-              <div className="art-deco-heading text-sm text-[#f8f9fa]/70 tracking-wider">
+              <div className="text-sm text-[#64748b] font-medium">
                 Showing {filteredPosts.length} of {posts.length}
               </div>
             </div>
             <div className="overflow-auto max-h-[600px]">
-              <table className="art-deco-table w-full">
+              <table className="neuro-table w-full">
                 <thead className="sticky top-0">
                   <tr>
-                    <th className="px-6 py-4 text-left art-deco-heading text-xs text-[#d4af37] uppercase tracking-[0.15em]">
+                    <th className="px-6 py-4 text-left text-xs text-[#475569] uppercase tracking-wider font-semibold">
                       Time
                     </th>
-                    <th className="px-6 py-4 text-left art-deco-heading text-xs text-[#d4af37] uppercase tracking-[0.15em]">
+                    <th className="px-6 py-4 text-left text-xs text-[#475569] uppercase tracking-wider font-semibold">
                       Author
                     </th>
-                    <th className="px-6 py-4 text-left art-deco-heading text-xs text-[#d4af37] uppercase tracking-[0.15em]">
+                    <th className="px-6 py-4 text-left text-xs text-[#475569] uppercase tracking-wider font-semibold">
                       Content
                     </th>
-                    <th className="px-6 py-4 text-left art-deco-heading text-xs text-[#d4af37] uppercase tracking-[0.15em]">
+                    <th className="px-6 py-4 text-left text-xs text-[#475569] uppercase tracking-wider font-semibold">
                       Sentiment
                     </th>
-                    <th className="px-6 py-4 text-left art-deco-heading text-xs text-[#d4af37] uppercase tracking-[0.15em]">
+                    <th className="px-6 py-4 text-left text-xs text-[#475569] uppercase tracking-wider font-semibold">
                       Meta
                     </th>
                   </tr>
@@ -624,25 +624,25 @@ export function DashboardPro({ className }: VariantProps) {
                   {filteredPosts.length === 0 ? (
                     <tr>
                       <td colSpan={5} className="px-6 py-12 text-center">
-                        <div className="art-deco-heading text-[#0a0e27]/50 text-lg tracking-wider">
-                          No posts match your refinement criteria
+                        <div className="text-[#94a3b8] text-lg">
+                          No posts match your filter criteria
                         </div>
                       </td>
                     </tr>
                   ) : (
                     filteredPosts.map((post, index) => (
                       <tr key={post.uri || index}>
-                        <td className="px-6 py-4 text-sm text-[#0a0e27]/70 whitespace-nowrap" style={{ fontFamily: 'Cormorant Garamond, serif' }}>
+                        <td className="px-6 py-4 text-sm text-[#64748b] whitespace-nowrap">
                           {new Date(post.createdAt).toLocaleTimeString('en-US', {
                             hour: 'numeric',
                             minute: '2-digit',
                             hour12: true
                           })}
                         </td>
-                        <td className="px-6 py-4 text-sm font-semibold text-[#0a0e27] whitespace-nowrap" style={{ fontFamily: 'Cormorant Garamond, serif' }}>
+                        <td className="px-6 py-4 text-sm font-semibold text-[#334155] whitespace-nowrap">
                           @{(post.author?.handle || 'anon').slice(0, 15)}
                         </td>
-                        <td className="px-6 py-4 text-base text-[#0a0e27] max-w-md" style={{ fontFamily: 'Cormorant Garamond, serif' }}>
+                        <td className="px-6 py-4 text-sm text-[#334155] max-w-md">
                           <div className="line-clamp-2 mb-2 leading-relaxed">{post.text}</div>
                           {(post.images || post.videos) && (
                             <MediaDisplay
@@ -656,22 +656,19 @@ export function DashboardPro({ className }: VariantProps) {
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <span
-                            className={`px-3 py-1.5 text-xs font-semibold rounded border-2 ${getSentimentColor(
-                              post.sentiment
-                            )}`}
-                            style={{ fontFamily: 'Playfair Display, serif', letterSpacing: '0.1em' }}
+                            className={`neuro-badge ${getSentimentColor(post.sentiment)}`}
                           >
                             {post.sentiment.toUpperCase()}
                           </span>
                         </td>
-                        <td className="px-6 py-4 text-sm text-[#0a0e27]/70 whitespace-nowrap">
+                        <td className="px-6 py-4 text-sm text-[#64748b] whitespace-nowrap">
                           <div className="flex gap-3">
                             {post.hasImages && <span title="Has images">🖼️</span>}
                             {post.hasVideo && <span title="Has video">🎥</span>}
                             {post.hasLink && <span title="Has link">🔗</span>}
                             {post.isReply && <span title="Reply">💬</span>}
                             {post.images?.some(img => !img.alt) && (
-                              <span title="Missing alt text" className="text-[#8b0000]">⚠️</span>
+                              <span title="Missing alt text" className="text-[#ef4444]">⚠️</span>
                             )}
                           </div>
                         </td>
@@ -684,9 +681,9 @@ export function DashboardPro({ className }: VariantProps) {
           </div>
         </main>
 
-        {/* Art Deco Footer Accent */}
-        <div className="art-deco-divider mt-12"></div>
-        <div className="h-4 bg-gradient-to-b from-[#d4af37]/20 to-transparent"></div>
+        {/* Footer Accent */}
+        <div className="neuro-divider mt-12"></div>
+        <div className="h-4"></div>
       </div>
     </>
   );
