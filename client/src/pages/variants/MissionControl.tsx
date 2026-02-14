@@ -1,10 +1,11 @@
 /**
- * MissionControl.tsx - Organic Garden Dashboard Variant
+ * MissionControl.tsx - Dark Geometric Command Center Variant
  *
- * Aesthetic: Nature-inspired, handwritten, organic garden
- * Theme: Forest greens, sage, terracotta with watercolor washes
- * Typography: Handwritten headers (Caveat/Indie Flower), organic serif body (Lora)
- * Layout: Flowing asymmetric design with organic blob shapes
+ * Aesthetic: Dark mode with geometric precision
+ * Theme: Dark grays (#1a1a1a - #2d2d2d), electric blue/cyan accents (#00d9ff, #0080ff)
+ * Typography: Sharp sans-serif (Inter, system fonts), monospace for data
+ * Layout: Angular grid-based design with sharp corners and defined edges
+ * Design: Professional command center feel with geometric shapes
  */
 
 import { useSocket } from '@/hooks/useSocket';
@@ -183,26 +184,26 @@ export function MissionControl({ className }: VariantProps) {
   const getSentimentColor = (sentiment: string): string => {
     switch (sentiment) {
       case 'positive':
-        return 'text-[#2d4a2b]'; // Forest green
+        return 'text-[#00d9ff]'; // Electric cyan
       case 'negative':
-        return 'text-[#d4a574]'; // Terracotta
+        return 'text-[#ff4d6d]'; // Electric red
       case 'neutral':
-        return 'text-[#5f7161]'; // Moss
+        return 'text-[#a0a0a0]'; // Cool gray
       default:
-        return 'text-[#2d4a2b]';
+        return 'text-[#00d9ff]';
     }
   };
 
   const getSentimentBg = (sentiment: string): string => {
     switch (sentiment) {
       case 'positive':
-        return 'bg-[#2d4a2b]'; // Forest green
+        return 'bg-[#00d9ff]'; // Electric cyan
       case 'negative':
-        return 'bg-[#d4a574]'; // Terracotta
+        return 'bg-[#ff4d6d]'; // Electric red
       case 'neutral':
-        return 'bg-[#5f7161]'; // Moss
+        return 'bg-[#a0a0a0]'; // Cool gray
       default:
-        return 'bg-[#2d4a2b]';
+        return 'bg-[#00d9ff]';
     }
   };
 
@@ -219,117 +220,125 @@ export function MissionControl({ className }: VariantProps) {
     });
   }, [posts, selectedLanguage, keywordFilter]);
 
-  // Spring physics for organic motion
-  const springTransition = { type: "spring", stiffness: 50, damping: 15 };
+  // Sharp, precise transitions for geometric aesthetic
+  const springTransition = { type: "tween", duration: 0.3, ease: "easeOut" };
 
   return (
     <div
-      className={`organic-garden min-h-screen relative overflow-hidden ${className || ''}`}
+      className={`mission-control min-h-screen relative overflow-hidden ${className || ''}`}
       style={{
         background: `
-          radial-gradient(ellipse at 20% 30%, rgba(143, 188, 143, 0.15) 0%, transparent 50%),
-          radial-gradient(ellipse at 80% 70%, rgba(95, 113, 97, 0.12) 0%, transparent 50%),
-          radial-gradient(ellipse at 50% 50%, rgba(212, 165, 116, 0.08) 0%, transparent 60%),
-          #f0ead6
+          linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%)
         `,
-        fontFamily: '"Lora", Georgia, serif',
+        fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
       }}
     >
-      {/* Watercolor wash backgrounds - layered for depth */}
-      <div className="absolute inset-0 pointer-events-none opacity-30">
+      {/* Geometric grid overlay */}
+      <div className="absolute inset-0 pointer-events-none opacity-5">
         <div
-          className="absolute top-0 left-0 w-96 h-96 rounded-full blur-3xl"
+          className="absolute inset-0"
           style={{
-            background: 'radial-gradient(circle, rgba(143, 188, 143, 0.3) 0%, transparent 70%)',
-          }}
-        />
-        <div
-          className="absolute bottom-0 right-0 w-96 h-96 rounded-full blur-3xl"
-          style={{
-            background: 'radial-gradient(circle, rgba(212, 165, 116, 0.25) 0%, transparent 70%)',
-          }}
-        />
-        <div
-          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full blur-3xl"
-          style={{
-            background: 'radial-gradient(circle, rgba(95, 113, 97, 0.15) 0%, transparent 70%)',
+            backgroundImage: `
+              linear-gradient(to right, #00d9ff 1px, transparent 1px),
+              linear-gradient(to bottom, #00d9ff 1px, transparent 1px)
+            `,
+            backgroundSize: '40px 40px',
           }}
         />
       </div>
 
-      {/* Main content with organic padding */}
+      {/* Angular accent elements */}
+      <div className="absolute inset-0 pointer-events-none overflow-hidden">
+        <div
+          className="absolute top-0 right-0 w-96 h-96 opacity-10"
+          style={{
+            background: 'linear-gradient(135deg, transparent 50%, #00d9ff 50%)',
+            clipPath: 'polygon(100% 0, 100% 100%, 0 0)',
+          }}
+        />
+        <div
+          className="absolute bottom-0 left-0 w-96 h-96 opacity-10"
+          style={{
+            background: 'linear-gradient(45deg, #0080ff 50%, transparent 50%)',
+            clipPath: 'polygon(0 100%, 100% 100%, 0 0)',
+          }}
+        />
+      </div>
+
+      {/* Main content with precise spacing */}
       <div className="relative z-10 p-8 max-w-[1600px] mx-auto">
-        {/* Header - flowing handwritten style */}
+        {/* Header - sharp geometric style */}
         <motion.div
           initial={!prefersReducedMotion ? { y: -20, opacity: 0 } : {}}
           animate={{ y: 0, opacity: 1 }}
           transition={springTransition}
-          className="mb-12 text-center relative"
+          className="mb-12 relative"
         >
-          {/* Decorative leaf shadows */}
-          <div className="absolute -top-8 left-1/4 w-16 h-16 opacity-20 pointer-events-none">
-            <svg viewBox="0 0 100 100" className="w-full h-full text-[#2d4a2b]">
-              <path
-                d="M50,10 Q70,30 80,50 Q70,70 50,90 Q30,70 20,50 Q30,30 50,10 Z"
-                fill="currentColor"
-              />
-            </svg>
+          {/* Geometric accent lines */}
+          <div className="absolute -top-4 left-0 w-32 h-1 bg-gradient-to-r from-[#00d9ff] to-transparent" />
+
+          <div className="flex items-center gap-4 mb-6">
+            {/* Angular icon */}
+            <div className="w-12 h-12 bg-[#00d9ff] clip-hexagon flex items-center justify-center">
+              <svg viewBox="0 0 24 24" className="w-6 h-6 text-[#1a1a1a]" fill="currentColor">
+                <path d="M12 2L2 7v10l10 5 10-5V7L12 2zm0 2.18l8 4v8.64l-8 4-8-4V8.18l8-4z"/>
+                <circle cx="12" cy="12" r="3"/>
+              </svg>
+            </div>
+
+            <div>
+              <h1
+                className="text-5xl font-bold text-white mb-2 tracking-tight"
+                style={{
+                  textShadow: '0 0 20px rgba(0, 217, 255, 0.3)',
+                }}
+              >
+                MISSION CONTROL
+              </h1>
+              <p className="text-lg text-[#00d9ff] font-mono tracking-wide">
+                BLUESKY FIREHOSE COMMAND CENTER
+              </p>
+            </div>
           </div>
 
-          <h1
-            className="text-6xl font-bold text-[#2d4a2b] mb-4"
-            style={{
-              fontFamily: '"Caveat", cursive',
-              textShadow: '2px 2px 4px rgba(45, 74, 43, 0.1)',
-            }}
-          >
-            Garden of Voices
-          </h1>
-          <p
-            className="text-xl text-[#5f7161]"
-            style={{ fontFamily: '"Indie Flower", cursive' }}
-          >
-            Bluesky Firehose ~ where ideas grow
-          </p>
-
-          {/* Connection status - organic indicator */}
+          {/* Connection status - geometric indicator */}
           <motion.div
-            className="mt-6 flex items-center justify-center gap-3"
-            initial={!prefersReducedMotion ? { scale: 0 } : {}}
-            animate={{ scale: 1 }}
-            transition={{ ...springTransition, delay: 0.2 }}
+            className="flex items-center gap-3 bg-[#2d2d2d] px-6 py-3 border-l-4 border-[#00d9ff]"
+            initial={!prefersReducedMotion ? { x: -20, opacity: 0 } : {}}
+            animate={{ x: 0, opacity: 1 }}
+            transition={{ ...springTransition, delay: 0.1 }}
           >
-            <span className="text-sm text-[#5f7161]" style={{ fontFamily: '"Indie Flower", cursive' }}>
-              Garden Status:
+            <span className="text-sm text-gray-400 font-mono uppercase tracking-wider">
+              System Status:
             </span>
             <motion.div
-              className={`w-4 h-4 ${connected ? 'bg-[#8fbc8f]' : 'bg-[#d4a574]'}`}
+              className={`w-3 h-3 ${connected ? 'bg-[#00d9ff]' : 'bg-gray-600'}`}
               style={{
-                borderRadius: '63% 37% 54% 46% / 55% 48% 52% 45%',
+                clipPath: 'polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%)',
                 boxShadow: connected
-                  ? '0 0 20px rgba(143, 188, 143, 0.6)'
-                  : '0 0 20px rgba(212, 165, 116, 0.4)',
+                  ? '0 0 15px rgba(0, 217, 255, 0.8)'
+                  : '0 0 5px rgba(160, 160, 160, 0.3)',
               }}
               animate={
                 !prefersReducedMotion && connected
                   ? {
-                      scale: [1, 1.15, 1],
-                      boxShadow: [
-                        '0 0 20px rgba(143, 188, 143, 0.6)',
-                        '0 0 30px rgba(143, 188, 143, 0.8)',
-                        '0 0 20px rgba(143, 188, 143, 0.6)',
-                      ]
+                      rotate: [0, 360],
                     }
                   : {}
               }
-              transition={{ duration: 2, repeat: Infinity }}
+              transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
             />
             <span
-              className={`text-sm ${connected ? 'text-[#2d4a2b]' : 'text-[#d4a574]'}`}
-              style={{ fontFamily: '"Indie Flower", cursive' }}
+              className={`text-sm font-mono uppercase ${connected ? 'text-[#00d9ff]' : 'text-gray-600'}`}
             >
-              {connected ? 'Growing' : 'Resting'}
+              {connected ? 'ONLINE' : 'OFFLINE'}
             </span>
+            {connected && (
+              <div className="ml-auto flex items-center gap-2">
+                <div className="w-1 h-1 bg-[#00d9ff] animate-pulse" />
+                <span className="text-xs text-gray-500 font-mono">LIVE</span>
+              </div>
+            )}
           </motion.div>
         </motion.div>
 

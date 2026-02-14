@@ -14,6 +14,7 @@ export default function Editorial({ onNavigateBack }: VariantProps) {
   const { connected, stats, latestPost } = useSocket();
   const [posts, setPosts] = useState<FirehosePost[]>([]);
   const [selectedPost, setSelectedPost] = useState<FirehosePost | null>(null);
+  const [expandedCards, setExpandedCards] = useState<Set<string>>(new Set());
 
   // Filter state
   const [selectedLanguage, setSelectedLanguage] = useState<string>('all');
@@ -49,6 +50,18 @@ export default function Editorial({ onNavigateBack }: VariantProps) {
     withVideo: 0,
     withLinks: 0,
   });
+
+  const toggleCard = (cardId: string) => {
+    setExpandedCards(prev => {
+      const next = new Set(prev);
+      if (next.has(cardId)) {
+        next.delete(cardId);
+      } else {
+        next.add(cardId);
+      }
+      return next;
+    });
+  };
 
   // Add new posts to feed and track metrics
   useEffect(() => {
@@ -161,9 +174,9 @@ export default function Editorial({ onNavigateBack }: VariantProps) {
 
   const getSentimentLabel = (sentiment: string) => {
     switch (sentiment) {
-      case 'positive': return 'OPTIMISTIC';
-      case 'negative': return 'CRITICAL';
-      default: return 'NEUTRAL';
+      case 'positive': return 'Opinion';
+      case 'negative': return 'Analysis';
+      default: return 'News';
     }
   };
 
@@ -180,237 +193,94 @@ export default function Editorial({ onNavigateBack }: VariantProps) {
     });
   }, [posts, selectedLanguage, keywordFilter]);
 
-  // Random Japanese decorative characters
-  const japaneseChars = ['サイバー', 'ネオン', '未来', '東京', '夜', 'データ', '電脳'];
-  const getRandomJapanese = () => japaneseChars[Math.floor(Math.random() * japaneseChars.length)];
-
   return (
     <>
-      {/* Google Fonts */}
+      {/* Google Fonts - Professional Newspaper Typography */}
       <link rel="preconnect" href="https://fonts.googleapis.com" />
       <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-      <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet" />
+      <link href="https://fonts.googleapis.com/css2?family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=Libre+Franklin:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
 
-      {/* Keyframes and animations */}
       <style>{`
-        @keyframes scanline {
-          0% { transform: translateY(-100%); }
-          100% { transform: translateY(100vh); }
+        .editorial-serif {
+          font-family: 'Libre Baskerville', serif;
         }
-        @keyframes rain {
-          0% { transform: translateY(-100%); opacity: 1; }
-          100% { transform: translateY(100vh); opacity: 0; }
+        .editorial-sans {
+          font-family: 'Libre Franklin', sans-serif;
         }
-        @keyframes glitch {
-          0%, 100% { transform: translate(0); }
-          20% { transform: translate(-2px, 2px); }
-          40% { transform: translate(-2px, -2px); }
-          60% { transform: translate(2px, 2px); }
-          80% { transform: translate(2px, -2px); }
+        .editorial-rule {
+          height: 1px;
+          background: #000;
+          margin: 24px 0;
         }
-        @keyframes holographic {
-          0% { background-position: 0% 50%; }
-          50% { background-position: 100% 50%; }
-          100% { background-position: 0% 50%; }
+        .editorial-double-rule {
+          border-top: 3px double #000;
+          margin: 32px 0;
         }
-        @keyframes pulse-glow {
-          0%, 100% { filter: drop-shadow(0 0 5px #ff0080) drop-shadow(0 0 10px #ff0080); }
-          50% { filter: drop-shadow(0 0 10px #ff0080) drop-shadow(0 0 20px #ff0080) drop-shadow(0 0 30px #ff0080); }
-        }
-        .neon-text {
-          text-shadow:
-            0 0 10px #ff0080,
-            0 0 20px #ff0080,
-            0 0 30px #ff0080,
-            0 0 40px #ff0080,
-            0 0 70px #ff0080,
-            0 0 80px #ff0080;
-        }
-        .neon-cyan {
-          text-shadow:
-            0 0 10px #00d9ff,
-            0 0 20px #00d9ff,
-            0 0 30px #00d9ff,
-            0 0 40px #00d9ff;
-        }
-        .neon-yellow {
-          text-shadow:
-            0 0 10px #ffff00,
-            0 0 20px #ffff00,
-            0 0 30px #ffff00;
-        }
-        .holographic-card {
-          position: relative;
-          background: linear-gradient(
-            135deg,
-            rgba(255, 0, 128, 0.1) 0%,
-            rgba(0, 217, 255, 0.1) 25%,
-            rgba(123, 44, 191, 0.1) 50%,
-            rgba(0, 217, 255, 0.1) 75%,
-            rgba(255, 0, 128, 0.1) 100%
-          );
-          background-size: 200% 200%;
-          animation: holographic 3s ease infinite;
-          border: 2px solid;
-          border-image: linear-gradient(
-            135deg,
-            #ff0080,
-            #00d9ff,
-            #7b2cbf,
-            #ff0080
-          ) 1;
-        }
-        .holographic-card::before {
-          content: '';
-          position: absolute;
-          top: 0;
-          left: 0;
-          right: 0;
-          bottom: 0;
-          background: linear-gradient(
-            135deg,
-            rgba(255, 0, 128, 0.2),
-            transparent,
-            rgba(0, 217, 255, 0.2)
-          );
-          pointer-events: none;
-        }
-        .reflection {
-          transform: scaleY(-1);
-          opacity: 0.3;
-          filter: blur(2px);
-          position: absolute;
-          bottom: 0;
-          left: 0;
-          right: 0;
-          pointer-events: none;
-        }
-        .rain-line {
-          position: absolute;
-          width: 1px;
-          height: 100px;
-          background: linear-gradient(to bottom, transparent, #00d9ff, transparent);
-          animation: rain linear infinite;
-        }
-        .scanline-overlay {
-          position: fixed;
-          top: 0;
-          left: 0;
-          width: 100%;
-          height: 2px;
-          background: linear-gradient(to bottom, transparent, #00d9ff, transparent);
-          animation: scanline 4s linear infinite;
-          pointer-events: none;
-          z-index: 9999;
-          opacity: 0.5;
-        }
-        .diagonal-skew {
-          transform: skewY(-2deg);
-        }
-        .perspective-card {
-          transform: perspective(1000px) rotateX(5deg);
-          transition: transform 0.3s ease;
-        }
-        .perspective-card:hover {
-          transform: perspective(1000px) rotateX(0deg) scale(1.02);
+        .collapsible-card {
+          transition: max-height 0.3s ease, padding 0.3s ease;
+          overflow: hidden;
         }
       `}</style>
 
-      {/* Scanline overlay */}
-      <div className="scanline-overlay" />
-
-      {/* Rain effect */}
-      {[...Array(20)].map((_, i) => (
-        <div
-          key={i}
-          className="rain-line"
-          style={{
-            left: `${Math.random() * 100}%`,
-            animationDuration: `${Math.random() * 2 + 1}s`,
-            animationDelay: `${Math.random() * 2}s`,
-          }}
-        />
-      ))}
-
       <div style={{
         minHeight: '100vh',
-        background: 'linear-gradient(135deg, #0a0e1a 0%, #1a0a2e 100%)',
-        fontFamily: "'Share Tech Mono', monospace",
-        color: '#00d9ff',
-        position: 'relative',
-        overflow: 'hidden',
+        background: '#f8f8f8',
+        fontFamily: "'Libre Franklin', sans-serif",
+        color: '#000',
       }}>
-        {/* Header - Cyberpunk masthead */}
+        {/* Header - Newspaper Masthead */}
         <header style={{
-          borderBottom: '2px solid #ff0080',
-          padding: '32px 24px 24px',
-          background: 'rgba(10, 14, 26, 0.95)',
-          backdropFilter: 'blur(10px)',
-          position: 'relative',
-          boxShadow: '0 0 30px rgba(255, 0, 128, 0.3)',
+          borderBottom: '4px solid #000',
+          padding: '40px 24px 24px',
+          background: '#fff',
         }}>
-          {/* Japanese decoration */}
-          <div style={{
-            position: 'absolute',
-            top: '10px',
-            right: '24px',
-            fontSize: '14px',
-            color: '#7b2cbf',
-            opacity: 0.6,
-            fontFamily: "'Share Tech Mono', monospace",
-          }}>
-            {getRandomJapanese()}
-          </div>
-
           <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
               <div style={{
-                fontSize: '12px',
-                color: '#ffff00',
-                fontFamily: "'Share Tech Mono', monospace",
+                fontSize: '11px',
+                fontWeight: 600,
                 textTransform: 'uppercase',
-              }} className="neon-yellow">
+                letterSpacing: '0.5px',
+              }} className="editorial-sans">
                 {formatDate(new Date().toISOString())}
               </div>
               <Link href="/variants">
                 <a style={{
-                  fontSize: '12px',
-                  color: '#00d9ff',
+                  fontSize: '11px',
+                  fontWeight: 600,
+                  color: '#000',
                   textDecoration: 'none',
-                  fontFamily: "'Share Tech Mono', monospace",
-                  borderBottom: '1px solid #00d9ff',
+                  borderBottom: '1px solid #000',
                   paddingBottom: '2px',
                   textTransform: 'uppercase',
-                }} className="neon-cyan">
-                  ← RETURN TO VARIANTS
+                  letterSpacing: '0.5px',
+                }} className="editorial-sans">
+                  ← All Variants
                 </a>
               </Link>
             </div>
+            <div className="editorial-rule" />
             <h1 style={{
-              fontSize: '72px',
-              fontWeight: 900,
-              fontFamily: "'Orbitron', sans-serif",
+              fontSize: '64px',
+              fontWeight: 700,
               margin: '16px 0',
-              letterSpacing: '0.1em',
               textAlign: 'center',
-              textTransform: 'uppercase',
-              color: '#ff0080',
-            }} className="neon-text">
-              BLUESKY_CHRONICLE
+              letterSpacing: '-1px',
+            }} className="editorial-serif">
+              The Bluesky Chronicle
             </h1>
             <div style={{
               textAlign: 'center',
-              fontSize: '14px',
-              color: '#00d9ff',
-              fontFamily: "'Share Tech Mono', monospace",
+              fontSize: '13px',
+              fontWeight: 500,
               textTransform: 'uppercase',
-              borderTop: '1px solid #7b2cbf',
-              borderBottom: '1px solid #7b2cbf',
+              borderTop: '2px solid #000',
+              borderBottom: '1px solid #000',
               padding: '8px 0',
               margin: '16px 0 0',
-              letterSpacing: '0.05em',
-            }} className="neon-cyan">
-              REAL-TIME COVERAGE • NEURAL STREAM • ALL VOICES PRESERVED
+              letterSpacing: '1px',
+            }} className="editorial-sans">
+              Real-Time Coverage • All The News As It Happens
             </div>
           </div>
         </header>

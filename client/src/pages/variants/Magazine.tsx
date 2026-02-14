@@ -1,11 +1,11 @@
 /**
- * Magazine.tsx - VAPORWAVE DREAMS variant
+ * Magazine.tsx - EDITORIAL variant
  *
- * Aesthetic: 80s-90s internet nostalgia, Windows 95, VHS glitch
- * Theme: Hot pink, cyan, purple, mint, pastel yellow chaos
- * Typography: Comic Sans (ironic headers), Courier New (computer text), Impact (statements)
- * Layout: Chaotic overlapping grids, intentionally misaligned, scan lines, RGB chromatic aberration
- * Effects: VHS glitch, animated gradients, Windows 95 dialog boxes, email chain aesthetic
+ * Aesthetic: Modern editorial magazine, bold typography, asymmetric grid
+ * Theme: Black on white with vibrant accent (electric blue #0047FF)
+ * Typography: Serif headings (Playfair Display), sans-serif body (Inter)
+ * Layout: Asymmetric grid with intentional white space, clear visual hierarchy
+ * Effects: Clean, professional, readable with magazine-style sectioning
  */
 
 import { useSocket } from '@/hooks/useSocket';
@@ -18,6 +18,10 @@ import { SentimentTimelineCard } from '@/components/cards/SentimentTimelineCard'
 import { PostsPerMinuteCard } from '@/components/cards/PostsPerMinuteCard';
 import { LanguagesCard } from '@/components/cards/LanguagesCard';
 import { ContentTypesCard } from '@/components/cards/ContentTypesCard';
+
+// Import Playfair Display for serif headings
+import '@fontsource/playfair-display/700.css';
+import '@fontsource/playfair-display/900.css';
 
 export function Magazine({ className }: VariantProps) {
   const { connected, stats, latestPost } = useSocket();
@@ -180,144 +184,98 @@ export function Magazine({ className }: VariantProps) {
     switch (sentiment) {
       case 'positive':
         return {
-          border: 'border-l-4 border-[#05ffa1]',
-          text: 'text-[#05ffa1]',
-          glow: 'vaporwave-glow-mint'
+          border: 'border-l-2 border-green-600',
+          accent: 'bg-green-600',
+          label: 'Positive'
         };
       case 'negative':
         return {
-          border: 'border-l-4 border-[#ff71ce]',
-          text: 'text-[#ff71ce]',
-          glow: 'vaporwave-glow-pink'
+          border: 'border-l-2 border-red-600',
+          accent: 'bg-red-600',
+          label: 'Negative'
         };
       default:
         return {
-          border: 'border-l-4 border-[#b967ff]',
-          text: 'text-[#b967ff]',
-          glow: 'vaporwave-glow-purple'
+          border: 'border-l-2 border-gray-400',
+          accent: 'bg-gray-400',
+          label: 'Neutral'
         };
     }
   };
 
   return (
     <div
-      className={`magazine min-h-screen relative overflow-hidden ${className || ''}`}
+      className={`magazine min-h-screen bg-white ${className || ''}`}
     >
-      {/* Animated gradient background */}
-      <div className="vaporwave-gradient fixed inset-0 z-0" />
-
-      {/* Scan lines overlay */}
-      <div className="scan-lines fixed inset-0 z-10 pointer-events-none" />
-
-      {/* VHS glitch overlay */}
-      <div className="vhs-glitch fixed inset-0 z-10 pointer-events-none" />
-
       {/* Main content */}
-      <div className="relative z-20">
-        {/* Masthead - Windows 95 style */}
-        <header className="win95-window sticky top-4 z-30 mx-4 mb-8 shadow-2xl">
-          <div className="win95-titlebar">
-            <div className="flex items-center gap-2">
-              <div className="w-4 h-4 bg-[#ff71ce] border-2 border-black" />
-              <span className="chromatic-text-cyan" style={{ fontFamily: "'Comic Sans MS', cursive", fontWeight: 'bold' }}>
-                BLUESKY.EXE - VAPORWAVE DREAMS v1.0
-              </span>
-            </div>
-            <div className="flex gap-1">
-              <div className={`win95-button ${connected ? 'bg-[#05ffa1]' : 'bg-gray-400'}`}>
-                {connected ? '●' : '○'}
-              </div>
-            </div>
-          </div>
-          <div className="win95-content">
-            <div className="flex items-center justify-between flex-wrap gap-4">
+      <div className="relative">
+        {/* Masthead - Editorial style */}
+        <header className="border-b border-black sticky top-0 z-30 bg-white">
+          <div className="max-w-7xl mx-auto px-8 py-6">
+            <div className="flex items-end justify-between">
               <div>
-                <h1
-                  className="chromatic-text text-4xl md:text-6xl mb-2"
-                  style={{ fontFamily: "'Comic Sans MS', cursive", fontWeight: 'bold' }}
-                >
-                  ✨ Bluesky ✨
+                <h1 className="font-serif text-7xl md:text-8xl font-bold tracking-tight leading-none mb-1">
+                  Bluesky
                 </h1>
-                <p
-                  className="text-[#fffb96] text-sm"
-                  style={{ fontFamily: "'Courier New', monospace", letterSpacing: '0.15em' }}
-                >
-                  &gt;&gt;&gt; LIVE SOCIAL STREAM // VOL. ∞ &lt;&lt;&lt;
+                <p className="text-sm uppercase tracking-[0.2em] text-gray-600 font-sans">
+                  Live Social Stream
                 </p>
               </div>
-              <div className="flex flex-col items-end gap-2">
-                <div className="flex items-center gap-2">
-                  <div
-                    className={`w-3 h-3 rounded-full animate-pulse ${
-                      connected ? 'bg-[#05ffa1] shadow-lg shadow-[#05ffa1]' : 'bg-gray-400'
-                    }`}
-                  />
-                  <span className="text-[#fffb96] text-xs" style={{ fontFamily: "'Courier New', monospace" }}>
-                    {connected ? '[ONLINE]' : '[OFFLINE]'}
-                  </span>
-                </div>
+              <div className="flex items-center gap-3">
+                <div
+                  className={`w-2 h-2 rounded-full ${
+                    connected ? 'bg-[#0047FF]' : 'bg-gray-400'
+                  }`}
+                />
+                <span className="text-xs uppercase tracking-wider font-sans">
+                  {connected ? 'Live' : 'Offline'}
+                </span>
               </div>
             </div>
           </div>
         </header>
 
         {/* Main content container */}
-        <main className="max-w-7xl mx-auto px-4 pb-12">
-          {/* Stats Bar - Intentionally chaotic layout */}
-          <div className="win95-window mb-8 transform -rotate-1">
-            <div className="win95-titlebar">
-              <span style={{ fontFamily: "'Courier New', monospace", fontSize: '12px' }}>
-                ► STATS.TXT
-              </span>
-            </div>
-            <div className="win95-content">
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div className="transform rotate-1">
-                  <div className="text-xs text-[#01cdfe] mb-1" style={{ fontFamily: "'Courier New', monospace" }}>
-                    POSTS_TOTAL:
-                  </div>
-                  <div
-                    className="text-3xl chromatic-text-pink tabular-nums"
-                    style={{ fontFamily: 'Impact, sans-serif' }}
-                  >
-                    {(stats?.totalPosts || 0).toLocaleString()}
-                  </div>
+        <main className="max-w-7xl mx-auto px-8 pb-12">
+          {/* Stats Bar - Editorial grid */}
+          <div className="py-12 border-b border-black">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
+              <div>
+                <div className="text-xs uppercase tracking-wider text-gray-600 mb-2 font-sans">
+                  Total Posts
                 </div>
-                <div className="transform -rotate-2">
-                  <div className="text-xs text-[#b967ff] mb-1" style={{ fontFamily: "'Courier New', monospace" }}>
-                    RATE_PER_MIN:
-                  </div>
-                  <div
-                    className="text-3xl chromatic-text-cyan tabular-nums"
-                    style={{ fontFamily: 'Impact, sans-serif' }}
-                  >
-                    {Math.round(stats?.postsPerMinute || 0)}
-                  </div>
+                <div className="text-5xl font-bold tabular-nums font-serif">
+                  {(stats?.totalPosts || 0).toLocaleString()}
                 </div>
-                <div className="transform rotate-2">
-                  <div className="text-xs text-[#05ffa1] mb-1" style={{ fontFamily: "'Courier New', monospace" }}>
-                    FILTERED_SHOW:
-                  </div>
-                  <div
-                    className="text-3xl chromatic-text-purple tabular-nums"
-                    style={{ fontFamily: 'Impact, sans-serif' }}
-                  >
-                    {filteredPosts.length}
-                  </div>
+              </div>
+              <div>
+                <div className="text-xs uppercase tracking-wider text-gray-600 mb-2 font-sans">
+                  Per Minute
                 </div>
-                <div className="transform -rotate-1">
-                  <div className="text-xs text-[#fffb96] mb-1" style={{ fontFamily: "'Courier New', monospace" }}>
-                    SENTIMENT_MIX:
-                  </div>
-                  <div className="flex gap-3 mt-2">
-                    <span className="text-[#05ffa1] text-lg vaporwave-glow-mint" style={{ fontFamily: 'Impact, sans-serif' }}>
-                      {stats?.sentimentCounts?.positive || 0}
-                    </span>
-                    <span className="text-[#fffb96]">|</span>
-                    <span className="text-[#ff71ce] text-lg vaporwave-glow-pink" style={{ fontFamily: 'Impact, sans-serif' }}>
-                      {stats?.sentimentCounts?.negative || 0}
-                    </span>
-                  </div>
+                <div className="text-5xl font-bold tabular-nums font-serif">
+                  {Math.round(stats?.postsPerMinute || 0)}
+                </div>
+              </div>
+              <div>
+                <div className="text-xs uppercase tracking-wider text-gray-600 mb-2 font-sans">
+                  Showing
+                </div>
+                <div className="text-5xl font-bold tabular-nums font-serif">
+                  {filteredPosts.length}
+                </div>
+              </div>
+              <div>
+                <div className="text-xs uppercase tracking-wider text-gray-600 mb-2 font-sans">
+                  Sentiment
+                </div>
+                <div className="flex gap-4 items-baseline">
+                  <span className="text-2xl font-bold tabular-nums font-serif text-green-600">
+                    {stats?.sentimentCounts?.positive || 0}
+                  </span>
+                  <span className="text-gray-400">/</span>
+                  <span className="text-2xl font-bold tabular-nums font-serif text-red-600">
+                    {stats?.sentimentCounts?.negative || 0}
+                  </span>
                 </div>
               </div>
             </div>

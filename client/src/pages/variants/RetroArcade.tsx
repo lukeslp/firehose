@@ -192,37 +192,42 @@ export default function RetroArcade({ onNavigateBack }: VariantProps) {
   return (
     <div style={{
       minHeight: '100vh',
-      background: '#ffffff',
-      fontFamily: "'Helvetica Neue', Arial, sans-serif",
-      color: '#000000',
-      padding: '16px',
+      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%)',
+      fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+      color: '#ffffff',
+      padding: '24px',
       boxSizing: 'border-box',
     }}>
-      {/* Swiss Grid Container */}
+      {/* Modern Gradient Grid Container */}
       <div style={{
         display: 'grid',
         gridTemplateColumns: 'repeat(12, 1fr)',
-        gap: '8px',
+        gap: '20px',
         maxWidth: '1600px',
         margin: '0 auto',
       }}>
-        {/* Header - Full Width */}
+        {/* Header - Full Width with Glassmorphism */}
         <header style={{
           gridColumn: '1 / -1',
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
-          padding: '24px',
-          borderBottom: '1px solid #000000',
-          marginBottom: '16px',
+          padding: '32px',
+          background: 'rgba(255, 255, 255, 0.1)',
+          backdropFilter: 'blur(20px)',
+          borderRadius: '24px',
+          border: '1px solid rgba(255, 255, 255, 0.2)',
+          boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)',
+          marginBottom: '20px',
         }}>
           <div>
             <div style={{
-              fontSize: '12px',
-              fontWeight: 100,
-              letterSpacing: '2px',
+              fontSize: '13px',
+              fontWeight: 500,
+              letterSpacing: '3px',
               textTransform: 'uppercase',
               marginBottom: '8px',
+              color: 'rgba(255, 255, 255, 0.8)',
             }}>
               Bluesky Firehose
             </div>
@@ -230,7 +235,11 @@ export default function RetroArcade({ onNavigateBack }: VariantProps) {
               fontSize: '48px',
               fontWeight: 700,
               lineHeight: 1,
-              letterSpacing: '-1px',
+              letterSpacing: '-2px',
+              background: 'linear-gradient(135deg, #fff 0%, rgba(255, 255, 255, 0.8) 100%)',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+              backgroundClip: 'text',
             }}>
               Data Stream
             </div>
@@ -238,58 +247,76 @@ export default function RetroArcade({ onNavigateBack }: VariantProps) {
           <Link href="/variants">
             <a style={{
               padding: '16px 32px',
-              border: '1px solid #000000',
-              background: '#ffffff',
-              color: '#000000',
+              background: 'rgba(255, 255, 255, 0.2)',
+              backdropFilter: 'blur(10px)',
+              border: '1px solid rgba(255, 255, 255, 0.3)',
+              borderRadius: '12px',
+              color: '#ffffff',
               textDecoration: 'none',
               fontSize: '14px',
-              fontWeight: 400,
+              fontWeight: 600,
               letterSpacing: '1px',
               textTransform: 'uppercase',
-              transition: 'all 0.2s ease',
+              transition: 'all 0.3s ease',
+              boxShadow: '0 4px 16px rgba(0, 0, 0, 0.1)',
             }}
             onMouseEnter={(e) => {
-              e.currentTarget.style.background = '#000000';
-              e.currentTarget.style.color = '#ffffff';
+              e.currentTarget.style.background = 'rgba(255, 255, 255, 0.3)';
+              e.currentTarget.style.transform = 'translateY(-2px)';
+              e.currentTarget.style.boxShadow = '0 6px 20px rgba(0, 0, 0, 0.15)';
             }}
             onMouseLeave={(e) => {
-              e.currentTarget.style.background = '#ffffff';
-              e.currentTarget.style.color = '#000000';
+              e.currentTarget.style.background = 'rgba(255, 255, 255, 0.2)';
+              e.currentTarget.style.transform = 'translateY(0)';
+              e.currentTarget.style.boxShadow = '0 4px 16px rgba(0, 0, 0, 0.1)';
             }}>
               Exit
             </a>
           </Link>
         </header>
 
-        {/* Metrics Grid - Golden Ratio Layout (7.5 cols vs 4.5 cols ≈ 1.618) */}
+        {/* Metrics Grid - Gradient Cards */}
         <div style={{
           gridColumn: '1 / 8',
           display: 'grid',
           gridTemplateColumns: 'repeat(3, 1fr)',
-          gap: '8px',
-          marginBottom: '16px',
+          gap: '16px',
+          marginBottom: '20px',
         }}>
           {/* Score */}
           <div style={{
-            padding: '24px',
-            border: '1px solid #000000',
-            background: '#ffffff',
+            padding: '28px',
+            background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.15) 0%, rgba(255, 255, 255, 0.05) 100%)',
+            backdropFilter: 'blur(20px)',
+            borderRadius: '20px',
+            border: '1px solid rgba(255, 255, 255, 0.2)',
+            boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)',
+            transition: 'transform 0.3s ease, box-shadow 0.3s ease',
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.transform = 'translateY(-4px)';
+            e.currentTarget.style.boxShadow = '0 12px 40px rgba(0, 0, 0, 0.15)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.transform = 'translateY(0)';
+            e.currentTarget.style.boxShadow = '0 8px 32px rgba(0, 0, 0, 0.1)';
           }}>
             <div style={{
-              fontSize: '10px',
-              fontWeight: 100,
+              fontSize: '11px',
+              fontWeight: 600,
               letterSpacing: '2px',
               textTransform: 'uppercase',
-              marginBottom: '8px',
-              color: '#000000',
+              marginBottom: '12px',
+              color: 'rgba(255, 255, 255, 0.7)',
             }}>
               Score
             </div>
             <div style={{
-              fontSize: '32px',
+              fontSize: '36px',
               fontWeight: 700,
               fontFamily: 'monospace',
-              color: '#000000',
+              color: '#ffffff',
+              textShadow: '0 2px 8px rgba(0, 0, 0, 0.2)',
             }}>
               {formatScore(score)}
             </div>
@@ -297,91 +324,136 @@ export default function RetroArcade({ onNavigateBack }: VariantProps) {
 
           {/* Combo */}
           <div style={{
-            padding: '24px',
-            border: '1px solid #000000',
-            background: '#ffffff',
+            padding: '28px',
+            background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.15) 0%, rgba(255, 255, 255, 0.05) 100%)',
+            backdropFilter: 'blur(20px)',
+            borderRadius: '20px',
+            border: '1px solid rgba(255, 255, 255, 0.2)',
+            boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)',
+            transition: 'transform 0.3s ease, box-shadow 0.3s ease',
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.transform = 'translateY(-4px)';
+            e.currentTarget.style.boxShadow = '0 12px 40px rgba(0, 0, 0, 0.15)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.transform = 'translateY(0)';
+            e.currentTarget.style.boxShadow = '0 8px 32px rgba(0, 0, 0, 0.1)';
           }}>
             <div style={{
-              fontSize: '10px',
-              fontWeight: 100,
+              fontSize: '11px',
+              fontWeight: 600,
               letterSpacing: '2px',
               textTransform: 'uppercase',
-              marginBottom: '8px',
-              color: '#000000',
+              marginBottom: '12px',
+              color: 'rgba(255, 255, 255, 0.7)',
             }}>
               Combo
             </div>
             <div style={{
-              fontSize: '32px',
+              fontSize: '36px',
               fontWeight: 700,
               fontFamily: 'monospace',
-              color: '#000000',
+              color: '#ffffff',
+              textShadow: '0 2px 8px rgba(0, 0, 0, 0.2)',
             }}>
               ×{combo}
             </div>
           </div>
 
-          {/* Posts/Min - RED ACCENT (only one in this section) */}
+          {/* Posts/Min - Vibrant Accent */}
           <div style={{
-            padding: '24px',
-            border: '1px solid #ff0000',
-            background: '#ffffff',
+            padding: '28px',
+            background: 'linear-gradient(135deg, #ff6b9d 0%, #c06c84 100%)',
+            borderRadius: '20px',
+            border: '1px solid rgba(255, 255, 255, 0.3)',
+            boxShadow: '0 8px 32px rgba(255, 107, 157, 0.3)',
+            transition: 'transform 0.3s ease, box-shadow 0.3s ease',
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.transform = 'translateY(-4px)';
+            e.currentTarget.style.boxShadow = '0 12px 40px rgba(255, 107, 157, 0.4)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.transform = 'translateY(0)';
+            e.currentTarget.style.boxShadow = '0 8px 32px rgba(255, 107, 157, 0.3)';
           }}>
             <div style={{
-              fontSize: '10px',
-              fontWeight: 100,
+              fontSize: '11px',
+              fontWeight: 600,
               letterSpacing: '2px',
               textTransform: 'uppercase',
-              marginBottom: '8px',
-              color: '#ff0000',
+              marginBottom: '12px',
+              color: 'rgba(255, 255, 255, 0.9)',
             }}>
               Posts/Min
             </div>
             <div style={{
-              fontSize: '32px',
+              fontSize: '36px',
               fontWeight: 700,
               fontFamily: 'monospace',
-              color: '#ff0000',
+              color: '#ffffff',
+              textShadow: '0 2px 8px rgba(0, 0, 0, 0.2)',
             }}>
               {Math.round(stats?.postsPerMinute || 0)}
             </div>
           </div>
         </div>
 
-        {/* Status Box - Right Side (Golden Ratio) */}
+        {/* Status Box - Right Side with Dynamic Gradient */}
         <div style={{
           gridColumn: '8 / -1',
-          padding: '24px',
-          border: '1px solid #000000',
-          background: connected ? '#000000' : '#f5f5f5',
-          color: connected ? '#ffffff' : '#000000',
+          padding: '32px',
+          background: connected
+            ? 'linear-gradient(135deg, #11998e 0%, #38ef7d 100%)'
+            : 'linear-gradient(135deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0.05) 100%)',
+          backdropFilter: 'blur(20px)',
+          borderRadius: '20px',
+          border: `1px solid ${connected ? 'rgba(56, 239, 125, 0.3)' : 'rgba(255, 255, 255, 0.2)'}`,
+          boxShadow: connected
+            ? '0 8px 32px rgba(56, 239, 125, 0.3)'
+            : '0 8px 32px rgba(0, 0, 0, 0.1)',
+          color: '#ffffff',
           display: 'flex',
           flexDirection: 'column',
           justifyContent: 'center',
-          marginBottom: '16px',
+          marginBottom: '20px',
+          transition: 'all 0.5s ease',
         }}>
           <div style={{
-            fontSize: '10px',
-            fontWeight: 100,
+            fontSize: '11px',
+            fontWeight: 600,
             letterSpacing: '2px',
             textTransform: 'uppercase',
-            marginBottom: '8px',
+            marginBottom: '12px',
+            color: 'rgba(255, 255, 255, 0.8)',
           }}>
             Status
           </div>
           <div style={{
-            fontSize: '24px',
+            fontSize: '28px',
             fontWeight: 700,
             letterSpacing: '1px',
+            textShadow: '0 2px 8px rgba(0, 0, 0, 0.2)',
           }}>
             {connected ? 'ONLINE' : 'OFFLINE'}
           </div>
           <div style={{
             marginTop: '16px',
-            fontSize: '12px',
-            fontWeight: 100,
+            fontSize: '13px',
+            fontWeight: 500,
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
           }}>
-            {connected ? '● Connected' : '○ Disconnected'}
+            <span style={{
+              width: '8px',
+              height: '8px',
+              borderRadius: '50%',
+              background: connected ? '#38ef7d' : 'rgba(255, 255, 255, 0.3)',
+              boxShadow: connected ? '0 0 12px rgba(56, 239, 125, 0.8)' : 'none',
+            }} />
+            {connected ? 'Connected' : 'Disconnected'}
           </div>
         </div>
 

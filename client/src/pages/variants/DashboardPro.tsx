@@ -1,10 +1,10 @@
 /**
- * DashboardPro.tsx - Art Deco Luxury Analytics Dashboard
+ * DashboardPro.tsx - Neumorphic Analytics Dashboard
  *
- * Aesthetic: Gatsby-era opulence meets financial data
- * Theme: Art Deco luxury, geometric patterns, gold accents
- * Typography: 'Playfair Display' (headers), 'Cormorant Garamond' (body)
- * Colors: Midnight navy (#0a0e27), gold (#d4af37), deep emerald (#1b4332), champagne (#f8f9fa)
+ * Aesthetic: Soft UI with depth through shadows
+ * Theme: Neumorphism - elements that extrude from or press into surface
+ * Typography: Inter (modern sans-serif)
+ * Colors: Light grays (#E0E5EC background), subtle depth, minimal accent colors
  */
 
 import { useSocket } from '@/hooks/useSocket';
@@ -215,229 +215,218 @@ export function DashboardPro({ className }: VariantProps) {
   const getSentimentColor = (sentiment: string): string => {
     switch (sentiment) {
       case 'positive':
-        return 'text-[#1b4332] bg-[#1b4332]/10 border-[#1b4332]/30';
+        return 'text-[#4ade80]';
       case 'negative':
-        return 'text-[#8b0000] bg-[#8b0000]/10 border-[#8b0000]/30';
+        return 'text-[#f87171]';
       case 'neutral':
-        return 'text-[#d4af37] bg-[#d4af37]/10 border-[#d4af37]/30';
+        return 'text-[#94a3b8]';
       default:
-        return 'text-[#f8f9fa] bg-[#f8f9fa]/10 border-[#f8f9fa]/30';
+        return 'text-[#64748b]';
     }
   };
 
   return (
     <>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=Cormorant+Garamond:wght@300;400;600;700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
 
         .dashboard-pro {
-          font-family: 'Cormorant Garamond', serif;
+          font-family: 'Inter', sans-serif;
         }
 
-        .art-deco-heading {
-          font-family: 'Playfair Display', serif;
-        }
-
-        /* Art Deco geometric sunburst background */
-        .art-deco-bg {
-          background:
-            radial-gradient(circle at 50% 0%, rgba(212, 175, 55, 0.15) 0%, transparent 50%),
-            linear-gradient(135deg, #0a0e27 0%, #0d1230 50%, #0a0e27 100%);
+        /* Neumorphic background */
+        .neuro-bg {
+          background: #E0E5EC;
           position: relative;
         }
 
-        .art-deco-bg::before {
-          content: '';
-          position: absolute;
-          inset: 0;
-          background:
-            repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(212, 175, 55, 0.03) 2px, rgba(212, 175, 55, 0.03) 4px),
-            repeating-linear-gradient(90deg, transparent, transparent 2px, rgba(212, 175, 55, 0.03) 2px, rgba(212, 175, 55, 0.03) 4px);
-          pointer-events: none;
-        }
-
-        /* Beveled card effect with gold foil emboss */
-        .art-deco-card {
-          background: linear-gradient(145deg, #f8f9fa 0%, #ffffff 100%);
-          border: 2px solid transparent;
-          background-clip: padding-box;
-          position: relative;
+        /* Neumorphic card - extruded (raised) effect */
+        .neuro-card {
+          background: #E0E5EC;
+          border-radius: 16px;
           box-shadow:
-            inset 2px 2px 4px rgba(212, 175, 55, 0.3),
-            inset -2px -2px 4px rgba(0, 0, 0, 0.1),
-            0 8px 16px rgba(0, 0, 0, 0.2);
+            8px 8px 16px rgba(163, 177, 198, 0.6),
+            -8px -8px 16px rgba(255, 255, 255, 0.5);
+          transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
-        .art-deco-card::before {
-          content: '';
-          position: absolute;
-          inset: 0;
-          border-radius: inherit;
-          padding: 2px;
-          background: linear-gradient(135deg, #d4af37, #f4d03f, #d4af37);
-          -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-          -webkit-mask-composite: xor;
-          mask-composite: exclude;
-          pointer-events: none;
+        .neuro-card:hover {
+          box-shadow:
+            12px 12px 24px rgba(163, 177, 198, 0.7),
+            -12px -12px 24px rgba(255, 255, 255, 0.6);
         }
 
-        /* Chevron pattern divider */
-        .art-deco-divider {
-          position: relative;
-          height: 3px;
-          background: linear-gradient(90deg,
-            transparent 0%,
-            #d4af37 20%,
-            #d4af37 50%,
-            #d4af37 80%,
-            transparent 100%
-          );
-          clip-path: polygon(
-            0% 50%, 10% 0%, 20% 50%, 30% 0%, 40% 50%, 50% 0%,
-            60% 50%, 70% 0%, 80% 50%, 90% 0%, 100% 50%,
-            90% 100%, 80% 50%, 70% 100%, 60% 50%, 50% 100%,
-            40% 50%, 30% 100%, 20% 50%, 10% 100%
-          );
+        /* Neumorphic card - pressed (inset) effect */
+        .neuro-card-inset {
+          background: #E0E5EC;
+          border-radius: 16px;
+          box-shadow:
+            inset 6px 6px 12px rgba(163, 177, 198, 0.5),
+            inset -6px -6px 12px rgba(255, 255, 255, 0.7);
         }
 
-        /* Gold shimmer animation */
-        @keyframes shimmer {
-          0% {
-            background-position: -100% 0;
-          }
-          100% {
-            background-position: 200% 0;
-          }
+        /* Neumorphic button/interactive */
+        .neuro-interactive {
+          background: #E0E5EC;
+          border-radius: 12px;
+          box-shadow:
+            6px 6px 12px rgba(163, 177, 198, 0.5),
+            -6px -6px 12px rgba(255, 255, 255, 0.5);
+          transition: all 0.2s ease;
         }
 
-        .art-deco-shimmer {
-          background: linear-gradient(
-            90deg,
-            transparent 0%,
-            rgba(212, 175, 55, 0.4) 50%,
-            transparent 100%
-          );
-          background-size: 200% 100%;
-          animation: shimmer 3s infinite;
+        .neuro-interactive:active {
+          box-shadow:
+            inset 4px 4px 8px rgba(163, 177, 198, 0.5),
+            inset -4px -4px 8px rgba(255, 255, 255, 0.7);
         }
 
-        /* Geometric header accent */
-        .art-deco-header {
-          background: linear-gradient(180deg, #0a0e27 0%, #0d1230 100%);
-          border-bottom: 3px solid #d4af37;
-          position: relative;
+        /* Neumorphic input field */
+        .neuro-input {
+          background: #E0E5EC;
+          border: none;
+          border-radius: 12px;
+          box-shadow:
+            inset 4px 4px 8px rgba(163, 177, 198, 0.4),
+            inset -4px -4px 8px rgba(255, 255, 255, 0.6);
+          transition: all 0.3s ease;
+          font-family: 'Inter', sans-serif;
+          font-size: 0.875rem;
+          color: #334155;
         }
 
-        .art-deco-header::after {
-          content: '';
-          position: absolute;
-          bottom: -3px;
-          left: 50%;
-          transform: translateX(-50%);
-          width: 60%;
-          height: 3px;
-          background: linear-gradient(90deg, transparent, #f4d03f, transparent);
+        .neuro-input:focus {
+          outline: none;
+          box-shadow:
+            inset 6px 6px 12px rgba(163, 177, 198, 0.5),
+            inset -6px -6px 12px rgba(255, 255, 255, 0.7),
+            0 0 0 2px rgba(59, 130, 246, 0.3);
         }
 
-        /* Sunburst data visualization */
-        .art-deco-sunburst {
-          background:
-            repeating-conic-gradient(
-              from 0deg at 50% 50%,
-              #d4af37 0deg 2deg,
-              transparent 2deg 10deg
-            ),
-            radial-gradient(circle, #f8f9fa 30%, transparent 70%);
+        .neuro-input::placeholder {
+          color: #94a3b8;
         }
 
-        /* Table with art deco styling */
-        .art-deco-table {
-          border: 2px solid #d4af37;
-        }
-
-        .art-deco-table thead {
-          background: linear-gradient(180deg, #0a0e27 0%, #0d1230 100%);
-          border-bottom: 3px solid #d4af37;
-        }
-
-        .art-deco-table tbody tr {
-          border-bottom: 1px solid rgba(212, 175, 55, 0.2);
-          transition: background 0.2s ease;
-        }
-
-        .art-deco-table tbody tr:hover {
-          background: linear-gradient(90deg, transparent, rgba(212, 175, 55, 0.1), transparent);
-        }
-
-        /* Geometric number display */
-        .art-deco-metric {
-          font-family: 'Playfair Display', serif;
-          font-weight: 900;
-          letter-spacing: 0.05em;
-          background: linear-gradient(135deg, #d4af37 0%, #f4d03f 50%, #d4af37 100%);
-          background-clip: text;
-          -webkit-background-clip: text;
-          -webkit-text-fill-color: transparent;
-          text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-        }
-
-        /* Status indicator */
-        .art-deco-status {
+        /* Neumorphic status indicator */
+        .neuro-status {
           width: 12px;
           height: 12px;
           border-radius: 50%;
-          box-shadow: 0 0 12px currentColor;
+          box-shadow:
+            3px 3px 6px rgba(163, 177, 198, 0.6),
+            -3px -3px 6px rgba(255, 255, 255, 0.5);
+        }
+
+        .neuro-status.active {
+          background: linear-gradient(145deg, #4ade80, #22c55e);
           animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
         }
 
-        /* Input fields */
-        .art-deco-input {
-          background: #f8f9fa;
-          border: 2px solid #d4af37;
-          font-family: 'Cormorant Garamond', serif;
-          font-size: 1.125rem;
-          transition: all 0.3s ease;
+        .neuro-status.inactive {
+          background: linear-gradient(145deg, #f87171, #ef4444);
         }
 
-        .art-deco-input:focus {
-          outline: none;
-          box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.2);
-          background: #ffffff;
+        /* Neumorphic divider */
+        .neuro-divider {
+          height: 1px;
+          background: linear-gradient(90deg,
+            transparent 0%,
+            rgba(163, 177, 198, 0.3) 50%,
+            transparent 100%
+          );
+          box-shadow:
+            0 1px 0 rgba(255, 255, 255, 0.5);
         }
 
-        /* Fan-shaped accent */
-        .art-deco-fan {
-          clip-path: polygon(50% 100%, 0% 0%, 100% 0%);
-          background: linear-gradient(180deg, #d4af37 0%, transparent 100%);
+        /* Neumorphic metric display */
+        .neuro-metric {
+          font-family: 'Inter', sans-serif;
+          font-weight: 700;
+          letter-spacing: -0.02em;
+          color: #1e293b;
+        }
+
+        /* Neumorphic header */
+        .neuro-header {
+          background: #E0E5EC;
+          box-shadow:
+            0 4px 12px rgba(163, 177, 198, 0.3),
+            0 -2px 8px rgba(255, 255, 255, 0.4);
+        }
+
+        /* Neumorphic badge */
+        .neuro-badge {
+          border-radius: 8px;
+          padding: 0.25rem 0.75rem;
+          font-weight: 600;
+          font-size: 0.75rem;
+          background: #E0E5EC;
+          box-shadow:
+            3px 3px 6px rgba(163, 177, 198, 0.4),
+            -3px -3px 6px rgba(255, 255, 255, 0.5);
+        }
+
+        /* Neumorphic table */
+        .neuro-table thead {
+          background: #E0E5EC;
+        }
+
+        .neuro-table tbody tr {
+          border-bottom: 1px solid rgba(163, 177, 198, 0.1);
+          transition: background 0.2s ease;
+        }
+
+        .neuro-table tbody tr:hover {
+          background: linear-gradient(90deg,
+            transparent,
+            rgba(163, 177, 198, 0.08),
+            transparent
+          );
+        }
+
+        /* Smooth transitions */
+        * {
+          transition-property: box-shadow, transform, background;
+          transition-duration: 0.3s;
+          transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        @keyframes pulse {
+          0%, 100% {
+            opacity: 1;
+          }
+          50% {
+            opacity: 0.7;
+          }
         }
       `}</style>
 
       <div
-        className={`dashboard-pro min-h-screen art-deco-bg text-[#f8f9fa] ${className || ''}`}
+        className={`dashboard-pro min-h-screen neuro-bg text-[#334155] ${className || ''}`}
       >
-        {/* Art Deco Header */}
-        <header className="art-deco-header sticky top-0 z-10 shadow-2xl">
+        {/* Neumorphic Header */}
+        <header className="neuro-header sticky top-0 z-10">
           <div className="px-8 py-6">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-6">
-                <h1 className="art-deco-heading text-3xl font-black tracking-wider text-[#d4af37]">
-                  BLUESKY
-                  <span className="block text-xl font-normal tracking-[0.3em] text-[#f8f9fa]/80">
-                    ANALYTICS SALON
+                <h1 className="text-2xl font-semibold text-[#1e293b]">
+                  Bluesky Analytics
+                  <span className="block text-sm font-normal text-[#64748b] mt-1">
+                    Real-time Dashboard
                   </span>
                 </h1>
                 <div className="flex items-center gap-3">
                   <div
-                    className={`art-deco-status ${
-                      connected ? 'bg-[#1b4332]' : 'bg-[#8b0000]'
+                    className={`neuro-status ${
+                      connected ? 'active' : 'inactive'
                     }`}
                   />
-                  <span className="art-deco-heading text-sm tracking-[0.2em] uppercase">
-                    {connected ? 'Live Broadcast' : 'Signal Lost'}
+                  <span className="text-sm font-medium text-[#475569]">
+                    {connected ? 'Connected' : 'Disconnected'}
                   </span>
                 </div>
               </div>
-              <div className="art-deco-heading text-sm text-[#d4af37]/80 tracking-wider">
+              <div className="text-sm text-[#64748b] font-medium">
                 {new Date().toLocaleString('en-US', {
                   hour: 'numeric',
                   minute: '2-digit',
@@ -449,7 +438,7 @@ export function DashboardPro({ className }: VariantProps) {
               </div>
             </div>
           </div>
-          <div className="art-deco-divider"></div>
+          <div className="neuro-divider"></div>
         </header>
 
         {/* Main Dashboard */}

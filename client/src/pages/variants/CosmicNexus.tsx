@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'wouter';
 import { useSocket } from '@/hooks/useSocket';
 import type { FirehosePost, VariantProps } from './types';
@@ -9,27 +9,22 @@ import { PostsPerMinuteCard } from '@/components/cards/PostsPerMinuteCard';
 import { LanguagesCard } from '@/components/cards/LanguagesCard';
 import { ContentTypesCard } from '@/components/cards/ContentTypesCard';
 
-interface Particle {
+interface PostCard {
   id: string;
-  x: number;
-  y: number;
-  vx: number;
-  vy: number;
-  sentiment: 'positive' | 'negative' | 'neutral';
   text: string;
   author: string;
+  sentiment: 'positive' | 'negative' | 'neutral';
   opacity: number;
-  size: number;
-  rotation: number; // Gear rotation angle
-  rotationSpeed: number;
+  hasImages?: boolean;
+  hasVideo?: boolean;
+  hasLink?: boolean;
+  y?: number;
+  vy?: number;
 }
 
 export default function CosmicNexus({ onNavigateBack }: VariantProps) {
   const { connected, stats, latestPost } = useSocket();
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [particles, setParticles] = useState<Particle[]>([]);
-  const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
-  const animationRef = useRef<number>(0);
+  const [recentPosts, setRecentPosts] = useState<PostCard[]>([]);
 
   // Filter state
   const [selectedLanguage, setSelectedLanguage] = React.useState<string>('all');
@@ -61,16 +56,7 @@ export default function CosmicNexus({ onNavigateBack }: VariantProps) {
   // CardWall visibility toggle
   const [showCardWall, setShowCardWall] = useState(false);
 
-  // Decorative gear rotation
-  const [gearRotation, setGearRotation] = useState(0);
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setGearRotation(prev => (prev + 1) % 360);
-    }, 50);
-    return () => clearInterval(interval);
-  }, []);
-
-  // Add new particles from posts AND track data for CardWall (Dashboard.tsx pattern)
+  // Add new posts AND track data for CardWall (Dashboard.tsx pattern)
   useEffect(() => {
     if (latestPost) {
       const post = latestPost as FirehosePost;
@@ -107,36 +93,34 @@ export default function CosmicNexus({ onNavigateBack }: VariantProps) {
         withLinks: hasLinks ? prev.withLinks + 1 : prev.withLinks,
       }));
 
-      // Apply filters for particles
+      // Apply filters for recent posts display
       if (selectedLanguage !== 'all' && post.language !== selectedLanguage) return;
       if (keywordFilter && !post.text.toLowerCase().includes(keywordFilter.toLowerCase())) return;
 
-      const newParticle: Particle = {
+      const newPostCard: PostCard = {
         id: post.uri || `${Date.now()}-${Math.random()}`,
-        x: Math.random() * (window.innerWidth - 200) + 100,
-        y: Math.random() * (window.innerHeight - 200) + 100,
-        vx: (Math.random() - 0.5) * 0.5,
-        vy: (Math.random() - 0.5) * 0.5,
-        sentiment: post.sentiment,
-        text: post.text.slice(0, 100),
+        text: post.text.slice(0, 200),
         author: post.author?.handle || 'unknown',
+        sentiment: post.sentiment,
         opacity: 1,
-        size: 8 + Math.random() * 4, // Larger gears
-        rotation: Math.random() * 360,
-        rotationSpeed: (Math.random() - 0.5) * 2,
+        hasImages,
+        hasVideo,
+        hasLink: hasLinks,
       };
 
-      setParticles(prev => [...prev, newParticle].slice(-80)); // Keep last 80 (gears are larger)
+      setRecentPosts(prev => [...prev, newPostCard].slice(-12)); // Keep last 12 posts
     }
   }, [latestPost, selectedLanguage, keywordFilter]);
 
-  // Mouse move handler
+  // Fade out old posts
   useEffect(() => {
-    const handleMouseMove = (e: MouseEvent) => {
-      setMousePos({ x: e.clientX, y: e.clientY });
-    };
-    window.addEventListener('mousemove', handleMouseMove);
-    return () => window.removeEventListener('mousemove', handleMouseMove);
+    const interval = setInterval(() => {
+      setRecentPosts(prev =>
+        prev.map(p => ({ ...p, opacity: Math.max(0, p.opacity - 0.01) }))
+           .filter(p => p.opacity > 0.05)
+      );
+    }, 100);
+    return () => clearInterval(interval);
   }, []);
 
   // Sample rate every 1 second for timeline charts (Dashboard.tsx pattern)
