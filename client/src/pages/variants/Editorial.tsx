@@ -3,6 +3,12 @@ import { Link } from 'wouter';
 import { useSocket } from '@/hooks/useSocket';
 import type { FirehosePost, VariantProps } from './types';
 import { MediaDisplay } from '@/components/MediaDisplay';
+import { CardWall } from '@/components/CardWall';
+import { SentimentDistributionCard } from '@/components/cards/SentimentDistributionCard';
+import { SentimentTimelineCard } from '@/components/cards/SentimentTimelineCard';
+import { PostsPerMinuteCard } from '@/components/cards/PostsPerMinuteCard';
+import { LanguagesCard } from '@/components/cards/LanguagesCard';
+import { ContentTypesCard } from '@/components/cards/ContentTypesCard';
 
 export default function Editorial({ onNavigateBack }: VariantProps) {
   const { connected, stats, latestPost } = useSocket();
@@ -12,14 +18,136 @@ export default function Editorial({ onNavigateBack }: VariantProps) {
   // Filter state
   const [selectedLanguage, setSelectedLanguage] = useState<string>('all');
   const [keywordFilter, setKeywordFilter] = useState<string>('');
-  
 
-  // Add new posts to feed
+  // Track post timestamps for rate calculation (rolling window)
+  const [postTimestamps, setPostTimestamps] = useState<Array<{
+    timestamp: number;
+    sentiment: 'positive' | 'negative' | 'neutral';
+  }>>([]);
+
+  // Sampled timeline data
+  const [sentimentTimeline, setSentimentTimeline] = useState<Array<{
+    timestamp: number;
+    positivePercent: number;
+    neutralPercent: number;
+    negativePercent: number;
+  }>>([]);
+
+  // Posts per minute rate timeline
+  const [postsPerMinuteTimeline, setPostsPerMinuteTimeline] = useState<Array<{
+    timestamp: number;
+    rate: number;
+  }>>([]);
+
+  // Real-time language tracking
+  const [languageCounts, setLanguageCounts] = useState<Record<string, number>>({});
+
+  // Real-time content type tracking
+  const [contentTypeCounts, setContentTypeCounts] = useState({
+    textOnly: 0,
+    withImages: 0,
+    withVideo: 0,
+    withLinks: 0,
+  });
+
+  // Add new posts to feed and track metrics
   useEffect(() => {
-    if (latestPost) {
-      setPosts(prev => [latestPost as FirehosePost, ...prev].slice(0, 100));
+    if (!latestPost) return;
+
+    // Add to feed
+    setPosts(prev => [latestPost as FirehosePost, ...prev].slice(0, 100));
+
+    const now = Date.now();
+
+    // Add timestamp to rolling window, remove old entries
+    setPostTimestamps(prev => {
+      const twoMinutesAgo = now - 2 * 60 * 1000;
+      const filtered = prev.filter(d => d.timestamp >= twoMinutesAgo);
+      return [...filtered, {
+        timestamp: now,
+        sentiment: latestPost.sentiment
+      }];
+    });
+
+    // Track language
+    if (latestPost.language) {
+      setLanguageCounts(prev => ({
+        ...prev,
+        [latestPost.language!]: (prev[latestPost.language!] || 0) + 1
+      }));
     }
+
+    // Track content types from post metadata
+    const hasImages = latestPost.hasImages || false;
+    const hasVideo = latestPost.hasVideo || false;
+    const hasLinks = latestPost.hasLink || false;
+    const isTextOnly = !hasImages && !hasVideo && !hasLinks;
+
+    setContentTypeCounts(prev => ({
+      textOnly: isTextOnly ? prev.textOnly + 1 : prev.textOnly,
+      withImages: hasImages ? prev.withImages + 1 : prev.withImages,
+      withVideo: hasVideo ? prev.withVideo + 1 : prev.withVideo,
+      withLinks: hasLinks ? prev.withLinks + 1 : prev.withLinks,
+    }));
   }, [latestPost]);
+
+  // Sample rate every 1 second for timeline charts
+  useEffect(() => {
+    const calculateRates = () => {
+      setPostTimestamps(currentTimestamps => {
+        const now = Date.now();
+        const oneMinuteAgo = now - 60 * 1000;
+
+        // Filter posts from last 60 seconds
+        const recentPosts = currentTimestamps.filter(p => p.timestamp >= oneMinuteAgo);
+
+        if (recentPosts.length > 0) {
+          // Calculate time window
+          const oldestTimestamp = Math.min(...recentPosts.map(p => p.timestamp));
+          const timeWindowSeconds = (now - oldestTimestamp) / 1000;
+
+          if (timeWindowSeconds > 0) {
+            // Calculate posts per minute rate
+            const rate = Math.round((recentPosts.length / timeWindowSeconds) * 60);
+
+            // Calculate sentiment percentages
+            const positive = recentPosts.filter(p => p.sentiment === 'positive').length;
+            const neutral = recentPosts.filter(p => p.sentiment === 'neutral').length;
+            const negative = recentPosts.filter(p => p.sentiment === 'negative').length;
+            const total = recentPosts.length;
+
+            const positivePercent = total > 0 ? (positive / total) * 100 : 0;
+            const neutralPercent = total > 0 ? (neutral / total) * 100 : 0;
+            const negativePercent = total > 0 ? (negative / total) * 100 : 0;
+
+            // Update posts per minute timeline
+            setPostsPerMinuteTimeline(prev => {
+              const oneHourAgo = now - 60 * 60 * 1000;
+              const filtered = prev.filter(d => d.timestamp >= oneHourAgo);
+              return [...filtered, { timestamp: now, rate }];
+            });
+
+            // Update sentiment timeline
+            setSentimentTimeline(prev => {
+              const oneHourAgo = now - 60 * 60 * 1000;
+              const filtered = prev.filter(d => d.timestamp >= oneHourAgo);
+              return [...filtered, {
+                timestamp: now,
+                positivePercent,
+                neutralPercent,
+                negativePercent
+              }];
+            });
+          }
+        }
+
+        return currentTimestamps;
+      });
+    };
+
+    const interval = setInterval(calculateRates, 1000);
+    return () => clearInterval(interval);
+  }, []);
 
   const formatTime = (dateString: string) => {
     const date = new Date(dateString);
@@ -33,9 +161,9 @@ export default function Editorial({ onNavigateBack }: VariantProps) {
 
   const getSentimentLabel = (sentiment: string) => {
     switch (sentiment) {
-      case 'positive': return 'Optimistic';
-      case 'negative': return 'Critical';
-      default: return 'Neutral';
+      case 'positive': return 'OPTIMISTIC';
+      case 'negative': return 'CRITICAL';
+      default: return 'NEUTRAL';
     }
   };
 
@@ -43,514 +171,839 @@ export default function Editorial({ onNavigateBack }: VariantProps) {
   const filteredPosts = React.useMemo(() => {
     return posts.filter(post => {
       if (selectedLanguage !== 'all' && post.language !== selectedLanguage) {
-        
+        return false;
+      }
       if (keywordFilter && !post.text.toLowerCase().includes(keywordFilter.toLowerCase())) {
-        
-        
+        return false;
+      }
       return true;
     });
   }, [posts, selectedLanguage, keywordFilter]);
 
+  // Random Japanese decorative characters
+  const japaneseChars = ['サイバー', 'ネオン', '未来', '東京', '夜', 'データ', '電脳'];
+  const getRandomJapanese = () => japaneseChars[Math.floor(Math.random() * japaneseChars.length)];
+
   return (
-    <div style={{
-      minHeight: '100vh',
-      background: '#f5f5f0',
-      fontFamily: 'Georgia, serif',
-      color: '#1a1a1a',
-    }}>
-      {/* Header - Editorial masthead */}
-      <header style={{
-        borderBottom: '4px double #1a1a1a',
-        padding: '32px 24px 24px',
-        background: '#ffffff',
+    <>
+      {/* Google Fonts */}
+      <link rel="preconnect" href="https://fonts.googleapis.com" />
+      <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+      <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet" />
+
+      {/* Keyframes and animations */}
+      <style>{`
+        @keyframes scanline {
+          0% { transform: translateY(-100%); }
+          100% { transform: translateY(100vh); }
+        }
+        @keyframes rain {
+          0% { transform: translateY(-100%); opacity: 1; }
+          100% { transform: translateY(100vh); opacity: 0; }
+        }
+        @keyframes glitch {
+          0%, 100% { transform: translate(0); }
+          20% { transform: translate(-2px, 2px); }
+          40% { transform: translate(-2px, -2px); }
+          60% { transform: translate(2px, 2px); }
+          80% { transform: translate(2px, -2px); }
+        }
+        @keyframes holographic {
+          0% { background-position: 0% 50%; }
+          50% { background-position: 100% 50%; }
+          100% { background-position: 0% 50%; }
+        }
+        @keyframes pulse-glow {
+          0%, 100% { filter: drop-shadow(0 0 5px #ff0080) drop-shadow(0 0 10px #ff0080); }
+          50% { filter: drop-shadow(0 0 10px #ff0080) drop-shadow(0 0 20px #ff0080) drop-shadow(0 0 30px #ff0080); }
+        }
+        .neon-text {
+          text-shadow:
+            0 0 10px #ff0080,
+            0 0 20px #ff0080,
+            0 0 30px #ff0080,
+            0 0 40px #ff0080,
+            0 0 70px #ff0080,
+            0 0 80px #ff0080;
+        }
+        .neon-cyan {
+          text-shadow:
+            0 0 10px #00d9ff,
+            0 0 20px #00d9ff,
+            0 0 30px #00d9ff,
+            0 0 40px #00d9ff;
+        }
+        .neon-yellow {
+          text-shadow:
+            0 0 10px #ffff00,
+            0 0 20px #ffff00,
+            0 0 30px #ffff00;
+        }
+        .holographic-card {
+          position: relative;
+          background: linear-gradient(
+            135deg,
+            rgba(255, 0, 128, 0.1) 0%,
+            rgba(0, 217, 255, 0.1) 25%,
+            rgba(123, 44, 191, 0.1) 50%,
+            rgba(0, 217, 255, 0.1) 75%,
+            rgba(255, 0, 128, 0.1) 100%
+          );
+          background-size: 200% 200%;
+          animation: holographic 3s ease infinite;
+          border: 2px solid;
+          border-image: linear-gradient(
+            135deg,
+            #ff0080,
+            #00d9ff,
+            #7b2cbf,
+            #ff0080
+          ) 1;
+        }
+        .holographic-card::before {
+          content: '';
+          position: absolute;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background: linear-gradient(
+            135deg,
+            rgba(255, 0, 128, 0.2),
+            transparent,
+            rgba(0, 217, 255, 0.2)
+          );
+          pointer-events: none;
+        }
+        .reflection {
+          transform: scaleY(-1);
+          opacity: 0.3;
+          filter: blur(2px);
+          position: absolute;
+          bottom: 0;
+          left: 0;
+          right: 0;
+          pointer-events: none;
+        }
+        .rain-line {
+          position: absolute;
+          width: 1px;
+          height: 100px;
+          background: linear-gradient(to bottom, transparent, #00d9ff, transparent);
+          animation: rain linear infinite;
+        }
+        .scanline-overlay {
+          position: fixed;
+          top: 0;
+          left: 0;
+          width: 100%;
+          height: 2px;
+          background: linear-gradient(to bottom, transparent, #00d9ff, transparent);
+          animation: scanline 4s linear infinite;
+          pointer-events: none;
+          z-index: 9999;
+          opacity: 0.5;
+        }
+        .diagonal-skew {
+          transform: skewY(-2deg);
+        }
+        .perspective-card {
+          transform: perspective(1000px) rotateX(5deg);
+          transition: transform 0.3s ease;
+        }
+        .perspective-card:hover {
+          transform: perspective(1000px) rotateX(0deg) scale(1.02);
+        }
+      `}</style>
+
+      {/* Scanline overlay */}
+      <div className="scanline-overlay" />
+
+      {/* Rain effect */}
+      {[...Array(20)].map((_, i) => (
+        <div
+          key={i}
+          className="rain-line"
+          style={{
+            left: `${Math.random() * 100}%`,
+            animationDuration: `${Math.random() * 2 + 1}s`,
+            animationDelay: `${Math.random() * 2}s`,
+          }}
+        />
+      ))}
+
+      <div style={{
+        minHeight: '100vh',
+        background: 'linear-gradient(135deg, #0a0e1a 0%, #1a0a2e 100%)',
+        fontFamily: "'Share Tech Mono', monospace",
+        color: '#00d9ff',
+        position: 'relative',
+        overflow: 'hidden',
       }}>
-        <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
-            <div style={{ fontSize: '12px', color: '#666', fontFamily: 'Libre Franklin, sans-serif' }}>
-              {formatDate(new Date().toISOString())}
-            </div>
-            <Link href="/variants">
-              <a style={{
-                fontSize: '12px',
-                color: '#1a1a1a',
-                textDecoration: 'none',
-                fontFamily: 'Libre Franklin, sans-serif',
-                borderBottom: '1px solid #1a1a1a',
-                paddingBottom: '2px',
-              }}>
-                ← Return to Variants
-              </a>
-            </Link>
-          </div>
-          <h1 style={{
-            fontSize: '72px',
-            fontWeight: 700,
-            fontFamily: 'Playfair Display, serif',
-            margin: '16px 0',
-            letterSpacing: '-0.02em',
-            textAlign: 'center',
-          }}>
-            The Bluesky Chronicle
-          </h1>
+        {/* Header - Cyberpunk masthead */}
+        <header style={{
+          borderBottom: '2px solid #ff0080',
+          padding: '32px 24px 24px',
+          background: 'rgba(10, 14, 26, 0.95)',
+          backdropFilter: 'blur(10px)',
+          position: 'relative',
+          boxShadow: '0 0 30px rgba(255, 0, 128, 0.3)',
+        }}>
+          {/* Japanese decoration */}
           <div style={{
-            textAlign: 'center',
+            position: 'absolute',
+            top: '10px',
+            right: '24px',
             fontSize: '14px',
-            color: '#666',
-            fontFamily: 'Libre Franklin, sans-serif',
-            fontStyle: 'italic',
-            borderTop: '1px solid #ccc',
-            borderBottom: '1px solid #ccc',
-            padding: '8px 0',
-            margin: '16px 0 0',
+            color: '#7b2cbf',
+            opacity: 0.6,
+            fontFamily: "'Share Tech Mono', monospace",
           }}>
-            Real-time coverage of the social stream • All voices preserved
+            {getRandomJapanese()}
           </div>
-        </div>
-      </header>
 
-      {/* Stats Bar */}
-      <div style={{
-        background: '#ffffff',
-        borderBottom: '1px solid #ddd',
-        padding: '16px 24px',
-      }}>
-        <div style={{
-          maxWidth: '1200px',
-          margin: '0 auto',
-          display: 'flex',
-          gap: '48px',
-          justifyContent: 'center',
-          fontFamily: 'Libre Franklin, sans-serif',
-          fontSize: '13px',
-        }}>
-          <div>
-            <span style={{ color: '#666' }}>Total Articles: </span>
-            <span style={{ fontWeight: 600 }}>{(stats?.totalPosts || 0).toLocaleString()}</span>
-          </div>
-          <div>
-            <span style={{ color: '#666' }}>Filtered: </span>
-            <span style={{ fontWeight: 600 }}>{filteredPosts.length}</span>
-          </div>
-          <div>
-            <span style={{ color: '#666' }}>Rate: </span>
-            <span style={{ fontWeight: 600 }}>{Math.round(stats?.postsPerMinute || 0)}/min</span>
-          </div>
-          <div>
-            <span style={{ color: '#666' }}>Connection: </span>
-            <span style={{ fontWeight: 600, color: connected ? '#2e7d32' : '#d32f2f' }}>
-              {connected ? 'Live' : 'Offline'}
-            </span>
-          </div>
-        </div>
-      </div>
-
-      {/* Filter Controls */}
-      <div style={{
-        background: '#f9f9f4',
-        borderBottom: '1px solid #ddd',
-        padding: '24px',
-      }}>
-        <div style={{
-          maxWidth: '1200px',
-          margin: '0 auto',
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
-          gap: '24px',
-        }}>
-          {/* Language Filter */}
-          <div>
-            <label style={{
-              display: 'block',
-              fontSize: '11px',
-              fontWeight: 600,
-              fontFamily: 'Libre Franklin, sans-serif',
+          <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
+              <div style={{
+                fontSize: '12px',
+                color: '#ffff00',
+                fontFamily: "'Share Tech Mono', monospace",
+                textTransform: 'uppercase',
+              }} className="neon-yellow">
+                {formatDate(new Date().toISOString())}
+              </div>
+              <Link href="/variants">
+                <a style={{
+                  fontSize: '12px',
+                  color: '#00d9ff',
+                  textDecoration: 'none',
+                  fontFamily: "'Share Tech Mono', monospace",
+                  borderBottom: '1px solid #00d9ff',
+                  paddingBottom: '2px',
+                  textTransform: 'uppercase',
+                }} className="neon-cyan">
+                  ← RETURN TO VARIANTS
+                </a>
+              </Link>
+            </div>
+            <h1 style={{
+              fontSize: '72px',
+              fontWeight: 900,
+              fontFamily: "'Orbitron', sans-serif",
+              margin: '16px 0',
+              letterSpacing: '0.1em',
+              textAlign: 'center',
               textTransform: 'uppercase',
-              letterSpacing: '0.05em',
-              marginBottom: '8px',
-              color: '#666',
-            }}>
-              Language
-            </label>
-            <select
-              value={selectedLanguage}
-              onChange={(e) => setSelectedLanguage(e.target.value)}
-              style={{
-                width: '100%',
-                padding: '8px 12px',
-                border: '1px solid #ccc',
-                background: '#ffffff',
-                fontSize: '13px',
-                fontFamily: 'Libre Franklin, sans-serif',
-              }}
-            >
-              <option value="all">All Languages</option>
-              <option value="en">English</option>
-              <option value="es">Spanish</option>
-              <option value="fr">French</option>
-              <option value="de">German</option>
-              <option value="ja">Japanese</option>
-              <option value="pt">Portuguese</option>
-            </select>
-          </div>
-
-          {/* Keyword Filter */}
-          <div>
-            <label style={{
-              display: 'block',
-              fontSize: '11px',
-              fontWeight: 600,
-              fontFamily: 'Libre Franklin, sans-serif',
-              textTransform: 'uppercase',
-              letterSpacing: '0.05em',
-              marginBottom: '8px',
-              color: '#666',
-            }}>
-              Search Keywords
-            </label>
-            <input
-              type="text"
-              value={keywordFilter}
-              onChange={(e) => setKeywordFilter(e.target.value)}
-              placeholder="Filter by keyword..."
-              style={{
-                width: '100%',
-                padding: '8px 12px',
-                border: '1px solid #ccc',
-                background: '#ffffff',
-                fontSize: '13px',
-                fontFamily: 'Libre Franklin, sans-serif',
-              }}
-            />
-          </div>
-
-          {/* Likes Threshold */}
-          <div>
-            <label style={{
-              display: 'block',
-              fontSize: '11px',
-              fontWeight: 600,
-              fontFamily: 'Libre Franklin, sans-serif',
-              textTransform: 'uppercase',
-              letterSpacing: '0.05em',
-              marginBottom: '8px',
-              color: '#666',
-            }}>
-              Minimum Engagement: {likesThreshold} likes
-            </label>
-            <input
-              type="range"
-              min="0"
-              max="1000"
-              step="10"
-              value={likesThreshold}
-              onChange={(e) => setLikesThreshold(Number(e.target.value))}
-              style={{
-                width: '100%',
-                accentColor: '#1a1a1a',
-              }}
-            />
+              color: '#ff0080',
+            }} className="neon-text">
+              BLUESKY_CHRONICLE
+            </h1>
             <div style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              fontSize: '11px',
-              color: '#999',
-              marginTop: '4px',
-              fontFamily: 'Libre Franklin, sans-serif',
-            }}>
-              <span>0</span>
-              <span>1000+</span>
+              textAlign: 'center',
+              fontSize: '14px',
+              color: '#00d9ff',
+              fontFamily: "'Share Tech Mono', monospace",
+              textTransform: 'uppercase',
+              borderTop: '1px solid #7b2cbf',
+              borderBottom: '1px solid #7b2cbf',
+              padding: '8px 0',
+              margin: '16px 0 0',
+              letterSpacing: '0.05em',
+            }} className="neon-cyan">
+              REAL-TIME COVERAGE • NEURAL STREAM • ALL VOICES PRESERVED
+            </div>
+          </div>
+        </header>
+
+        {/* Stats Bar - Neon HUD */}
+        <div style={{
+          background: 'rgba(10, 14, 26, 0.8)',
+          borderBottom: '1px solid #00d9ff',
+          padding: '16px 24px',
+          boxShadow: '0 0 20px rgba(0, 217, 255, 0.2)',
+        }}>
+          <div style={{
+            maxWidth: '1200px',
+            margin: '0 auto',
+            display: 'flex',
+            gap: '48px',
+            justifyContent: 'center',
+            fontFamily: "'Share Tech Mono', monospace",
+            fontSize: '13px',
+            textTransform: 'uppercase',
+          }}>
+            <div>
+              <span style={{ color: '#7b2cbf' }}>TOTAL_ARTICLES: </span>
+              <span style={{ fontWeight: 700, color: '#ff0080' }} className="neon-text">{(stats?.totalPosts || 0).toLocaleString()}</span>
+            </div>
+            <div>
+              <span style={{ color: '#7b2cbf' }}>FILTERED: </span>
+              <span style={{ fontWeight: 700, color: '#00d9ff' }} className="neon-cyan">{filteredPosts.length}</span>
+            </div>
+            <div>
+              <span style={{ color: '#7b2cbf' }}>RATE: </span>
+              <span style={{ fontWeight: 700, color: '#ffff00' }} className="neon-yellow">{Math.round(stats?.postsPerMinute || 0)}/MIN</span>
+            </div>
+            <div>
+              <span style={{ color: '#7b2cbf' }}>CONNECTION: </span>
+              <span style={{ fontWeight: 700, color: connected ? '#00ff00' : '#ff0000' }}>
+                {connected ? '█ LIVE' : '░ OFFLINE'}
+              </span>
             </div>
           </div>
         </div>
-      </div>
 
-      {/* Main content area */}
-      <main style={{ maxWidth: '1200px', margin: '0 auto', padding: '48px 24px' }}>
-        {/* "Above the fold" - Lead story */}
-        {filteredPosts.length > 0 && (
-          <article style={{
-            marginBottom: '48px',
-            paddingBottom: '48px',
-            borderBottom: '1px solid #ddd',
+        {/* Filter Controls - Cyberpunk Interface */}
+        <div style={{
+          background: 'rgba(26, 10, 46, 0.6)',
+          borderBottom: '1px solid #7b2cbf',
+          padding: '24px',
+          backdropFilter: 'blur(5px)',
+        }}>
+          <div style={{
+            maxWidth: '1200px',
+            margin: '0 auto',
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
+            gap: '24px',
           }}>
+            {/* Language Filter */}
+            <div>
+              <label style={{
+                display: 'block',
+                fontSize: '11px',
+                fontWeight: 700,
+                fontFamily: "'Orbitron', sans-serif",
+                textTransform: 'uppercase',
+                letterSpacing: '0.1em',
+                marginBottom: '8px',
+                color: '#ff0080',
+              }} className="neon-text">
+                LANGUAGE
+              </label>
+              <select
+                value={selectedLanguage}
+                onChange={(e) => setSelectedLanguage(e.target.value)}
+                style={{
+                  width: '100%',
+                  padding: '8px 12px',
+                  border: '2px solid #00d9ff',
+                  background: 'rgba(10, 14, 26, 0.9)',
+                  fontSize: '13px',
+                  fontFamily: "'Share Tech Mono', monospace",
+                  color: '#00d9ff',
+                  textTransform: 'uppercase',
+                  boxShadow: '0 0 10px rgba(0, 217, 255, 0.3)',
+                }}
+              >
+                <option value="all">ALL LANGUAGES</option>
+                <option value="en">ENGLISH</option>
+                <option value="es">SPANISH</option>
+                <option value="fr">FRENCH</option>
+                <option value="de">GERMAN</option>
+                <option value="ja">JAPANESE</option>
+                <option value="pt">PORTUGUESE</option>
+              </select>
+            </div>
+
+            {/* Keyword Filter */}
+            <div>
+              <label style={{
+                display: 'block',
+                fontSize: '11px',
+                fontWeight: 700,
+                fontFamily: "'Orbitron', sans-serif",
+                textTransform: 'uppercase',
+                letterSpacing: '0.1em',
+                marginBottom: '8px',
+                color: '#ff0080',
+              }} className="neon-text">
+                SEARCH_KEYWORDS
+              </label>
+              <input
+                type="text"
+                value={keywordFilter}
+                onChange={(e) => setKeywordFilter(e.target.value)}
+                placeholder="FILTER BY KEYWORD..."
+                style={{
+                  width: '100%',
+                  padding: '8px 12px',
+                  border: '2px solid #00d9ff',
+                  background: 'rgba(10, 14, 26, 0.9)',
+                  fontSize: '13px',
+                  fontFamily: "'Share Tech Mono', monospace",
+                  color: '#00d9ff',
+                  textTransform: 'uppercase',
+                  boxShadow: '0 0 10px rgba(0, 217, 255, 0.3)',
+                }}
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Data Analytics Section - Neon Grid */}
+        <section style={{
+          background: 'rgba(10, 14, 26, 0.7)',
+          borderBottom: '3px solid #ff0080',
+          padding: '32px 24px',
+          boxShadow: '0 0 40px rgba(255, 0, 128, 0.2)',
+        }}>
+          <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
+            {/* Japanese decoration */}
             <div style={{
-              display: 'inline-block',
-              padding: '4px 12px',
-              background: posts[0].sentiment === 'positive' ? '#e8f5e9' : posts[0].sentiment === 'negative' ? '#ffebee' : '#f5f5f5',
-              fontSize: '11px',
-              fontWeight: 600,
-              fontFamily: 'Libre Franklin, sans-serif',
-              textTransform: 'uppercase',
-              letterSpacing: '0.05em',
-              marginBottom: '16px',
-              color: '#666',
+              textAlign: 'center',
+              fontSize: '12px',
+              color: '#7b2cbf',
+              opacity: 0.5,
+              marginBottom: '8px',
             }}>
-              {getSentimentLabel(filteredPosts[0].sentiment)} • Just Now
+              データ分析
             </div>
             <h2 style={{
-              fontSize: '42px',
-              fontWeight: 700,
-              fontFamily: 'Playfair Display, serif',
-              lineHeight: '1.2',
-              marginBottom: '16px',
-              cursor: 'pointer',
-            }}
-            onClick={() => setSelectedPost(filteredPosts[0])}
-            >
-              {filteredPosts[0].text.length > 120 ? `${filteredPosts[0].text.slice(0, 120)}...` : filteredPosts[0].text}
-            </h2>
-            <div style={{
-              fontSize: '14px',
-              color: '#666',
-              fontFamily: 'Libre Franklin, sans-serif',
+              fontSize: '32px',
+              fontWeight: 900,
+              fontFamily: "'Orbitron', sans-serif",
               marginBottom: '8px',
-            }}>
-              By <span style={{ fontWeight: 600 }}>@{filteredPosts[0].author?.handle || 'Anonymous'}</span> • {formatTime(filteredPosts[0].createdAt)}
-            </div>
-            {filteredPosts[0].language && (
-              <div style={{
-                fontSize: '12px',
-                color: '#999',
-                fontFamily: 'Libre Franklin, sans-serif',
-                fontStyle: 'italic',
-              }}>
-                Language: {filteredPosts[0].language.toUpperCase()}
-              </div>
-            )}
-          </article>
-        )}
+              textAlign: 'center',
+              borderBottom: '2px solid #ff0080',
+              paddingBottom: '12px',
+              color: '#ff0080',
+              textTransform: 'uppercase',
+              letterSpacing: '0.15em',
+            }} className="neon-text">
+              DATA_BUREAU
+            </h2>
+            <p style={{
+              textAlign: 'center',
+              fontSize: '12px',
+              color: '#00d9ff',
+              fontFamily: "'Share Tech Mono', monospace",
+              textTransform: 'uppercase',
+              marginBottom: '32px',
+              letterSpacing: '0.05em',
+            }} className="neon-cyan">
+              LIVE STATISTICAL ANALYSIS FROM THE NEURAL STREAM
+            </p>
+            <CardWall>
+              <SentimentDistributionCard
+                sentimentCounts={stats?.sentimentCounts || { positive: 0, neutral: 0, negative: 0 }}
+              />
+              <SentimentTimelineCard
+                data={sentimentTimeline}
+              />
+              <PostsPerMinuteCard
+                data={postsPerMinuteTimeline}
+                currentRate={stats?.postsPerMinute || 0}
+              />
+              <LanguagesCard
+                languageCounts={languageCounts}
+              />
+              <ContentTypesCard
+                contentTypeCounts={contentTypeCounts}
+              />
+            </CardWall>
+          </div>
+        </section>
 
-        {/* Three-column layout for recent stories */}
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
-          gap: '32px',
-          marginBottom: '48px',
-        }}>
-          {filteredPosts.slice(1, 10).map((post, index) => (
+        {/* Main content area - Holographic cards */}
+        <main style={{ maxWidth: '1200px', margin: '0 auto', padding: '48px 24px' }}>
+          {/* Lead story - Large holographic card */}
+          {filteredPosts.length > 0 && (
             <article
-              key={post.uri || index}
+              className="holographic-card perspective-card"
               style={{
-                paddingBottom: '24px',
-                borderBottom: '1px solid #eee',
+                marginBottom: '48px',
+                paddingBottom: '32px',
+                borderBottom: '2px solid #ff0080',
+                padding: '24px',
+                background: 'rgba(10, 14, 26, 0.8)',
+                backdropFilter: 'blur(10px)',
+                boxShadow: '0 8px 32px rgba(255, 0, 128, 0.3)',
                 cursor: 'pointer',
+                position: 'relative',
               }}
-              onClick={() => setSelectedPost(post)}
+              onClick={() => setSelectedPost(filteredPosts[0])}
             >
+              {/* Japanese decoration */}
+              <div style={{
+                position: 'absolute',
+                top: '12px',
+                right: '12px',
+                fontSize: '10px',
+                color: '#7b2cbf',
+                opacity: 0.4,
+              }}>
+                {getRandomJapanese()}
+              </div>
+
               <div style={{
                 display: 'inline-block',
-                padding: '2px 8px',
-                background: post.sentiment === 'positive' ? '#e8f5e9' : post.sentiment === 'negative' ? '#ffebee' : '#f5f5f5',
-                fontSize: '9px',
-                fontWeight: 600,
-                fontFamily: 'Libre Franklin, sans-serif',
-                textTransform: 'uppercase',
-                letterSpacing: '0.05em',
-                marginBottom: '12px',
-                color: '#666',
-              }}>
-                {getSentimentLabel(post.sentiment)}
-              </div>
-              <h3 style={{
-                fontSize: '20px',
+                padding: '4px 16px',
+                background: filteredPosts[0].sentiment === 'positive' ? 'rgba(0, 255, 0, 0.2)' : filteredPosts[0].sentiment === 'negative' ? 'rgba(255, 0, 0, 0.2)' : 'rgba(0, 217, 255, 0.2)',
+                fontSize: '11px',
                 fontWeight: 700,
-                fontFamily: 'Playfair Display, serif',
-                lineHeight: '1.3',
-                marginBottom: '8px',
+                fontFamily: "'Orbitron', sans-serif",
+                textTransform: 'uppercase',
+                letterSpacing: '0.1em',
+                marginBottom: '16px',
+                color: filteredPosts[0].sentiment === 'positive' ? '#00ff00' : filteredPosts[0].sentiment === 'negative' ? '#ff0000' : '#00d9ff',
+                border: `1px solid ${filteredPosts[0].sentiment === 'positive' ? '#00ff00' : filteredPosts[0].sentiment === 'negative' ? '#ff0000' : '#00d9ff'}`,
+                boxShadow: `0 0 10px ${filteredPosts[0].sentiment === 'positive' ? 'rgba(0, 255, 0, 0.3)' : filteredPosts[0].sentiment === 'negative' ? 'rgba(255, 0, 0, 0.3)' : 'rgba(0, 217, 255, 0.3)'}`,
               }}>
-                {post.text.length > 80 ? `${post.text.slice(0, 80)}...` : post.text}
-              </h3>
-              {(post.images || post.videos) && (
-                <div style={{ marginBottom: '12px' }}>
-                  <MediaDisplay
-                    images={post.images}
-                    videos={post.videos}
-                    variant="standard"
-                    sensitive={post.sensitive}
-                  />
+                {getSentimentLabel(filteredPosts[0].sentiment)} • JUST_NOW
+              </div>
+              <h2 style={{
+                fontSize: '42px',
+                fontWeight: 900,
+                fontFamily: "'Orbitron', sans-serif",
+                lineHeight: '1.2',
+                marginBottom: '16px',
+                color: '#ff0080',
+                textTransform: 'uppercase',
+              }} className="neon-text">
+                {filteredPosts[0].text.length > 120 ? `${filteredPosts[0].text.slice(0, 120)}...` : filteredPosts[0].text}
+              </h2>
+              <div style={{
+                fontSize: '14px',
+                color: '#00d9ff',
+                fontFamily: "'Share Tech Mono', monospace",
+                marginBottom: '8px',
+                textTransform: 'uppercase',
+              }}>
+                BY <span style={{ fontWeight: 700, color: '#ffff00' }} className="neon-yellow">@{filteredPosts[0].author?.handle || 'ANONYMOUS'}</span> • {formatTime(filteredPosts[0].createdAt)}
+              </div>
+              {filteredPosts[0].language && (
+                <div style={{
+                  fontSize: '12px',
+                  color: '#7b2cbf',
+                  fontFamily: "'Share Tech Mono', monospace",
+                  textTransform: 'uppercase',
+                }}>
+                  LANGUAGE: {filteredPosts[0].language.toUpperCase()}
                 </div>
               )}
-              <div style={{
-                fontSize: '12px',
-                color: '#999',
-                fontFamily: 'Libre Franklin, sans-serif',
-              }}>
-                @{post.author?.handle || 'Anonymous'} • {formatTime(post.createdAt)}
-                {post.images?.some(img => !img.alt) && (
-                  <span style={{ color: '#d32f2f', marginLeft: '8px' }}>⚠️ No alt</span>
-                )}
-              </div>
             </article>
-          ))}
-        </div>
+          )}
 
-        {/* Archive section - smaller items */}
-        <div style={{ borderTop: '2px solid #1a1a1a', paddingTop: '32px' }}>
-          <h2 style={{
-            fontSize: '18px',
-            fontWeight: 600,
-            fontFamily: 'Libre Franklin, sans-serif',
-            textTransform: 'uppercase',
-            letterSpacing: '0.05em',
-            marginBottom: '24px',
-            color: '#666',
+          {/* Three-column layout - Holographic cards */}
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
+            gap: '32px',
+            marginBottom: '48px',
           }}>
-            Earlier Today
-          </h2>
-          <div style={{ display: 'grid', gap: '16px' }}>
-            {filteredPosts.slice(10, 30).map((post, index) => (
-              <div
+            {filteredPosts.slice(1, 10).map((post, index) => (
+              <article
                 key={post.uri || index}
+                className="holographic-card perspective-card"
                 style={{
-                  display: 'flex',
-                  gap: '16px',
-                  paddingBottom: '16px',
-                  borderBottom: '1px solid #eee',
+                  paddingBottom: '24px',
+                  borderBottom: '2px solid #00d9ff',
                   cursor: 'pointer',
+                  padding: '20px',
+                  background: 'rgba(10, 14, 26, 0.7)',
+                  backdropFilter: 'blur(8px)',
+                  boxShadow: '0 4px 20px rgba(0, 217, 255, 0.2)',
+                  position: 'relative',
                 }}
                 onClick={() => setSelectedPost(post)}
               >
-                <div style={{ flex: 1 }}>
+                {/* Random Japanese decoration */}
+                {index % 3 === 0 && (
                   <div style={{
-                    fontSize: '16px',
-                    fontWeight: 600,
-                    fontFamily: 'Lora, serif',
-                    lineHeight: '1.4',
-                    marginBottom: '4px',
+                    position: 'absolute',
+                    top: '8px',
+                    right: '8px',
+                    fontSize: '8px',
+                    color: '#7b2cbf',
+                    opacity: 0.3,
                   }}>
-                    {post.text.length > 100 ? `${post.text.slice(0, 100)}...` : post.text}
+                    {getRandomJapanese()}
                   </div>
-                  <div style={{
-                    fontSize: '11px',
-                    color: '#999',
-                    fontFamily: 'Libre Franklin, sans-serif',
-                  }}>
-                    @{post.author?.handle || 'Anonymous'} • {formatTime(post.createdAt)}
-                  </div>
-                </div>
+                )}
+
                 <div style={{
-                  width: '3px',
-                  background: post.sentiment === 'positive' ? '#4caf50' : post.sentiment === 'negative' ? '#f44336' : '#999',
-                  flexShrink: 0,
-                }} />
-              </div>
+                  display: 'inline-block',
+                  padding: '2px 12px',
+                  background: post.sentiment === 'positive' ? 'rgba(0, 255, 0, 0.2)' : post.sentiment === 'negative' ? 'rgba(255, 0, 0, 0.2)' : 'rgba(0, 217, 255, 0.2)',
+                  fontSize: '9px',
+                  fontWeight: 700,
+                  fontFamily: "'Orbitron', sans-serif",
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.1em',
+                  marginBottom: '12px',
+                  color: post.sentiment === 'positive' ? '#00ff00' : post.sentiment === 'negative' ? '#ff0000' : '#00d9ff',
+                  border: `1px solid ${post.sentiment === 'positive' ? '#00ff00' : post.sentiment === 'negative' ? '#ff0000' : '#00d9ff'}`,
+                }}>
+                  {getSentimentLabel(post.sentiment)}
+                </div>
+                <h3 style={{
+                  fontSize: '20px',
+                  fontWeight: 700,
+                  fontFamily: "'Orbitron', sans-serif",
+                  lineHeight: '1.3',
+                  marginBottom: '8px',
+                  color: '#00d9ff',
+                  textTransform: 'uppercase',
+                }}>
+                  {post.text.length > 80 ? `${post.text.slice(0, 80)}...` : post.text}
+                </h3>
+                {(post.images || post.videos) && (
+                  <div style={{ marginBottom: '12px' }}>
+                    <MediaDisplay
+                      images={post.images}
+                      videos={post.videos}
+                      variant="standard"
+                      sensitive={post.sensitive}
+                    />
+                  </div>
+                )}
+                <div style={{
+                  fontSize: '12px',
+                  color: '#7b2cbf',
+                  fontFamily: "'Share Tech Mono', monospace",
+                  textTransform: 'uppercase',
+                }}>
+                  @{post.author?.handle || 'ANONYMOUS'} • {formatTime(post.createdAt)}
+                  {post.images?.some(img => !img.alt) && (
+                    <span style={{ color: '#ff0000', marginLeft: '8px' }}>⚠ NO_ALT</span>
+                  )}
+                </div>
+              </article>
             ))}
           </div>
-        </div>
-      </main>
 
-      {/* Footer */}
-      <footer style={{
-        borderTop: '4px double #1a1a1a',
-        background: '#ffffff',
-        padding: '32px 24px',
-        textAlign: 'center',
-        fontFamily: 'Libre Franklin, sans-serif',
-        fontSize: '12px',
-        color: '#999',
-      }}>
-        <div>The Bluesky Chronicle • All content sourced from the AT Protocol network</div>
-        <div style={{ marginTop: '8px' }}>
-          Real-time editorial variant • Designed for clarity and comprehension
-        </div>
-      </footer>
+          {/* Archive section - Diagonal skew design */}
+          <div style={{ borderTop: '2px solid #ff0080', paddingTop: '32px' }}>
+            <h2 style={{
+              fontSize: '24px',
+              fontWeight: 900,
+              fontFamily: "'Orbitron', sans-serif",
+              textTransform: 'uppercase',
+              letterSpacing: '0.15em',
+              marginBottom: '24px',
+              color: '#ff0080',
+            }} className="neon-text">
+              EARLIER_TODAY
+            </h2>
+            <div style={{ display: 'grid', gap: '16px' }}>
+              {filteredPosts.slice(10, 30).map((post, index) => (
+                <div
+                  key={post.uri || index}
+                  style={{
+                    display: 'flex',
+                    gap: '16px',
+                    paddingBottom: '16px',
+                    borderBottom: '1px solid #7b2cbf',
+                    cursor: 'pointer',
+                    padding: '16px',
+                    background: 'rgba(10, 14, 26, 0.5)',
+                    border: '1px solid #7b2cbf',
+                    boxShadow: '0 2px 10px rgba(123, 44, 191, 0.2)',
+                    transform: 'skewY(-1deg)',
+                    transition: 'all 0.3s ease',
+                  }}
+                  onClick={() => setSelectedPost(post)}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.transform = 'skewY(0deg) translateX(8px)';
+                    e.currentTarget.style.borderColor = '#00d9ff';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.transform = 'skewY(-1deg)';
+                    e.currentTarget.style.borderColor = '#7b2cbf';
+                  }}
+                >
+                  <div style={{ flex: 1 }}>
+                    <div style={{
+                      fontSize: '16px',
+                      fontWeight: 700,
+                      fontFamily: "'Share Tech Mono', monospace",
+                      lineHeight: '1.4',
+                      marginBottom: '4px',
+                      color: '#00d9ff',
+                      textTransform: 'uppercase',
+                    }}>
+                      {post.text.length > 100 ? `${post.text.slice(0, 100)}...` : post.text}
+                    </div>
+                    <div style={{
+                      fontSize: '11px',
+                      color: '#7b2cbf',
+                      fontFamily: "'Share Tech Mono', monospace",
+                      textTransform: 'uppercase',
+                    }}>
+                      @{post.author?.handle || 'ANONYMOUS'} • {formatTime(post.createdAt)}
+                    </div>
+                  </div>
+                  <div style={{
+                    width: '4px',
+                    background: post.sentiment === 'positive' ? '#00ff00' : post.sentiment === 'negative' ? '#ff0000' : '#00d9ff',
+                    flexShrink: 0,
+                    boxShadow: `0 0 10px ${post.sentiment === 'positive' ? 'rgba(0, 255, 0, 0.5)' : post.sentiment === 'negative' ? 'rgba(255, 0, 0, 0.5)' : 'rgba(0, 217, 255, 0.5)'}`,
+                  }} />
+                </div>
+              ))}
+            </div>
+          </div>
+        </main>
 
-      {/* Modal for selected post */}
-      {selectedPost && (
-        <div
-          style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            background: 'rgba(0, 0, 0, 0.8)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            padding: '24px',
-            zIndex: 1000,
-          }}
-          onClick={() => setSelectedPost(null)}
-        >
+        {/* Footer */}
+        <footer style={{
+          borderTop: '4px solid #ff0080',
+          background: 'rgba(10, 14, 26, 0.95)',
+          padding: '32px 24px',
+          textAlign: 'center',
+          fontFamily: "'Share Tech Mono', monospace",
+          fontSize: '12px',
+          color: '#00d9ff',
+          textTransform: 'uppercase',
+          boxShadow: '0 -5px 30px rgba(255, 0, 128, 0.3)',
+        }}>
+          <div className="neon-text" style={{ color: '#ff0080', fontSize: '14px', marginBottom: '8px' }}>
+            THE_BLUESKY_CHRONICLE
+          </div>
+          <div style={{ color: '#7b2cbf' }}>ALL CONTENT SOURCED FROM THE AT_PROTOCOL NETWORK</div>
+          <div style={{ marginTop: '8px', color: '#00d9ff' }}>
+            REAL-TIME EDITORIAL VARIANT • 東京_NIGHTS • BLADE_RUNNER_AESTHETIC
+          </div>
+        </footer>
+
+        {/* Modal for selected post - Holographic display */}
+        {selectedPost && (
           <div
             style={{
-              background: '#ffffff',
-              maxWidth: '700px',
-              width: '100%',
-              padding: '48px',
-              maxHeight: '80vh',
-              overflowY: 'auto',
+              position: 'fixed',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              background: 'rgba(0, 0, 0, 0.95)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '24px',
+              zIndex: 1000,
+              backdropFilter: 'blur(10px)',
             }}
-            onClick={(e) => e.stopPropagation()}
+            onClick={() => setSelectedPost(null)}
           >
-            <div style={{
-              fontSize: '11px',
-              fontWeight: 600,
-              fontFamily: 'Libre Franklin, sans-serif',
-              textTransform: 'uppercase',
-              letterSpacing: '0.05em',
-              marginBottom: '24px',
-              color: '#666',
-            }}>
-              {getSentimentLabel(selectedPost.sentiment)} • {formatDate(selectedPost.createdAt)}
-            </div>
-            <h2 style={{
-              fontSize: '36px',
-              fontWeight: 700,
-              fontFamily: 'Playfair Display, serif',
-              lineHeight: '1.2',
-              marginBottom: '24px',
-            }}>
-              {selectedPost.text}
-            </h2>
-            <div style={{
-              fontSize: '14px',
-              color: '#666',
-              fontFamily: 'Libre Franklin, sans-serif',
-              marginBottom: '32px',
-            }}>
-              By <span style={{ fontWeight: 600 }}>@{selectedPost.author?.handle || 'Anonymous'}</span> • {formatTime(selectedPost.createdAt)}
-            </div>
-            {selectedPost.hashtags && selectedPost.hashtags.length > 0 && (
-              <div style={{ marginTop: '24px', paddingTop: '24px', borderTop: '1px solid #eee' }}>
-                <div style={{ fontSize: '12px', color: '#999', marginBottom: '8px', fontFamily: 'Libre Franklin, sans-serif' }}>
-                  Topics:
-                </div>
-                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                  {selectedPost.hashtags.map(tag => (
-                    <span key={tag} style={{
-                      padding: '4px 12px',
-                      background: '#f5f5f5',
-                      fontSize: '12px',
-                      fontFamily: 'Libre Franklin, sans-serif',
-                    }}>
-                      #{tag}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            )}
-            <button
-              onClick={() => setSelectedPost(null)}
+            <div
+              className="holographic-card"
               style={{
-                marginTop: '32px',
-                padding: '12px 24px',
-                background: '#1a1a1a',
-                color: '#ffffff',
-                border: 'none',
-                fontFamily: 'Libre Franklin, sans-serif',
-                fontSize: '12px',
-                textTransform: 'uppercase',
-                letterSpacing: '0.05em',
-                cursor: 'pointer',
+                background: 'rgba(10, 14, 26, 0.95)',
+                maxWidth: '700px',
+                width: '100%',
+                padding: '48px',
+                maxHeight: '80vh',
+                overflowY: 'auto',
+                boxShadow: '0 0 60px rgba(255, 0, 128, 0.5)',
+                position: 'relative',
               }}
+              onClick={(e) => e.stopPropagation()}
             >
-              Close
-            </button>
+              {/* Japanese decoration */}
+              <div style={{
+                position: 'absolute',
+                top: '16px',
+                right: '16px',
+                fontSize: '12px',
+                color: '#7b2cbf',
+                opacity: 0.5,
+              }}>
+                {getRandomJapanese()}
+              </div>
+
+              <div style={{
+                fontSize: '11px',
+                fontWeight: 700,
+                fontFamily: "'Orbitron', sans-serif",
+                textTransform: 'uppercase',
+                letterSpacing: '0.1em',
+                marginBottom: '24px',
+                color: '#ffff00',
+              }} className="neon-yellow">
+                {getSentimentLabel(selectedPost.sentiment)} • {formatDate(selectedPost.createdAt)}
+              </div>
+              <h2 style={{
+                fontSize: '36px',
+                fontWeight: 900,
+                fontFamily: "'Orbitron', sans-serif",
+                lineHeight: '1.2',
+                marginBottom: '24px',
+                color: '#ff0080',
+                textTransform: 'uppercase',
+              }} className="neon-text">
+                {selectedPost.text}
+              </h2>
+              <div style={{
+                fontSize: '14px',
+                color: '#00d9ff',
+                fontFamily: "'Share Tech Mono', monospace",
+                marginBottom: '32px',
+                textTransform: 'uppercase',
+              }}>
+                BY <span style={{ fontWeight: 700, color: '#ffff00' }}>@{selectedPost.author?.handle || 'ANONYMOUS'}</span> • {formatTime(selectedPost.createdAt)}
+              </div>
+              {selectedPost.hashtags && selectedPost.hashtags.length > 0 && (
+                <div style={{ marginTop: '24px', paddingTop: '24px', borderTop: '1px solid #7b2cbf' }}>
+                  <div style={{
+                    fontSize: '12px',
+                    color: '#7b2cbf',
+                    marginBottom: '8px',
+                    fontFamily: "'Share Tech Mono', monospace",
+                    textTransform: 'uppercase',
+                  }}>
+                    TOPICS:
+                  </div>
+                  <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                    {selectedPost.hashtags.map(tag => (
+                      <span key={tag} style={{
+                        padding: '4px 12px',
+                        background: 'rgba(0, 217, 255, 0.2)',
+                        fontSize: '12px',
+                        fontFamily: "'Share Tech Mono', monospace",
+                        color: '#00d9ff',
+                        border: '1px solid #00d9ff',
+                        textTransform: 'uppercase',
+                        boxShadow: '0 0 5px rgba(0, 217, 255, 0.3)',
+                      }}>
+                        #{tag}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+              <button
+                onClick={() => setSelectedPost(null)}
+                style={{
+                  marginTop: '32px',
+                  padding: '12px 32px',
+                  background: 'rgba(255, 0, 128, 0.2)',
+                  color: '#ff0080',
+                  border: '2px solid #ff0080',
+                  fontFamily: "'Orbitron', sans-serif",
+                  fontSize: '12px',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.1em',
+                  cursor: 'pointer',
+                  fontWeight: 700,
+                  boxShadow: '0 0 20px rgba(255, 0, 128, 0.4)',
+                  transition: 'all 0.3s ease',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = 'rgba(255, 0, 128, 0.4)';
+                  e.currentTarget.style.boxShadow = '0 0 30px rgba(255, 0, 128, 0.6)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = 'rgba(255, 0, 128, 0.2)';
+                  e.currentTarget.style.boxShadow = '0 0 20px rgba(255, 0, 128, 0.4)';
+                }}
+              >
+                CLOSE
+              </button>
+            </div>
           </div>
-        </div>
-      )}
-    </div>
+        )}
+      </div>
+    </>
   );
 }

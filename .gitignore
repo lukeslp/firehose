@@ -105,3 +105,11 @@ temp/
 *.db
 *.sqlite
 *.sqlite3
+
+# Agent-generated cruft
+*_REVIEW*.md
+*_READINESS*.md
+*ACTION_ITEMS*.md
+UX_IMPROVEMENTS.md
+FILTERING_FEATURES.md
+*_IMPLEMENTATION_PLAN.md

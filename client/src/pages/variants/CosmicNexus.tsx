@@ -2,6 +2,12 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'wouter';
 import { useSocket } from '@/hooks/useSocket';
 import type { FirehosePost, VariantProps } from './types';
+import { CardWall } from '@/components/CardWall';
+import { SentimentDistributionCard } from '@/components/cards/SentimentDistributionCard';
+import { SentimentTimelineCard } from '@/components/cards/SentimentTimelineCard';
+import { PostsPerMinuteCard } from '@/components/cards/PostsPerMinuteCard';
+import { LanguagesCard } from '@/components/cards/LanguagesCard';
+import { ContentTypesCard } from '@/components/cards/ContentTypesCard';
 
 interface Particle {
   id: string;
@@ -14,6 +20,8 @@ interface Particle {
   author: string;
   opacity: number;
   size: number;
+  rotation: number; // Gear rotation angle
+  rotationSpeed: number;
 }
 
 export default function CosmicNexus({ onNavigateBack }: VariantProps) {
@@ -26,14 +34,80 @@ export default function CosmicNexus({ onNavigateBack }: VariantProps) {
   // Filter state
   const [selectedLanguage, setSelectedLanguage] = React.useState<string>('all');
   const [keywordFilter, setKeywordFilter] = React.useState<string>('');
-  
 
-  // Add new particles from posts
+  // Data tracking state (from Dashboard.tsx pattern)
+  const [postTimestamps, setPostTimestamps] = useState<Array<{
+    timestamp: number;
+    sentiment: 'positive' | 'negative' | 'neutral';
+  }>>([]);
+  const [sentimentTimeline, setSentimentTimeline] = useState<Array<{
+    timestamp: number;
+    positivePercent: number;
+    neutralPercent: number;
+    negativePercent: number;
+  }>>([]);
+  const [postsPerMinuteTimeline, setPostsPerMinuteTimeline] = useState<Array<{
+    timestamp: number;
+    rate: number;
+  }>>([]);
+  const [languageCounts, setLanguageCounts] = useState<Record<string, number>>({});
+  const [contentTypeCounts, setContentTypeCounts] = useState({
+    textOnly: 0,
+    withImages: 0,
+    withVideo: 0,
+    withLinks: 0,
+  });
+
+  // CardWall visibility toggle
+  const [showCardWall, setShowCardWall] = useState(false);
+
+  // Decorative gear rotation
+  const [gearRotation, setGearRotation] = useState(0);
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setGearRotation(prev => (prev + 1) % 360);
+    }, 50);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Add new particles from posts AND track data for CardWall (Dashboard.tsx pattern)
   useEffect(() => {
     if (latestPost) {
       const post = latestPost as FirehosePost;
+      const now = Date.now();
 
-      // Apply filters
+      // Track timestamps for rate calculation
+      setPostTimestamps(prev => {
+        const twoMinutesAgo = now - 2 * 60 * 1000;
+        const filtered = prev.filter(d => d.timestamp >= twoMinutesAgo);
+        return [...filtered, {
+          timestamp: now,
+          sentiment: post.sentiment
+        }];
+      });
+
+      // Track language
+      if (post.language) {
+        setLanguageCounts(prev => ({
+          ...prev,
+          [post.language!]: (prev[post.language!] || 0) + 1
+        }));
+      }
+
+      // Track content types
+      const hasImages = post.hasImages || false;
+      const hasVideo = post.hasVideo || false;
+      const hasLinks = post.hasLink || false;
+      const isTextOnly = !hasImages && !hasVideo && !hasLinks;
+
+      setContentTypeCounts(prev => ({
+        textOnly: isTextOnly ? prev.textOnly + 1 : prev.textOnly,
+        withImages: hasImages ? prev.withImages + 1 : prev.withImages,
+        withVideo: hasVideo ? prev.withVideo + 1 : prev.withVideo,
+        withLinks: hasLinks ? prev.withLinks + 1 : prev.withLinks,
+      }));
+
+      // Apply filters for particles
       if (selectedLanguage !== 'all' && post.language !== selectedLanguage) return;
       if (keywordFilter && !post.text.toLowerCase().includes(keywordFilter.toLowerCase())) return;
 
@@ -47,10 +121,12 @@ export default function CosmicNexus({ onNavigateBack }: VariantProps) {
         text: post.text.slice(0, 100),
         author: post.author?.handle || 'unknown',
         opacity: 1,
-        size: 3 + Math.random() * 3,
+        size: 8 + Math.random() * 4, // Larger gears
+        rotation: Math.random() * 360,
+        rotationSpeed: (Math.random() - 0.5) * 2,
       };
 
-      setParticles(prev => [...prev, newParticle].slice(-100)); // Keep last 100
+      setParticles(prev => [...prev, newParticle].slice(-80)); // Keep last 80 (gears are larger)
     }
   }, [latestPost, selectedLanguage, keywordFilter]);
 
@@ -63,7 +139,65 @@ export default function CosmicNexus({ onNavigateBack }: VariantProps) {
     return () => window.removeEventListener('mousemove', handleMouseMove);
   }, []);
 
-  // Canvas animation
+  // Sample rate every 1 second for timeline charts (Dashboard.tsx pattern)
+  useEffect(() => {
+    const calculateRates = () => {
+      setPostTimestamps(currentTimestamps => {
+        const now = Date.now();
+        const oneMinuteAgo = now - 60 * 1000;
+
+        // Filter posts from last 60 seconds
+        const recentPosts = currentTimestamps.filter(p => p.timestamp >= oneMinuteAgo);
+
+        if (recentPosts.length > 0) {
+          // Calculate time window
+          const oldestTimestamp = Math.min(...recentPosts.map(p => p.timestamp));
+          const timeWindowSeconds = (now - oldestTimestamp) / 1000;
+
+          if (timeWindowSeconds > 0) {
+            // Calculate posts per minute rate
+            const rate = Math.round((recentPosts.length / timeWindowSeconds) * 60);
+
+            // Calculate sentiment percentages
+            const positive = recentPosts.filter(p => p.sentiment === 'positive').length;
+            const neutral = recentPosts.filter(p => p.sentiment === 'neutral').length;
+            const negative = recentPosts.filter(p => p.sentiment === 'negative').length;
+            const total = recentPosts.length;
+
+            const positivePercent = total > 0 ? (positive / total) * 100 : 0;
+            const neutralPercent = total > 0 ? (neutral / total) * 100 : 0;
+            const negativePercent = total > 0 ? (negative / total) * 100 : 0;
+
+            // Update posts per minute timeline
+            setPostsPerMinuteTimeline(prev => {
+              const oneHourAgo = now - 60 * 60 * 1000;
+              const filtered = prev.filter(d => d.timestamp >= oneHourAgo);
+              return [...filtered, { timestamp: now, rate }];
+            });
+
+            // Update sentiment timeline
+            setSentimentTimeline(prev => {
+              const oneHourAgo = now - 60 * 60 * 1000;
+              const filtered = prev.filter(d => d.timestamp >= oneHourAgo);
+              return [...filtered, {
+                timestamp: now,
+                positivePercent,
+                neutralPercent,
+                negativePercent
+              }];
+            });
+          }
+        }
+
+        return currentTimestamps; // Return unchanged
+      });
+    };
+
+    const interval = setInterval(calculateRates, 1000); // Sample every 1 second
+    return () => clearInterval(interval);
+  }, []);
+
+  // Canvas animation - draw gears instead of particles
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -78,14 +212,69 @@ export default function CosmicNexus({ onNavigateBack }: VariantProps) {
     resize();
     window.addEventListener('resize', resize);
 
+    // Draw a gear shape
+    const drawGear = (x: number, y: number, radius: number, teeth: number, rotation: number, color: string) => {
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.rotate((rotation * Math.PI) / 180);
+
+      const toothDepth = radius * 0.3;
+      const innerRadius = radius - toothDepth;
+
+      ctx.beginPath();
+      for (let i = 0; i < teeth; i++) {
+        const angle = (i / teeth) * Math.PI * 2;
+        const nextAngle = ((i + 1) / teeth) * Math.PI * 2;
+
+        // Outer tooth
+        const outerX1 = Math.cos(angle) * radius;
+        const outerY1 = Math.sin(angle) * radius;
+        const outerX2 = Math.cos(nextAngle) * radius;
+        const outerY2 = Math.sin(nextAngle) * radius;
+
+        // Inner valley
+        const innerX1 = Math.cos(angle + (Math.PI / teeth) * 0.5) * innerRadius;
+        const innerY1 = Math.sin(angle + (Math.PI / teeth) * 0.5) * innerRadius;
+
+        if (i === 0) ctx.moveTo(outerX1, outerY1);
+        ctx.lineTo(outerX2, outerY2);
+        ctx.lineTo(innerX1, innerY1);
+      }
+      ctx.closePath();
+
+      // Brass gradient fill
+      const gradient = ctx.createRadialGradient(0, 0, 0, 0, 0, radius);
+      gradient.addColorStop(0, color);
+      gradient.addColorStop(0.5, '#daa520');
+      gradient.addColorStop(1, '#8b6914');
+      ctx.fillStyle = gradient;
+      ctx.fill();
+
+      // Dark outline
+      ctx.strokeStyle = '#4a4a4a';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+
+      // Central hub
+      ctx.beginPath();
+      ctx.arc(0, 0, radius * 0.3, 0, Math.PI * 2);
+      ctx.fillStyle = '#4a4a4a';
+      ctx.fill();
+      ctx.strokeStyle = '#2c1810';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+
+      ctx.restore();
+    };
+
     const animate = () => {
-      // Clear with fade effect
-      ctx.fillStyle = 'rgba(0, 0, 0, 0.05)';
+      // Dark walnut background
+      ctx.fillStyle = '#2c1810';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-      // Draw particles
-      particles.forEach((particle, index) => {
-        // Gravity toward mouse
+      // Draw gears as particles
+      particles.forEach((particle) => {
+        // Gravity toward mouse (steam pressure pulling gears)
         const dx = mousePos.x - particle.x;
         const dy = mousePos.y - particle.y;
         const dist = Math.sqrt(dx * dx + dy * dy);
@@ -106,34 +295,29 @@ export default function CosmicNexus({ onNavigateBack }: VariantProps) {
         if (particle.x < 0 || particle.x > canvas.width) particle.vx *= -1;
         if (particle.y < 0 || particle.y > canvas.height) particle.vy *= -1;
 
+        // Update rotation
+        particle.rotation += particle.rotationSpeed;
+
         // Fade out old particles (slowly - last ~5min)
         particle.opacity = Math.max(0, particle.opacity - 0.0002);
 
-        // Get sentiment color
+        // Get sentiment color (brass variations)
         let color;
         switch (particle.sentiment) {
           case 'positive':
-            color = `rgba(96, 239, 255, ${particle.opacity})`;
+            color = `rgba(255, 165, 0, ${particle.opacity})`; // Warm Edison glow
             break;
           case 'negative':
-            color = `rgba(255, 107, 157, ${particle.opacity})`;
+            color = `rgba(139, 69, 19, ${particle.opacity})`; // Leather brown
             break;
           default:
-            color = `rgba(167, 139, 250, ${particle.opacity})`;
+            color = `rgba(184, 134, 11, ${particle.opacity})`; // Brass
         }
 
-        // Draw glow
-        ctx.shadowBlur = 20;
-        ctx.shadowColor = color;
-
-        // Draw particle
-        ctx.fillStyle = color;
-        ctx.beginPath();
-        ctx.arc(particle.x, particle.y, particle.size, 0, Math.PI * 2);
-        ctx.fill();
-
-        // Reset shadow
-        ctx.shadowBlur = 0;
+        // Draw gear
+        ctx.globalAlpha = particle.opacity;
+        drawGear(particle.x, particle.y, particle.size, 8, particle.rotation, color);
+        ctx.globalAlpha = 1;
       });
 
       // Remove faded particles
@@ -152,9 +336,9 @@ export default function CosmicNexus({ onNavigateBack }: VariantProps) {
 
   const getSentimentColor = (sentiment: string) => {
     switch (sentiment) {
-      case 'positive': return '#60efff';
-      case 'negative': return '#ff6b9d';
-      default: return '#a78bfa';
+      case 'positive': return '#ffa500'; // Edison glow
+      case 'negative': return '#8b4513'; // Leather brown
+      default: return '#b8860b'; // Brass
     }
   };
 
@@ -164,9 +348,55 @@ export default function CosmicNexus({ onNavigateBack }: VariantProps) {
       width: '100vw',
       height: '100vh',
       overflow: 'hidden',
-      background: '#000000',
-      fontFamily: 'Space Grotesk, system-ui, sans-serif',
+      background: '#2c1810', // Dark walnut
+      fontFamily: '"Crimson Text", Georgia, serif',
     }}>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Crimson+Text:wght@400;600&family=Special+Elite&display=swap');
+
+        /* Brass texture utility */
+        .brass-texture {
+          background: linear-gradient(135deg, #b8860b 0%, #daa520 50%, #b8860b 100%);
+          filter: brightness(0.9);
+        }
+
+        /* Embossed effect */
+        .embossed {
+          box-shadow: inset 2px 2px 5px rgba(0,0,0,0.3), inset -2px -2px 5px rgba(255,255,255,0.1);
+        }
+
+        /* Riveted border pattern */
+        .riveted-border {
+          border: 3px solid #4a4a4a;
+          background-image: radial-gradient(circle, #4a4a4a 40%, transparent 41%);
+          background-size: 30px 30px;
+          background-position: 0 0, 15px 15px;
+          background-clip: padding-box;
+        }
+
+        /* Gear rotation animation */
+        @keyframes rotate {
+          to { transform: rotate(360deg); }
+        }
+
+        .rotating-gear {
+          animation: rotate 20s linear infinite;
+        }
+
+        /* Edison glow effect */
+        .edison-glow {
+          box-shadow: 0 0 20px rgba(255, 165, 0, 0.3), inset 0 0 10px rgba(255, 165, 0, 0.1);
+        }
+
+        /* Leather texture */
+        .leather-texture {
+          background: #8b4513;
+          background-image:
+            repeating-linear-gradient(45deg, transparent, transparent 2px, rgba(0,0,0,0.1) 2px, rgba(0,0,0,0.1) 4px),
+            repeating-linear-gradient(-45deg, transparent, transparent 2px, rgba(0,0,0,0.1) 2px, rgba(0,0,0,0.1) 4px);
+        }
+      `}</style>
+
       {/* Canvas background */}
       <canvas
         ref={canvasRef}
@@ -179,226 +409,568 @@ export default function CosmicNexus({ onNavigateBack }: VariantProps) {
         }}
       />
 
-      {/* HUD Overlay */}
+      {/* Ornate Header Frame */}
       <div style={{
         position: 'absolute',
         top: 0,
         left: 0,
         right: 0,
-        padding: '24px',
-        background: 'linear-gradient(180deg, rgba(0,0,0,0.8) 0%, transparent 100%)',
+        padding: '32px',
+        background: 'linear-gradient(180deg, rgba(44,24,16,0.95) 0%, transparent 100%)',
+        borderBottom: '4px solid #4a4a4a',
         zIndex: 10,
       }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div>
-            <h1 style={{
-              fontSize: '32px',
-              fontWeight: 700,
-              color: '#ffffff',
-              margin: 0,
-              textShadow: '0 0 20px rgba(96, 239, 255, 0.5)',
-            }}>
-              COSMIC NEXUS
-            </h1>
-            <p style={{
-              fontSize: '14px',
-              color: '#a0a0a0',
-              margin: '4px 0 0 0',
-              fontFamily: 'Share Tech Mono, monospace',
-            }}>
-              BLUESKY PARTICLE FIELD
-            </p>
+        <div style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          padding: '24px',
+          background: 'linear-gradient(135deg, #b8860b 0%, #daa520 50%, #b8860b 100%)',
+          border: '6px solid #4a4a4a',
+          borderRadius: '8px',
+          boxShadow: 'inset 2px 2px 5px rgba(0,0,0,0.3), inset -2px -2px 5px rgba(255,255,255,0.1), 0 4px 20px rgba(0,0,0,0.5)',
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+            {/* Decorative gear */}
+            <div style={{
+              width: '48px',
+              height: '48px',
+              background: 'radial-gradient(circle, #4a4a4a 30%, #daa520 31%, #daa520 40%, transparent 41%)',
+              borderRadius: '50%',
+              position: 'relative',
+            }} className="rotating-gear">
+              <div style={{
+                position: 'absolute',
+                top: '50%',
+                left: '50%',
+                transform: 'translate(-50%, -50%)',
+                width: '8px',
+                height: '8px',
+                background: '#2c1810',
+                borderRadius: '50%',
+              }} />
+            </div>
+            <div>
+              <h1 style={{
+                fontSize: '42px',
+                fontWeight: 700,
+                color: '#2c1810',
+                margin: 0,
+                fontFamily: '"Cinzel", serif',
+                letterSpacing: '0.05em',
+                textShadow: '2px 2px 4px rgba(0,0,0,0.2)',
+              }}>
+                INDUSTRIAL NEXUS
+              </h1>
+              <p style={{
+                fontSize: '16px',
+                color: '#4a4a4a',
+                margin: '4px 0 0 0',
+                fontFamily: '"Special Elite", monospace',
+                letterSpacing: '0.15em',
+              }}>
+                BLUESKY MECHANICAL APPARATUS
+              </p>
+            </div>
           </div>
           <Link href="/variants">
             <a style={{
-              padding: '8px 16px',
-              background: 'rgba(255,255,255,0.1)',
-              border: '1px solid rgba(255,255,255,0.2)',
-              color: '#ffffff',
+              padding: '12px 32px',
+              background: '#4a4a4a',
+              border: '3px solid #2c1810',
+              color: '#ffa500',
               textDecoration: 'none',
-              fontSize: '12px',
-              fontFamily: 'Share Tech Mono, monospace',
+              fontSize: '14px',
+              fontFamily: '"Special Elite", monospace',
+              fontWeight: 'bold',
+              letterSpacing: '0.1em',
+              borderRadius: '4px',
+              boxShadow: 'inset 2px 2px 5px rgba(0,0,0,0.3), 0 2px 10px rgba(0,0,0,0.3)',
               transition: 'all 0.3s',
             }}>
-              ← EXIT
+              ⟵ DISENGAGE
             </a>
           </Link>
         </div>
       </div>
 
-      {/* Stats HUD */}
+      {/* Brass Instrument Panel - Left Side */}
       <div style={{
         position: 'absolute',
-        top: '120px',
-        left: '24px',
+        top: '180px',
+        left: '32px',
         display: 'flex',
         flexDirection: 'column',
-        gap: '16px',
+        gap: '24px',
         zIndex: 10,
       }}>
+        {/* Connection Gauge */}
         <div style={{
-          padding: '16px',
-          background: 'rgba(0, 0, 0, 0.7)',
-          border: '1px solid rgba(96, 239, 255, 0.3)',
+          padding: '24px',
+          background: 'linear-gradient(135deg, #b8860b 0%, #daa520 50%, #b8860b 100%)',
+          border: '5px solid #4a4a4a',
           borderRadius: '8px',
-          minWidth: '200px',
+          minWidth: '260px',
+          boxShadow: 'inset 2px 2px 5px rgba(0,0,0,0.3), inset -2px -2px 5px rgba(255,255,255,0.1), 0 4px 20px rgba(0,0,0,0.5)',
+          position: 'relative',
         }}>
+          {/* Rivets */}
           <div style={{
-            fontSize: '10px',
-            color: '#60efff',
-            marginBottom: '8px',
-            fontFamily: 'Share Tech Mono, monospace',
-            letterSpacing: '0.1em',
+            position: 'absolute',
+            top: '8px',
+            left: '8px',
+            width: '8px',
+            height: '8px',
+            borderRadius: '50%',
+            background: '#4a4a4a',
+            boxShadow: 'inset 1px 1px 2px rgba(0,0,0,0.5)',
+          }} />
+          <div style={{
+            position: 'absolute',
+            top: '8px',
+            right: '8px',
+            width: '8px',
+            height: '8px',
+            borderRadius: '50%',
+            background: '#4a4a4a',
+            boxShadow: 'inset 1px 1px 2px rgba(0,0,0,0.5)',
+          }} />
+          <div style={{
+            position: 'absolute',
+            bottom: '8px',
+            left: '8px',
+            width: '8px',
+            height: '8px',
+            borderRadius: '50%',
+            background: '#4a4a4a',
+            boxShadow: 'inset 1px 1px 2px rgba(0,0,0,0.5)',
+          }} />
+          <div style={{
+            position: 'absolute',
+            bottom: '8px',
+            right: '8px',
+            width: '8px',
+            height: '8px',
+            borderRadius: '50%',
+            background: '#4a4a4a',
+            boxShadow: 'inset 1px 1px 2px rgba(0,0,0,0.5)',
+          }} />
+
+          <div style={{
+            fontSize: '11px',
+            color: '#2c1810',
+            marginBottom: '12px',
+            fontFamily: '"Special Elite", monospace',
+            letterSpacing: '0.2em',
+            textTransform: 'uppercase',
+            fontWeight: 'bold',
           }}>
-            CONNECTION STATUS
+            TELEGRAPH STATUS
           </div>
           <div style={{
-            fontSize: '24px',
-            color: connected ? '#60efff' : '#ff6b9d',
+            fontSize: '32px',
+            color: connected ? '#ffa500' : '#8b4513',
             fontWeight: 700,
-            fontFamily: 'Orbitron, monospace',
+            fontFamily: '"Cinzel", serif',
+            textShadow: connected ? '0 0 10px rgba(255,165,0,0.5)' : 'none',
+            textAlign: 'center',
+            padding: '16px',
+            background: '#2c1810',
+            borderRadius: '4px',
+            border: '2px solid #4a4a4a',
+            boxShadow: 'inset 2px 2px 8px rgba(0,0,0,0.5)',
           }}>
             {connected ? 'ONLINE' : 'OFFLINE'}
           </div>
         </div>
 
+        {/* Particle Counter - Circular Gauge */}
         <div style={{
-          padding: '16px',
-          background: 'rgba(0, 0, 0, 0.7)',
-          border: '1px solid rgba(96, 239, 255, 0.3)',
+          padding: '24px',
+          background: 'linear-gradient(135deg, #b8860b 0%, #daa520 50%, #b8860b 100%)',
+          border: '5px solid #4a4a4a',
           borderRadius: '8px',
+          boxShadow: 'inset 2px 2px 5px rgba(0,0,0,0.3), inset -2px -2px 5px rgba(255,255,255,0.1), 0 4px 20px rgba(0,0,0,0.5)',
+          position: 'relative',
         }}>
+          {/* Rivets */}
           <div style={{
-            fontSize: '10px',
-            color: '#60efff',
-            marginBottom: '8px',
-            fontFamily: 'Share Tech Mono, monospace',
-            letterSpacing: '0.1em',
+            position: 'absolute',
+            top: '8px',
+            left: '8px',
+            width: '8px',
+            height: '8px',
+            borderRadius: '50%',
+            background: '#4a4a4a',
+            boxShadow: 'inset 1px 1px 2px rgba(0,0,0,0.5)',
+          }} />
+          <div style={{
+            position: 'absolute',
+            top: '8px',
+            right: '8px',
+            width: '8px',
+            height: '8px',
+            borderRadius: '50%',
+            background: '#4a4a4a',
+            boxShadow: 'inset 1px 1px 2px rgba(0,0,0,0.5)',
+          }} />
+          <div style={{
+            position: 'absolute',
+            bottom: '8px',
+            left: '8px',
+            width: '8px',
+            height: '8px',
+            borderRadius: '50%',
+            background: '#4a4a4a',
+            boxShadow: 'inset 1px 1px 2px rgba(0,0,0,0.5)',
+          }} />
+          <div style={{
+            position: 'absolute',
+            bottom: '8px',
+            right: '8px',
+            width: '8px',
+            height: '8px',
+            borderRadius: '50%',
+            background: '#4a4a4a',
+            boxShadow: 'inset 1px 1px 2px rgba(0,0,0,0.5)',
+          }} />
+
+          <div style={{
+            fontSize: '11px',
+            color: '#2c1810',
+            marginBottom: '12px',
+            fontFamily: '"Special Elite", monospace',
+            letterSpacing: '0.2em',
+            textTransform: 'uppercase',
+            fontWeight: 'bold',
+            textAlign: 'center',
           }}>
-            PARTICLES IN FIELD
+            GEARS IN MOTION
           </div>
+
+          {/* Circular pressure gauge */}
           <div style={{
-            fontSize: '36px',
-            color: '#ffffff',
-            fontWeight: 700,
-            fontFamily: 'Orbitron, monospace',
-            textShadow: '0 0 10px rgba(96, 239, 255, 0.5)',
+            width: '160px',
+            height: '160px',
+            margin: '0 auto',
+            borderRadius: '50%',
+            background: '#2c1810',
+            border: '4px solid #4a4a4a',
+            boxShadow: 'inset 4px 4px 12px rgba(0,0,0,0.8)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            position: 'relative',
           }}>
-            {particles.length}
+            {/* Gauge markings */}
+            {[0, 30, 60, 90, 120, 150, 180, 210, 240, 270, 300, 330].map(angle => (
+              <div key={angle} style={{
+                position: 'absolute',
+                width: '2px',
+                height: angle % 90 === 0 ? '16px' : '8px',
+                background: '#b8860b',
+                top: '50%',
+                left: '50%',
+                transformOrigin: 'center',
+                transform: `translate(-50%, -50%) rotate(${angle}deg) translateY(-70px)`,
+              }} />
+            ))}
+
+            <div style={{
+              fontSize: '48px',
+              color: '#ffa500',
+              fontWeight: 700,
+              fontFamily: '"Cinzel", serif',
+              textShadow: '0 0 15px rgba(255,165,0,0.6)',
+              zIndex: 1,
+            }}>
+              {particles.length}
+            </div>
+
+            {/* Needle */}
+            <div style={{
+              position: 'absolute',
+              width: '4px',
+              height: '60px',
+              background: '#ff0000',
+              bottom: '50%',
+              left: '50%',
+              transformOrigin: 'bottom center',
+              transform: `translateX(-50%) rotate(${(particles.length / 80) * 270 - 135}deg)`,
+              boxShadow: '0 0 8px rgba(255,0,0,0.8)',
+            }} />
           </div>
         </div>
 
+        {/* Sentiment Distribution Panel */}
         <div style={{
-          padding: '16px',
-          background: 'rgba(0, 0, 0, 0.7)',
-          border: '1px solid rgba(96, 239, 255, 0.3)',
+          padding: '24px',
+          background: 'linear-gradient(135deg, #b8860b 0%, #daa520 50%, #b8860b 100%)',
+          border: '5px solid #4a4a4a',
           borderRadius: '8px',
+          boxShadow: 'inset 2px 2px 5px rgba(0,0,0,0.3), inset -2px -2px 5px rgba(255,255,255,0.1), 0 4px 20px rgba(0,0,0,0.5)',
+          position: 'relative',
         }}>
+          {/* Rivets */}
           <div style={{
-            fontSize: '10px',
-            color: '#60efff',
-            marginBottom: '12px',
-            fontFamily: 'Share Tech Mono, monospace',
-            letterSpacing: '0.1em',
+            position: 'absolute',
+            top: '8px',
+            left: '8px',
+            width: '8px',
+            height: '8px',
+            borderRadius: '50%',
+            background: '#4a4a4a',
+            boxShadow: 'inset 1px 1px 2px rgba(0,0,0,0.5)',
+          }} />
+          <div style={{
+            position: 'absolute',
+            top: '8px',
+            right: '8px',
+            width: '8px',
+            height: '8px',
+            borderRadius: '50%',
+            background: '#4a4a4a',
+            boxShadow: 'inset 1px 1px 2px rgba(0,0,0,0.5)',
+          }} />
+          <div style={{
+            position: 'absolute',
+            bottom: '8px',
+            left: '8px',
+            width: '8px',
+            height: '8px',
+            borderRadius: '50%',
+            background: '#4a4a4a',
+            boxShadow: 'inset 1px 1px 2px rgba(0,0,0,0.5)',
+          }} />
+          <div style={{
+            position: 'absolute',
+            bottom: '8px',
+            right: '8px',
+            width: '8px',
+            height: '8px',
+            borderRadius: '50%',
+            background: '#4a4a4a',
+            boxShadow: 'inset 1px 1px 2px rgba(0,0,0,0.5)',
+          }} />
+
+          <div style={{
+            fontSize: '11px',
+            color: '#2c1810',
+            marginBottom: '16px',
+            fontFamily: '"Special Elite", monospace',
+            letterSpacing: '0.2em',
+            textTransform: 'uppercase',
+            fontWeight: 'bold',
+            textAlign: 'center',
           }}>
-            SENTIMENT NEBULA
+            SENTIMENT APPARATUS
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <div style={{
-                  width: '8px',
-                  height: '8px',
-                  borderRadius: '50%',
-                  background: '#60efff',
-                  boxShadow: '0 0 10px #60efff',
-                }} />
-                <span style={{ fontSize: '12px', color: '#ffffff', fontFamily: 'Share Tech Mono, monospace' }}>
-                  POS
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            {/* Positive */}
+            <div style={{
+              padding: '12px',
+              background: '#2c1810',
+              border: '2px solid #4a4a4a',
+              borderRadius: '4px',
+              boxShadow: 'inset 2px 2px 6px rgba(0,0,0,0.5)',
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <div style={{
+                    width: '12px',
+                    height: '12px',
+                    borderRadius: '50%',
+                    background: '#ffa500',
+                    border: '2px solid #4a4a4a',
+                    boxShadow: '0 0 8px rgba(255,165,0,0.6)',
+                  }} />
+                  <span style={{
+                    fontSize: '13px',
+                    color: '#b8860b',
+                    fontFamily: '"Special Elite", monospace',
+                    fontWeight: 'bold',
+                  }}>
+                    POSITIVE
+                  </span>
+                </div>
+                <span style={{
+                  fontSize: '18px',
+                  color: '#ffa500',
+                  fontWeight: 700,
+                  fontFamily: '"Cinzel", serif',
+                }}>
+                  {(stats as any)?.sentimentDistribution?.positive || 0}
                 </span>
               </div>
-              <span style={{ fontSize: '14px', color: '#60efff', fontWeight: 700, fontFamily: 'Orbitron, monospace' }}>
-                {(stats as any)?.sentimentDistribution?.positive || 0}
-              </span>
             </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <div style={{
-                  width: '8px',
-                  height: '8px',
-                  borderRadius: '50%',
-                  background: '#a78bfa',
-                  boxShadow: '0 0 10px #a78bfa',
-                }} />
-                <span style={{ fontSize: '12px', color: '#ffffff', fontFamily: 'Share Tech Mono, monospace' }}>
-                  NEU
+
+            {/* Neutral */}
+            <div style={{
+              padding: '12px',
+              background: '#2c1810',
+              border: '2px solid #4a4a4a',
+              borderRadius: '4px',
+              boxShadow: 'inset 2px 2px 6px rgba(0,0,0,0.5)',
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <div style={{
+                    width: '12px',
+                    height: '12px',
+                    borderRadius: '50%',
+                    background: '#b8860b',
+                    border: '2px solid #4a4a4a',
+                    boxShadow: '0 0 8px rgba(184,134,11,0.6)',
+                  }} />
+                  <span style={{
+                    fontSize: '13px',
+                    color: '#b8860b',
+                    fontFamily: '"Special Elite", monospace',
+                    fontWeight: 'bold',
+                  }}>
+                    NEUTRAL
+                  </span>
+                </div>
+                <span style={{
+                  fontSize: '18px',
+                  color: '#b8860b',
+                  fontWeight: 700,
+                  fontFamily: '"Cinzel", serif',
+                }}>
+                  {(stats as any)?.sentimentDistribution?.neutral || 0}
                 </span>
               </div>
-              <span style={{ fontSize: '14px', color: '#a78bfa', fontWeight: 700, fontFamily: 'Orbitron, monospace' }}>
-                {(stats as any)?.sentimentDistribution?.neutral || 0}
-              </span>
             </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <div style={{
-                  width: '8px',
-                  height: '8px',
-                  borderRadius: '50%',
-                  background: '#ff6b9d',
-                  boxShadow: '0 0 10px #ff6b9d',
-                }} />
-                <span style={{ fontSize: '12px', color: '#ffffff', fontFamily: 'Share Tech Mono, monospace' }}>
-                  NEG
+
+            {/* Negative */}
+            <div style={{
+              padding: '12px',
+              background: '#2c1810',
+              border: '2px solid #4a4a4a',
+              borderRadius: '4px',
+              boxShadow: 'inset 2px 2px 6px rgba(0,0,0,0.5)',
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <div style={{
+                    width: '12px',
+                    height: '12px',
+                    borderRadius: '50%',
+                    background: '#8b4513',
+                    border: '2px solid #4a4a4a',
+                    boxShadow: '0 0 8px rgba(139,69,19,0.6)',
+                  }} />
+                  <span style={{
+                    fontSize: '13px',
+                    color: '#b8860b',
+                    fontFamily: '"Special Elite", monospace',
+                    fontWeight: 'bold',
+                  }}>
+                    NEGATIVE
+                  </span>
+                </div>
+                <span style={{
+                  fontSize: '18px',
+                  color: '#8b4513',
+                  fontWeight: 700,
+                  fontFamily: '"Cinzel", serif',
+                }}>
+                  {(stats as any)?.sentimentDistribution?.negative || 0}
                 </span>
               </div>
-              <span style={{ fontSize: '14px', color: '#ff6b9d', fontWeight: 700, fontFamily: 'Orbitron, monospace' }}>
-                {(stats as any)?.sentimentDistribution?.negative || 0}
-              </span>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Filter Controls */}
+      {/* Filter Controls - Right Side */}
       <div style={{
         position: 'absolute',
-        top: '120px',
-        right: '24px',
+        top: '180px',
+        right: '32px',
         display: 'flex',
         flexDirection: 'column',
-        gap: '16px',
+        gap: '24px',
         zIndex: 10,
-        maxWidth: '280px',
+        maxWidth: '320px',
       }}>
         {/* Language Filter */}
         <div style={{
-          padding: '16px',
-          background: 'rgba(0, 0, 0, 0.7)',
-          border: '1px solid rgba(96, 239, 255, 0.3)',
+          padding: '24px',
+          background: 'linear-gradient(135deg, #b8860b 0%, #daa520 50%, #b8860b 100%)',
+          border: '5px solid #4a4a4a',
           borderRadius: '8px',
+          boxShadow: 'inset 2px 2px 5px rgba(0,0,0,0.3), inset -2px -2px 5px rgba(255,255,255,0.1), 0 4px 20px rgba(0,0,0,0.5)',
+          position: 'relative',
         }}>
+          {/* Rivets */}
+          <div style={{
+            position: 'absolute',
+            top: '8px',
+            left: '8px',
+            width: '8px',
+            height: '8px',
+            borderRadius: '50%',
+            background: '#4a4a4a',
+            boxShadow: 'inset 1px 1px 2px rgba(0,0,0,0.5)',
+          }} />
+          <div style={{
+            position: 'absolute',
+            top: '8px',
+            right: '8px',
+            width: '8px',
+            height: '8px',
+            borderRadius: '50%',
+            background: '#4a4a4a',
+            boxShadow: 'inset 1px 1px 2px rgba(0,0,0,0.5)',
+          }} />
+          <div style={{
+            position: 'absolute',
+            bottom: '8px',
+            left: '8px',
+            width: '8px',
+            height: '8px',
+            borderRadius: '50%',
+            background: '#4a4a4a',
+            boxShadow: 'inset 1px 1px 2px rgba(0,0,0,0.5)',
+          }} />
+          <div style={{
+            position: 'absolute',
+            bottom: '8px',
+            right: '8px',
+            width: '8px',
+            height: '8px',
+            borderRadius: '50%',
+            background: '#4a4a4a',
+            boxShadow: 'inset 1px 1px 2px rgba(0,0,0,0.5)',
+          }} />
+
           <label style={{
-            fontSize: '10px',
-            color: '#60efff',
-            marginBottom: '8px',
+            fontSize: '11px',
+            color: '#2c1810',
+            marginBottom: '12px',
             display: 'block',
-            fontFamily: 'Share Tech Mono, monospace',
-            letterSpacing: '0.1em',
+            fontFamily: '"Special Elite", monospace',
+            letterSpacing: '0.2em',
+            textTransform: 'uppercase',
+            fontWeight: 'bold',
           }}>
-            LANGUAGE FILTER
+            LANGUAGE SELECTOR
           </label>
           <select
             value={selectedLanguage}
             onChange={(e) => setSelectedLanguage(e.target.value)}
             style={{
               width: '100%',
-              padding: '8px',
-              background: 'rgba(0, 0, 0, 0.8)',
-              border: '1px solid rgba(96, 239, 255, 0.5)',
-              color: '#60efff',
-              fontSize: '12px',
-              fontFamily: 'Share Tech Mono, monospace',
+              padding: '14px',
+              background: '#2c1810',
+              border: '3px solid #4a4a4a',
+              color: '#ffa500',
+              fontSize: '14px',
+              fontFamily: '"Special Elite", monospace',
               borderRadius: '4px',
+              boxShadow: 'inset 2px 2px 8px rgba(0,0,0,0.5)',
+              cursor: 'pointer',
             }}
           >
             <option value="all">All Languages</option>
@@ -413,20 +985,66 @@ export default function CosmicNexus({ onNavigateBack }: VariantProps) {
 
         {/* Keyword Filter */}
         <div style={{
-          padding: '16px',
-          background: 'rgba(0, 0, 0, 0.7)',
-          border: '1px solid rgba(167, 139, 250, 0.3)',
+          padding: '24px',
+          background: 'linear-gradient(135deg, #8b4513 0%, #a0522d 50%, #8b4513 100%)',
+          border: '5px solid #4a4a4a',
           borderRadius: '8px',
+          boxShadow: 'inset 2px 2px 5px rgba(0,0,0,0.3), inset -2px -2px 5px rgba(255,255,255,0.1), 0 4px 20px rgba(0,0,0,0.5)',
+          position: 'relative',
         }}>
+          {/* Rivets */}
+          <div style={{
+            position: 'absolute',
+            top: '8px',
+            left: '8px',
+            width: '8px',
+            height: '8px',
+            borderRadius: '50%',
+            background: '#4a4a4a',
+            boxShadow: 'inset 1px 1px 2px rgba(0,0,0,0.5)',
+          }} />
+          <div style={{
+            position: 'absolute',
+            top: '8px',
+            right: '8px',
+            width: '8px',
+            height: '8px',
+            borderRadius: '50%',
+            background: '#4a4a4a',
+            boxShadow: 'inset 1px 1px 2px rgba(0,0,0,0.5)',
+          }} />
+          <div style={{
+            position: 'absolute',
+            bottom: '8px',
+            left: '8px',
+            width: '8px',
+            height: '8px',
+            borderRadius: '50%',
+            background: '#4a4a4a',
+            boxShadow: 'inset 1px 1px 2px rgba(0,0,0,0.5)',
+          }} />
+          <div style={{
+            position: 'absolute',
+            bottom: '8px',
+            right: '8px',
+            width: '8px',
+            height: '8px',
+            borderRadius: '50%',
+            background: '#4a4a4a',
+            boxShadow: 'inset 1px 1px 2px rgba(0,0,0,0.5)',
+          }} />
+
           <label style={{
-            fontSize: '10px',
-            color: '#a78bfa',
-            marginBottom: '8px',
+            fontSize: '11px',
+            color: '#2c1810',
+            marginBottom: '12px',
             display: 'block',
-            fontFamily: 'Share Tech Mono, monospace',
-            letterSpacing: '0.1em',
+            fontFamily: '"Special Elite", monospace',
+            letterSpacing: '0.2em',
+            textTransform: 'uppercase',
+            fontWeight: 'bold',
           }}>
-            KEYWORD SEARCH
+            KEYWORD APPARATUS
           </label>
           <input
             type="text"
@@ -435,77 +1053,168 @@ export default function CosmicNexus({ onNavigateBack }: VariantProps) {
             placeholder="Enter keyword..."
             style={{
               width: '100%',
-              padding: '8px',
-              background: 'rgba(0, 0, 0, 0.8)',
-              border: '1px solid rgba(167, 139, 250, 0.5)',
-              color: '#a78bfa',
-              fontSize: '12px',
-              fontFamily: 'Share Tech Mono, monospace',
+              padding: '14px',
+              background: '#2c1810',
+              border: '3px solid #4a4a4a',
+              color: '#ffa500',
+              fontSize: '14px',
+              fontFamily: '"Special Elite", monospace',
               borderRadius: '4px',
+              boxShadow: 'inset 2px 2px 8px rgba(0,0,0,0.5)',
             }}
           />
-        </div>
-
-        {/* Likes Threshold */}
-        <div style={{
-          padding: '16px',
-          background: 'rgba(0, 0, 0, 0.7)',
-          border: '1px solid rgba(255, 107, 157, 0.3)',
-          borderRadius: '8px',
-        }}>
-          <label style={{
-            fontSize: '10px',
-            color: '#ff6b9d',
-            marginBottom: '8px',
-            display: 'block',
-            fontFamily: 'Share Tech Mono, monospace',
-            letterSpacing: '0.1em',
-          }}>
-            MIN LIKES: {likesThreshold}
-          </label>
-          <input
-            type="range"
-            min="0"
-            max="1000"
-            step="10"
-            value={likesThreshold}
-            onChange={(e) => setLikesThreshold(Number(e.target.value))}
-            style={{
-              width: '100%',
-              accentColor: '#ff6b9d',
-            }}
-          />
-          <div style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            fontSize: '9px',
-            color: '#666',
-            marginTop: '4px',
-            fontFamily: 'Share Tech Mono, monospace',
-          }}>
-            <span>0</span>
-            <span>1000+</span>
-          </div>
         </div>
       </div>
 
-      {/* Instructions */}
+      {/* Victorian Instructions Plaque */}
       <div style={{
         position: 'absolute',
-        bottom: '24px',
+        bottom: '32px',
         left: '50%',
         transform: 'translateX(-50%)',
-        padding: '12px 24px',
-        background: 'rgba(0, 0, 0, 0.5)',
-        border: '1px solid rgba(255, 255, 255, 0.2)',
-        borderRadius: '24px',
-        color: '#a0a0a0',
-        fontSize: '12px',
-        fontFamily: 'Share Tech Mono, monospace',
+        padding: '16px 40px',
+        background: 'linear-gradient(135deg, #b8860b 0%, #daa520 50%, #b8860b 100%)',
+        border: '4px solid #4a4a4a',
+        borderRadius: '32px',
+        color: '#2c1810',
+        fontSize: '13px',
+        fontFamily: '"Crimson Text", serif',
+        fontStyle: 'italic',
         zIndex: 10,
+        boxShadow: 'inset 2px 2px 5px rgba(0,0,0,0.3), inset -2px -2px 5px rgba(255,255,255,0.1), 0 4px 20px rgba(0,0,0,0.5)',
       }}>
-        Move your cursor to attract particles
+        ◆ Guide your pointer to influence the mechanical apparatus ◆
       </div>
+
+      {/* Analytics Toggle - Ornate Lever */}
+      <button
+        onClick={() => setShowCardWall(!showCardWall)}
+        style={{
+          position: 'absolute',
+          bottom: '32px',
+          right: '32px',
+          padding: '16px 32px',
+          background: showCardWall
+            ? 'linear-gradient(135deg, #ffa500 0%, #ff8c00 50%, #ffa500 100%)'
+            : 'linear-gradient(135deg, #b8860b 0%, #daa520 50%, #b8860b 100%)',
+          border: '4px solid #4a4a4a',
+          borderRadius: '8px',
+          color: '#2c1810',
+          fontSize: '13px',
+          fontFamily: '"Special Elite", monospace',
+          fontWeight: 'bold',
+          letterSpacing: '0.15em',
+          cursor: 'pointer',
+          transition: 'all 0.3s',
+          zIndex: 10,
+          boxShadow: showCardWall
+            ? 'inset 2px 2px 5px rgba(0,0,0,0.3), 0 0 20px rgba(255,165,0,0.5)'
+            : 'inset 2px 2px 5px rgba(0,0,0,0.3), inset -2px -2px 5px rgba(255,255,255,0.1), 0 4px 20px rgba(0,0,0,0.5)',
+        }}
+      >
+        {showCardWall ? '◀ CLOSE ANALYTICS' : 'ANALYTICS ▶'}
+      </button>
+
+      {/* CardWall Overlay - Leather-bound Panel */}
+      {showCardWall && (
+        <div style={{
+          position: 'absolute',
+          top: 0,
+          right: 0,
+          width: '50%',
+          height: '100vh',
+          background: 'linear-gradient(90deg, transparent 0%, rgba(44,24,16,0.98) 5%, rgba(44,24,16,0.98) 100%)',
+          borderLeft: '6px solid #4a4a4a',
+          overflowY: 'auto',
+          padding: '32px',
+          zIndex: 5,
+          backgroundImage: 'repeating-linear-gradient(45deg, transparent, transparent 2px, rgba(0,0,0,0.05) 2px, rgba(0,0,0,0.05) 4px)',
+        }}>
+          <style>{`
+            /* Steampunk theme overrides for DataCard components */
+            .steampunk-cardwall .border-foreground {
+              border-color: #4a4a4a !important;
+              border-width: 4px !important;
+            }
+            .steampunk-cardwall .bg-background {
+              background: linear-gradient(135deg, #b8860b 0%, #daa520 50%, #b8860b 100%) !important;
+              box-shadow: inset 2px 2px 5px rgba(0,0,0,0.3), inset -2px -2px 5px rgba(255,255,255,0.1) !important;
+            }
+            .steampunk-cardwall .text-foreground {
+              color: #2c1810 !important;
+            }
+            .steampunk-cardwall h3 {
+              color: #2c1810 !important;
+              font-family: 'Cinzel', serif !important;
+              text-shadow: 1px 1px 2px rgba(0,0,0,0.2);
+              letter-spacing: 0.05em;
+            }
+            .steampunk-cardwall .text-muted-foreground {
+              color: #4a4a4a !important;
+              font-family: 'Special Elite', monospace !important;
+            }
+            /* Recharts theming - brass gauges */
+            .steampunk-cardwall .recharts-text {
+              fill: #2c1810 !important;
+              font-family: 'Special Elite', monospace !important;
+              font-size: 11px !important;
+            }
+            .steampunk-cardwall .recharts-cartesian-grid-horizontal line,
+            .steampunk-cardwall .recharts-cartesian-grid-vertical line {
+              stroke: rgba(74,74,74,0.2) !important;
+            }
+            /* Edison glow on hover */
+            .steampunk-cardwall > div {
+              transition: all 0.3s ease;
+              position: relative;
+            }
+            .steampunk-cardwall > div:hover {
+              box-shadow: inset 2px 2px 5px rgba(0,0,0,0.3), 0 0 20px rgba(255,165,0,0.4) !important;
+            }
+            /* Add rivets to cards */
+            .steampunk-cardwall > div::before,
+            .steampunk-cardwall > div::after {
+              content: '';
+              position: absolute;
+              width: 8px;
+              height: 8px;
+              border-radius: 50%;
+              background: #4a4a4a;
+              box-shadow: inset 1px 1px 2px rgba(0,0,0,0.5);
+            }
+            .steampunk-cardwall > div::before {
+              top: 8px;
+              left: 8px;
+            }
+            .steampunk-cardwall > div::after {
+              top: 8px;
+              right: 8px;
+            }
+          `}</style>
+          <div style={{
+            marginTop: '140px', // Account for ornate header
+          }}>
+            <CardWall className="steampunk-cardwall">
+              <SentimentDistributionCard
+                sentimentCounts={(stats as any)?.sentimentCounts || { positive: 0, neutral: 0, negative: 0 }}
+              />
+              <SentimentTimelineCard
+                data={sentimentTimeline}
+              />
+              <PostsPerMinuteCard
+                data={postsPerMinuteTimeline}
+                currentRate={(stats as any)?.postsPerMinute || 0}
+              />
+              <LanguagesCard
+                languageCounts={languageCounts}
+              />
+              <ContentTypesCard
+                contentTypeCounts={contentTypeCounts}
+              />
+            </CardWall>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

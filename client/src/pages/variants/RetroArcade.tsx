@@ -3,6 +3,14 @@ import { Link } from 'wouter';
 import { useSocket } from '@/hooks/useSocket';
 import type { FirehosePost, VariantProps } from './types';
 import { MediaDisplay } from '@/components/MediaDisplay';
+import { CardWall } from '@/components/CardWall';
+import {
+  SentimentDistributionCard,
+  SentimentTimelineCard,
+  PostsPerMinuteCard,
+  LanguagesCard,
+  ContentTypesCard,
+} from '@/components/cards';
 
 export default function RetroArcade({ onNavigateBack }: VariantProps) {
   const { connected, stats, latestPost } = useSocket();
@@ -14,7 +22,130 @@ export default function RetroArcade({ onNavigateBack }: VariantProps) {
   // Filter state
   const [selectedLanguage, setSelectedLanguage] = useState<string>('all');
   const [keywordFilter, setKeywordFilter] = useState<string>('');
-  
+
+  // Timeline data tracking (matching Dashboard.tsx pattern)
+  const [postTimestamps, setPostTimestamps] = useState<Array<{
+    timestamp: number;
+    sentiment: 'positive' | 'negative' | 'neutral';
+  }>>([]);
+
+  const [sentimentTimeline, setSentimentTimeline] = useState<Array<{
+    timestamp: number;
+    positivePercent: number;
+    neutralPercent: number;
+    negativePercent: number;
+  }>>([]);
+
+  const [postsPerMinuteTimeline, setPostsPerMinuteTimeline] = useState<Array<{
+    timestamp: number;
+    rate: number;
+  }>>([]);
+
+  const [languageCounts, setLanguageCounts] = useState<Record<string, number>>({});
+
+  const [contentTypeCounts, setContentTypeCounts] = useState({
+    textOnly: 0,
+    withImages: 0,
+    withVideo: 0,
+    withLinks: 0,
+  });
+
+
+  // Track timeline data (matching Dashboard.tsx pattern)
+  useEffect(() => {
+    if (!latestPost) return;
+
+    const now = Date.now();
+
+    // Add timestamp to rolling window, remove old entries
+    setPostTimestamps(prev => {
+      const twoMinutesAgo = now - 2 * 60 * 1000; // Keep 2 minutes for smooth calculation
+      const filtered = prev.filter(d => d.timestamp >= twoMinutesAgo);
+      return [...filtered, {
+        timestamp: now,
+        sentiment: latestPost.sentiment
+      }];
+    });
+
+    // Track language
+    if (latestPost.language) {
+      setLanguageCounts(prev => ({
+        ...prev,
+        [latestPost.language!]: (prev[latestPost.language!] || 0) + 1
+      }));
+    }
+
+    // Track content types from post metadata
+    const hasImages = latestPost.hasImages || false;
+    const hasVideo = latestPost.hasVideo || false;
+    const hasLinks = latestPost.hasLink || false;
+    const isTextOnly = !hasImages && !hasVideo && !hasLinks;
+
+    setContentTypeCounts(prev => ({
+      textOnly: isTextOnly ? prev.textOnly + 1 : prev.textOnly,
+      withImages: hasImages ? prev.withImages + 1 : prev.withImages,
+      withVideo: hasVideo ? prev.withVideo + 1 : prev.withVideo,
+      withLinks: hasLinks ? prev.withLinks + 1 : prev.withLinks,
+    }));
+  }, [latestPost]);
+
+  // Sample rate every 1 second for timeline charts (matching Dashboard.tsx)
+  useEffect(() => {
+    const calculateRates = () => {
+      setPostTimestamps(currentTimestamps => {
+        const now = Date.now();
+        const oneMinuteAgo = now - 60 * 1000;
+
+        // Filter posts from last 60 seconds
+        const recentPosts = currentTimestamps.filter(p => p.timestamp >= oneMinuteAgo);
+
+        if (recentPosts.length > 0) {
+          // Calculate time window
+          const oldestTimestamp = Math.min(...recentPosts.map(p => p.timestamp));
+          const timeWindowSeconds = (now - oldestTimestamp) / 1000;
+
+          if (timeWindowSeconds > 0) {
+            // Calculate posts per minute rate
+            const rate = Math.round((recentPosts.length / timeWindowSeconds) * 60);
+
+            // Calculate sentiment percentages
+            const positive = recentPosts.filter(p => p.sentiment === 'positive').length;
+            const neutral = recentPosts.filter(p => p.sentiment === 'neutral').length;
+            const negative = recentPosts.filter(p => p.sentiment === 'negative').length;
+            const total = recentPosts.length;
+
+            const positivePercent = total > 0 ? (positive / total) * 100 : 0;
+            const neutralPercent = total > 0 ? (neutral / total) * 100 : 0;
+            const negativePercent = total > 0 ? (negative / total) * 100 : 0;
+
+            // Update posts per minute timeline
+            setPostsPerMinuteTimeline(prev => {
+              const oneHourAgo = now - 60 * 60 * 1000;
+              const filtered = prev.filter(d => d.timestamp >= oneHourAgo);
+              return [...filtered, { timestamp: now, rate }];
+            });
+
+            // Update sentiment timeline
+            setSentimentTimeline(prev => {
+              const oneHourAgo = now - 60 * 60 * 1000;
+              const filtered = prev.filter(d => d.timestamp >= oneHourAgo);
+              return [...filtered, {
+                timestamp: now,
+                positivePercent,
+                neutralPercent,
+                negativePercent
+              }];
+            });
+          }
+        }
+
+        return currentTimestamps; // Return unchanged
+      });
+    };
+
+    const interval = setInterval(calculateRates, 1000); // Sample every 1 second for smooth updates
+    return () => clearInterval(interval);
+  }, []);
 
   // Add new posts with arcade effects
   useEffect(() => {
@@ -50,372 +181,718 @@ export default function RetroArcade({ onNavigateBack }: VariantProps) {
     return String(num).padStart(8, '0');
   };
 
-  const getSentimentEmoji = (sentiment: string) => {
+  const getSentimentGeometry = (sentiment: string): string => {
     switch (sentiment) {
-      case 'positive': return '😊';
-      case 'negative': return '😠';
-      default: return '😐';
+      case 'positive': return '●'; // Circle
+      case 'negative': return '■'; // Square
+      default: return '▲'; // Triangle
     }
   };
 
   return (
     <div style={{
       minHeight: '100vh',
-      background: 'linear-gradient(180deg, #1a0033 0%, #000000 100%)',
-      fontFamily: '"Press Start 2P", monospace',
-      color: '#00ff00',
+      background: '#ffffff',
+      fontFamily: "'Helvetica Neue', Arial, sans-serif",
+      color: '#000000',
       padding: '16px',
-      position: 'relative',
-      overflow: 'hidden',
+      boxSizing: 'border-box',
     }}>
-      {/* CRT Scanlines */}
+      {/* Swiss Grid Container */}
       <div style={{
-        position: 'fixed',
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        background: 'repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.15) 0px, rgba(0, 0, 0, 0.15) 1px, transparent 1px, transparent 2px)',
-        pointerEvents: 'none',
-        zIndex: 100,
-      }} />
-
-      {/* Vignette */}
-      <div style={{
-        position: 'fixed',
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        background: 'radial-gradient(ellipse at center, transparent 0%, rgba(0,0,0,0.7) 100%)',
-        pointerEvents: 'none',
-        zIndex: 99,
-      }} />
-
-      {/* Header */}
-      <div style={{
-        border: '4px solid #ff00ff',
-        padding: '16px',
-        marginBottom: '16px',
-        background: 'rgba(0, 0, 0, 0.7)',
-        boxShadow: '0 0 20px rgba(255, 0, 255, 0.5)',
+        display: 'grid',
+        gridTemplateColumns: 'repeat(12, 1fr)',
+        gap: '8px',
+        maxWidth: '1600px',
+        margin: '0 auto',
       }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
+        {/* Header - Full Width */}
+        <header style={{
+          gridColumn: '1 / -1',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          padding: '24px',
+          borderBottom: '1px solid #000000',
+          marginBottom: '16px',
+        }}>
           <div>
-            <div style={{ fontSize: '12px', color: '#ff00ff', marginBottom: '8px' }}>
-              BLUESKY ARCADE
+            <div style={{
+              fontSize: '12px',
+              fontWeight: 100,
+              letterSpacing: '2px',
+              textTransform: 'uppercase',
+              marginBottom: '8px',
+            }}>
+              Bluesky Firehose
             </div>
-            <div style={{ fontSize: '24px', color: '#00ffff', textShadow: '0 0 10px #00ffff' }}>
-              POST CATCHER
+            <div style={{
+              fontSize: '48px',
+              fontWeight: 700,
+              lineHeight: 1,
+              letterSpacing: '-1px',
+            }}>
+              Data Stream
             </div>
           </div>
           <Link href="/variants">
             <a style={{
-              padding: '8px 16px',
-              border: '2px solid #ffff00',
-              background: 'rgba(255, 255, 0, 0.2)',
-              color: '#ffff00',
+              padding: '16px 32px',
+              border: '1px solid #000000',
+              background: '#ffffff',
+              color: '#000000',
               textDecoration: 'none',
-              fontSize: '8px',
-              textShadow: '0 0 5px #ffff00',
+              fontSize: '14px',
+              fontWeight: 400,
+              letterSpacing: '1px',
+              textTransform: 'uppercase',
+              transition: 'all 0.2s ease',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = '#000000';
+              e.currentTarget.style.color = '#ffffff';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = '#ffffff';
+              e.currentTarget.style.color = '#000000';
             }}>
-              EXIT
+              Exit
             </a>
           </Link>
-        </div>
-      </div>
+        </header>
 
-      {/* Score Board */}
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-        gap: '16px',
-        marginBottom: '16px',
-      }}>
+        {/* Metrics Grid - Golden Ratio Layout (7.5 cols vs 4.5 cols ≈ 1.618) */}
         <div style={{
-          border: '2px solid #00ff00',
-          padding: '12px',
-          background: 'rgba(0, 0, 0, 0.7)',
-          boxShadow: '0 0 10px rgba(0, 255, 0, 0.3)',
+          gridColumn: '1 / 8',
+          display: 'grid',
+          gridTemplateColumns: 'repeat(3, 1fr)',
+          gap: '8px',
+          marginBottom: '16px',
         }}>
-          <div style={{ fontSize: '8px', color: '#00ff00', marginBottom: '4px' }}>SCORE</div>
-          <div style={{ fontSize: '20px', color: '#00ffff', fontFamily: 'monospace', textShadow: '0 0 10px #00ffff' }}>
-            {formatScore(score)}
+          {/* Score */}
+          <div style={{
+            padding: '24px',
+            border: '1px solid #000000',
+            background: '#ffffff',
+          }}>
+            <div style={{
+              fontSize: '10px',
+              fontWeight: 100,
+              letterSpacing: '2px',
+              textTransform: 'uppercase',
+              marginBottom: '8px',
+              color: '#000000',
+            }}>
+              Score
+            </div>
+            <div style={{
+              fontSize: '32px',
+              fontWeight: 700,
+              fontFamily: 'monospace',
+              color: '#000000',
+            }}>
+              {formatScore(score)}
+            </div>
+          </div>
+
+          {/* Combo */}
+          <div style={{
+            padding: '24px',
+            border: '1px solid #000000',
+            background: '#ffffff',
+          }}>
+            <div style={{
+              fontSize: '10px',
+              fontWeight: 100,
+              letterSpacing: '2px',
+              textTransform: 'uppercase',
+              marginBottom: '8px',
+              color: '#000000',
+            }}>
+              Combo
+            </div>
+            <div style={{
+              fontSize: '32px',
+              fontWeight: 700,
+              fontFamily: 'monospace',
+              color: '#000000',
+            }}>
+              ×{combo}
+            </div>
+          </div>
+
+          {/* Posts/Min - RED ACCENT (only one in this section) */}
+          <div style={{
+            padding: '24px',
+            border: '1px solid #ff0000',
+            background: '#ffffff',
+          }}>
+            <div style={{
+              fontSize: '10px',
+              fontWeight: 100,
+              letterSpacing: '2px',
+              textTransform: 'uppercase',
+              marginBottom: '8px',
+              color: '#ff0000',
+            }}>
+              Posts/Min
+            </div>
+            <div style={{
+              fontSize: '32px',
+              fontWeight: 700,
+              fontFamily: 'monospace',
+              color: '#ff0000',
+            }}>
+              {Math.round(stats?.postsPerMinute || 0)}
+            </div>
           </div>
         </div>
 
+        {/* Status Box - Right Side (Golden Ratio) */}
         <div style={{
-          border: '2px solid #ff00ff',
-          padding: '12px',
-          background: 'rgba(0, 0, 0, 0.7)',
-          boxShadow: '0 0 10px rgba(255, 0, 255, 0.3)',
+          gridColumn: '8 / -1',
+          padding: '24px',
+          border: '1px solid #000000',
+          background: connected ? '#000000' : '#f5f5f5',
+          color: connected ? '#ffffff' : '#000000',
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'center',
+          marginBottom: '16px',
         }}>
-          <div style={{ fontSize: '8px', color: '#ff00ff', marginBottom: '4px' }}>COMBO</div>
-          <div style={{ fontSize: '20px', color: '#ff00ff', fontFamily: 'monospace', textShadow: '0 0 10px #ff00ff' }}>
-            x{combo}
-          </div>
-        </div>
-
-        <div style={{
-          border: '2px solid #ffff00',
-          padding: '12px',
-          background: 'rgba(0, 0, 0, 0.7)',
-          boxShadow: '0 0 10px rgba(255, 255, 0, 0.3)',
-        }}>
-          <div style={{ fontSize: '8px', color: '#ffff00', marginBottom: '4px' }}>POSTS/MIN</div>
-          <div style={{ fontSize: '20px', color: '#ffff00', fontFamily: 'monospace', textShadow: '0 0 10px #ffff00' }}>
-            {Math.round(stats?.postsPerMinute || 0)}
-          </div>
-        </div>
-
-        <div style={{
-          border: `2px solid ${connected ? '#00ff00' : '#ff0000'}`,
-          padding: '12px',
-          background: 'rgba(0, 0, 0, 0.7)',
-          boxShadow: `0 0 10px ${connected ? 'rgba(0, 255, 0, 0.3)' : 'rgba(255, 0, 0, 0.3)'}`,
-        }}>
-          <div style={{ fontSize: '8px', color: connected ? '#00ff00' : '#ff0000', marginBottom: '4px' }}>
-            STATUS
+          <div style={{
+            fontSize: '10px',
+            fontWeight: 100,
+            letterSpacing: '2px',
+            textTransform: 'uppercase',
+            marginBottom: '8px',
+          }}>
+            Status
           </div>
           <div style={{
-            fontSize: '12px',
-            color: connected ? '#00ff00' : '#ff0000',
-            textShadow: `0 0 10px ${connected ? '#00ff00' : '#ff0000'}`,
+            fontSize: '24px',
+            fontWeight: 700,
+            letterSpacing: '1px',
           }}>
             {connected ? 'ONLINE' : 'OFFLINE'}
           </div>
-        </div>
-      </div>
-
-      {/* Game Over Screen */}
-      {gameOver && (
-        <div style={{
-          position: 'fixed',
-          top: '50%',
-          left: '50%',
-          transform: 'translate(-50%, -50%)',
-          padding: '32px',
-          border: '4px solid #ff0000',
-          background: 'rgba(0, 0, 0, 0.95)',
-          boxShadow: '0 0 30px rgba(255, 0, 0, 0.8)',
-          textAlign: 'center',
-          zIndex: 200,
-          animation: 'pulse 1s ease-in-out infinite',
-        }}>
-          <div style={{ fontSize: '32px', color: '#ff0000', marginBottom: '24px', textShadow: '0 0 20px #ff0000' }}>
-            GAME OVER
-          </div>
-          <div style={{ fontSize: '12px', color: '#ffff00', marginBottom: '16px' }}>
-            CONNECTION LOST
-          </div>
-          <div style={{ fontSize: '16px', color: '#00ffff' }}>
-            FINAL SCORE
-          </div>
-          <div style={{ fontSize: '24px', color: '#00ff00', marginTop: '8px', textShadow: '0 0 10px #00ff00' }}>
-            {formatScore(score)}
+          <div style={{
+            marginTop: '16px',
+            fontSize: '12px',
+            fontWeight: 100,
+          }}>
+            {connected ? '● Connected' : '○ Disconnected'}
           </div>
         </div>
-      )}
 
-      {/* Filter Controls */}
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-        gap: '16px',
-        marginBottom: '16px',
-      }}>
-        {/* Language Filter */}
-        <div style={{
-          border: '2px solid #ff00ff',
-          padding: '12px',
-          background: 'rgba(0, 0, 0, 0.7)',
-          boxShadow: '0 0 10px rgba(255, 0, 255, 0.3)',
-        }}>
-          <label style={{ fontSize: '8px', color: '#ff00ff', display: 'block', marginBottom: '4px' }}>
-            LANGUAGE
-          </label>
-          <select
-            value={selectedLanguage}
-            onChange={(e) => setSelectedLanguage(e.target.value)}
-            style={{
-              width: '100%',
-              padding: '4px',
-              background: 'rgba(0, 0, 0, 0.9)',
-              border: '1px solid #ff00ff',
-              color: '#ff00ff',
-              fontSize: '10px',
-              fontFamily: '"Press Start 2P", monospace',
-            }}
-          >
-            <option value="all">ALL</option>
-            <option value="en">EN</option>
-            <option value="es">ES</option>
-            <option value="fr">FR</option>
-            <option value="de">DE</option>
-            <option value="ja">JA</option>
-            <option value="pt">PT</option>
-          </select>
-        </div>
-
-        {/* Keyword Filter */}
-        <div style={{
-          border: '2px solid #00ffff',
-          padding: '12px',
-          background: 'rgba(0, 0, 0, 0.7)',
-          boxShadow: '0 0 10px rgba(0, 255, 255, 0.3)',
-        }}>
-          <label style={{ fontSize: '8px', color: '#00ffff', display: 'block', marginBottom: '4px' }}>
-            KEYWORD
-          </label>
-          <input
-            type="text"
-            value={keywordFilter}
-            onChange={(e) => setKeywordFilter(e.target.value)}
-            placeholder="SEARCH..."
-            style={{
-              width: '100%',
-              padding: '4px',
-              background: 'rgba(0, 0, 0, 0.9)',
-              border: '1px solid #00ffff',
-              color: '#00ffff',
-              fontSize: '10px',
-              fontFamily: '"Press Start 2P", monospace',
-            }}
-          />
-        </div>
-
-        {/* Likes Threshold */}
-        <div style={{
-          border: '2px solid #ffff00',
-          padding: '12px',
-          background: 'rgba(0, 0, 0, 0.7)',
-          boxShadow: '0 0 10px rgba(255, 255, 0, 0.3)',
-        }}>
-          <label style={{ fontSize: '8px', color: '#ffff00', display: 'block', marginBottom: '4px' }}>
-            MIN LIKES: {likesThreshold}
-          </label>
-          <input
-            type="range"
-            min="0"
-            max="1000"
-            step="10"
-            value={likesThreshold}
-            onChange={(e) => setLikesThreshold(Number(e.target.value))}
-            style={{
-              width: '100%',
-              accentColor: '#ffff00',
-            }}
-          />
-        </div>
-      </div>
-
-      {/* Post Feed - Arcade Style */}
-      <div style={{
-        border: '2px solid #00ffff',
-        padding: '16px',
-        background: 'rgba(0, 0, 0, 0.7)',
-        boxShadow: '0 0 10px rgba(0, 255, 255, 0.3)',
-        minHeight: '400px',
-      }}>
-        <div style={{ fontSize: '8px', color: '#00ffff', marginBottom: '16px', textTransform: 'uppercase' }}>
-          === INCOMING TRANSMISSIONS ({posts.length}) ===
-        </div>
-
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-          {posts.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '32px', color: '#666', fontSize: '8px' }}>
-              WAITING FOR DATA...
-            </div>
-          ) : (
-            posts.map((post, index) => (
-              <div
-                key={post.uri || index}
-                style={{
-                  border: `2px solid ${
-                    post.sentiment === 'positive' ? '#00ff00' :
-                    post.sentiment === 'negative' ? '#ff0000' : '#ffff00'
-                  }`,
-                  padding: '12px',
-                  background: 'rgba(0, 0, 0, 0.5)',
-                  boxShadow: `0 0 5px ${
-                    post.sentiment === 'positive' ? 'rgba(0, 255, 0, 0.3)' :
-                    post.sentiment === 'negative' ? 'rgba(255, 0, 0, 0.3)' : 'rgba(255, 255, 0, 0.3)'
-                  }`,
-                  animation: index === 0 ? 'slideIn 0.3s ease-out' : 'none',
-                }}
-              >
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-                  <div style={{ fontSize: '8px', color: '#ff00ff' }}>
-                    @{post.author?.handle?.slice(0, 20) || 'ANON'}
-                  </div>
-                  <div style={{ fontSize: '16px' }}>
-                    {getSentimentEmoji(post.sentiment)}
-                  </div>
-                </div>
-                <div style={{
-                  fontSize: '10px',
-                  color: post.sentiment === 'positive' ? '#00ff00' :
-                          post.sentiment === 'negative' ? '#ff0000' : '#ffff00',
-                  lineHeight: '1.6',
-                  wordBreak: 'break-word',
-                }}>
-                  {post.text.length > 150 ? `${post.text.slice(0, 150)}...` : post.text}
-                </div>
-                {(post.images || post.videos) && (
-                  <div style={{ marginTop: '8px' }}>
-                    <MediaDisplay
-                      images={post.images}
-                      videos={post.videos}
-                      variant="compact"
-                      sensitive={post.sensitive}
-                    />
-                  </div>
-                )}
-                {post.hashtags && post.hashtags.length > 0 && (
-                  <div style={{ marginTop: '8px', display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                    {post.hashtags.slice(0, 3).map(tag => (
-                      <span key={tag} style={{
-                        padding: '2px 6px',
-                        border: '1px solid #00ffff',
-                        fontSize: '6px',
-                        color: '#00ffff',
-                      }}>
-                        #{tag}
-                      </span>
-                    ))}
-                  </div>
-                )}
+        {/* Game Over Overlay */}
+        {gameOver && (
+          <div style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(255, 255, 255, 0.98)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000,
+          }}>
+            <div style={{
+              width: '61.8%', // Golden ratio
+              maxWidth: '800px',
+              padding: '64px',
+              border: '2px solid #000000',
+              background: '#ffffff',
+              textAlign: 'center',
+            }}>
+              <div style={{
+                fontSize: '72px',
+                fontWeight: 700,
+                marginBottom: '32px',
+                letterSpacing: '-2px',
+                color: '#000000',
+              }}>
+                SESSION END
               </div>
-            ))
-          )}
+              <div style={{
+                fontSize: '14px',
+                fontWeight: 100,
+                letterSpacing: '3px',
+                textTransform: 'uppercase',
+                marginBottom: '24px',
+                color: '#000000',
+              }}>
+                Connection Lost
+              </div>
+              <div style={{
+                width: '200px',
+                height: '2px',
+                background: '#ff0000',
+                margin: '0 auto 24px',
+              }} />
+              <div style={{
+                fontSize: '16px',
+                fontWeight: 400,
+                marginBottom: '8px',
+                color: '#000000',
+              }}>
+                Final Score
+              </div>
+              <div style={{
+                fontSize: '56px',
+                fontWeight: 700,
+                fontFamily: 'monospace',
+                color: '#000000',
+              }}>
+                {formatScore(score)}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Filter Controls - Full Width */}
+        <div style={{
+          gridColumn: '1 / -1',
+          display: 'grid',
+          gridTemplateColumns: 'repeat(2, 1fr)',
+          gap: '8px',
+          marginBottom: '16px',
+        }}>
+          {/* Language Filter */}
+          <div style={{
+            padding: '24px',
+            border: '1px solid #000000',
+            background: '#f5f5f5',
+          }}>
+            <label style={{
+              fontSize: '10px',
+              fontWeight: 100,
+              letterSpacing: '2px',
+              textTransform: 'uppercase',
+              display: 'block',
+              marginBottom: '16px',
+              color: '#000000',
+            }}>
+              Language Filter
+            </label>
+            <select
+              value={selectedLanguage}
+              onChange={(e) => setSelectedLanguage(e.target.value)}
+              style={{
+                width: '100%',
+                padding: '16px',
+                background: '#ffffff',
+                border: '1px solid #000000',
+                color: '#000000',
+                fontSize: '14px',
+                fontFamily: "'Helvetica Neue', Arial, sans-serif",
+                fontWeight: 400,
+                borderRadius: 0,
+                appearance: 'none',
+                cursor: 'pointer',
+              }}
+            >
+              <option value="all">All Languages</option>
+              <option value="en">English</option>
+              <option value="es">Spanish</option>
+              <option value="fr">French</option>
+              <option value="de">German</option>
+              <option value="ja">Japanese</option>
+              <option value="pt">Portuguese</option>
+            </select>
+          </div>
+
+          {/* Keyword Filter */}
+          <div style={{
+            padding: '24px',
+            border: '1px solid #000000',
+            background: '#f5f5f5',
+          }}>
+            <label style={{
+              fontSize: '10px',
+              fontWeight: 100,
+              letterSpacing: '2px',
+              textTransform: 'uppercase',
+              display: 'block',
+              marginBottom: '16px',
+              color: '#000000',
+            }}>
+              Keyword Filter
+            </label>
+            <input
+              type="text"
+              value={keywordFilter}
+              onChange={(e) => setKeywordFilter(e.target.value)}
+              placeholder="Search content..."
+              style={{
+                width: '100%',
+                padding: '16px',
+                background: '#ffffff',
+                border: '1px solid #000000',
+                color: '#000000',
+                fontSize: '14px',
+                fontFamily: "'Helvetica Neue', Arial, sans-serif",
+                fontWeight: 400,
+                borderRadius: 0,
+                boxSizing: 'border-box',
+              }}
+            />
+          </div>
         </div>
+
+        {/* Data Visualization - Swiss Modernism */}
+        <div style={{
+          gridColumn: '1 / -1',
+          border: '2px solid #000000',
+          padding: '32px',
+          marginBottom: '16px',
+          background: '#ffffff',
+        }}>
+          <div style={{
+            fontSize: '14px',
+            fontWeight: 100,
+            letterSpacing: '3px',
+            textTransform: 'uppercase',
+            marginBottom: '32px',
+            color: '#000000',
+            paddingBottom: '16px',
+            borderBottom: '1px solid #000000',
+          }}>
+            Analytics Dashboard
+          </div>
+          <CardWall className="swiss-cards">
+            <SentimentDistributionCard
+              sentimentCounts={stats?.sentimentCounts || { positive: 0, neutral: 0, negative: 0 }}
+            />
+            <SentimentTimelineCard
+              sentimentTimeline={sentimentTimeline}
+            />
+            <PostsPerMinuteCard
+              postsPerMinuteTimeline={postsPerMinuteTimeline}
+              currentRate={stats?.postsPerMinute || 0}
+            />
+            <LanguagesCard
+              languageCounts={languageCounts}
+            />
+            <ContentTypesCard
+              contentTypeCounts={contentTypeCounts}
+            />
+          </CardWall>
+        </div>
+
+        {/* Post Feed - Swiss Grid */}
+        <div style={{
+          gridColumn: '1 / -1',
+          padding: '32px',
+          border: '1px solid #000000',
+          background: '#f5f5f5',
+          minHeight: '400px',
+        }}>
+          <div style={{
+            fontSize: '10px',
+            fontWeight: 100,
+            letterSpacing: '2px',
+            textTransform: 'uppercase',
+            marginBottom: '24px',
+            color: '#000000',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            paddingBottom: '16px',
+            borderBottom: '1px solid #000000',
+          }}>
+            <span>Data Stream</span>
+            <span style={{ fontFamily: 'monospace', fontWeight: 400 }}>
+              {posts.length.toString().padStart(3, '0')} Items
+            </span>
+          </div>
+
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(1, 1fr)',
+            gap: '8px',
+          }}>
+            {posts.length === 0 ? (
+              <div style={{
+                textAlign: 'center',
+                padding: '64px 32px',
+                color: '#000000',
+                fontSize: '14px',
+                fontWeight: 100,
+                letterSpacing: '2px',
+              }}>
+                AWAITING DATA TRANSMISSION
+              </div>
+            ) : (
+              posts.map((post, index) => {
+                // Golden ratio for post width/height relationship
+                const isHighlighted = index === 0;
+
+                return (
+                  <div
+                    key={post.uri || index}
+                    style={{
+                      border: `${isHighlighted ? '2' : '1'}px solid ${
+                        isHighlighted && post.sentiment === 'positive' ? '#ff0000' : '#000000'
+                      }`,
+                      padding: '24px',
+                      background: '#ffffff',
+                      position: 'relative',
+                      transition: 'all 0.2s ease',
+                    }}
+                  >
+                    {/* Sentiment Geometry Indicator */}
+                    <div style={{
+                      position: 'absolute',
+                      top: '24px',
+                      right: '24px',
+                      fontSize: '32px',
+                      color: '#000000',
+                      lineHeight: 1,
+                    }}>
+                      {getSentimentGeometry(post.sentiment)}
+                    </div>
+
+                    {/* Author */}
+                    <div style={{
+                      fontSize: '10px',
+                      fontWeight: 100,
+                      letterSpacing: '2px',
+                      textTransform: 'uppercase',
+                      marginBottom: '16px',
+                      color: '#000000',
+                    }}>
+                      {post.author?.handle || 'Anonymous'}
+                    </div>
+
+                    {/* Content */}
+                    <div style={{
+                      fontSize: '14px',
+                      fontWeight: 400,
+                      lineHeight: 1.618, // Golden ratio
+                      color: '#000000',
+                      marginBottom: '16px',
+                      paddingRight: '48px', // Space for geometry
+                    }}>
+                      {post.text.length > 280 ? `${post.text.slice(0, 280)}...` : post.text}
+                    </div>
+
+                    {/* Media */}
+                    {(post.images || post.videos) && (
+                      <div style={{ marginBottom: '16px' }}>
+                        <MediaDisplay
+                          images={post.images}
+                          videos={post.videos}
+                          variant="compact"
+                          sensitive={post.sensitive}
+                        />
+                      </div>
+                    )}
+
+                    {/* Hashtags - Minimal Geometric Tags */}
+                    {post.hashtags && post.hashtags.length > 0 && (
+                      <div style={{
+                        display: 'flex',
+                        gap: '8px',
+                        flexWrap: 'wrap',
+                        paddingTop: '16px',
+                        borderTop: '1px solid #000000',
+                      }}>
+                        {post.hashtags.slice(0, 5).map(tag => (
+                          <span key={tag} style={{
+                            padding: '8px 16px',
+                            border: '1px solid #000000',
+                            fontSize: '10px',
+                            fontWeight: 100,
+                            letterSpacing: '1px',
+                            color: '#000000',
+                            background: '#f5f5f5',
+                          }}>
+                            {tag}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })
+            )}
+          </div>
+        </div>
+
+        {/* Footer - Full Width */}
+        <footer style={{
+          gridColumn: '1 / -1',
+          textAlign: 'center',
+          padding: '24px',
+          borderTop: '1px solid #000000',
+          marginTop: '16px',
+        }}>
+          <div style={{
+            fontSize: '10px',
+            fontWeight: 100,
+            letterSpacing: '3px',
+            textTransform: 'uppercase',
+            color: '#000000',
+          }}>
+            Real-Time Data Visualization System
+          </div>
+        </footer>
       </div>
 
-      {/* Footer */}
-      <div style={{
-        marginTop: '16px',
-        textAlign: 'center',
-        fontSize: '8px',
-        color: '#666',
-      }}>
-        PRESS START TO CONTINUE • INSERT COIN
-      </div>
-
-      {/* Animations */}
+      {/* Swiss Modernism Chart Styles */}
       <style>{`
-        @keyframes pulse {
-          0%, 100% { opacity: 1; }
-          50% { opacity: 0.5; }
+        /* Swiss-themed DataCard overrides - Mathematical Precision */
+        .swiss-cards [class*="DataCard"] {
+          background: #ffffff !important;
+          border: 1px solid #000000 !important;
+          border-radius: 0 !important;
+          box-shadow: none !important;
+          font-family: 'Helvetica Neue', Arial, sans-serif !important;
+          padding: 24px !important;
         }
-        @keyframes slideIn {
-          from {
-            transform: translateY(-20px);
-            opacity: 0;
-          }
-          to {
-            transform: translateY(0);
-            opacity: 1;
-          }
+
+        /* Card titles - Helvetica, uppercase, thin weight */
+        .swiss-cards [class*="DataCard"] h3,
+        .swiss-cards [class*="DataCard"] h2 {
+          color: #000000 !important;
+          text-transform: uppercase !important;
+          font-size: 10px !important;
+          font-weight: 100 !important;
+          letter-spacing: 2px !important;
+          font-family: 'Helvetica Neue', Arial, sans-serif !important;
+          margin-bottom: 24px !important;
+          padding-bottom: 16px !important;
+          border-bottom: 1px solid #000000 !important;
+        }
+
+        /* Card text - Clean, minimal */
+        .swiss-cards [class*="DataCard"] p,
+        .swiss-cards [class*="DataCard"] span,
+        .swiss-cards [class*="DataCard"] div {
+          font-family: 'Helvetica Neue', Arial, sans-serif !important;
+          font-size: 12px !important;
+          line-height: 1.618 !important; /* Golden ratio */
+          color: #000000 !important;
+        }
+
+        /* Numbers - Bold, monospace for precision */
+        .swiss-cards [class*="DataCard"] [class*="text-lg"],
+        .swiss-cards [class*="DataCard"] [class*="text-xl"],
+        .swiss-cards [class*="DataCard"] [class*="text-2xl"] {
+          color: #000000 !important;
+          font-family: monospace !important;
+          font-weight: 700 !important;
+        }
+
+        /* Legend items - Minimal borders */
+        .swiss-cards [class*="DataCard"] [class*="flex items-center"] {
+          padding: 8px !important;
+          border: 1px solid #f5f5f5 !important;
+          background: #ffffff !important;
+          margin: 4px 0 !important;
+        }
+
+        /* Chart SVG elements - Monochrome with single red accent */
+        .swiss-cards svg text {
+          fill: #000000 !important;
+          font-family: 'Helvetica Neue', Arial, sans-serif !important;
+          font-size: 10px !important;
+          font-weight: 100 !important;
+        }
+
+        .swiss-cards svg line,
+        .swiss-cards svg path[class*="CartesianGrid"] {
+          stroke: #f5f5f5 !important;
+          stroke-width: 1 !important;
+        }
+
+        /* Recharts - Monochrome palette with RED ACCENT */
+        .swiss-cards svg path[class*="area"],
+        .swiss-cards svg path[class*="line"] {
+          filter: none !important;
+        }
+
+        /* First area/bar gets red, others black/gray */
+        .swiss-cards svg path[class*="area"]:first-of-type,
+        .swiss-cards svg rect[class*="recharts-bar"]:first-of-type {
+          fill: #ff0000 !important;
+          stroke: #ff0000 !important;
+        }
+
+        .swiss-cards svg path[class*="area"]:not(:first-of-type),
+        .swiss-cards svg rect[class*="recharts-bar"]:not(:first-of-type) {
+          fill: #000000 !important;
+          stroke: #000000 !important;
+        }
+
+        .swiss-cards svg path[class*="line"]:first-of-type {
+          stroke: #ff0000 !important;
+          stroke-width: 2 !important;
+        }
+
+        .swiss-cards svg path[class*="line"]:not(:first-of-type) {
+          stroke: #000000 !important;
+          stroke-width: 1 !important;
+        }
+
+        /* Bar chart bars - Flat, no effects */
+        .swiss-cards svg rect[class*="recharts-bar"] {
+          filter: none !important;
+        }
+
+        /* Hover effects - Minimal, geometric */
+        .swiss-cards [class*="DataCard"]:hover {
+          border: 2px solid #000000 !important;
+          box-shadow: none !important;
+          transform: none !important;
+          padding: 23px !important; /* Compensate for border change */
+        }
+
+        /* Percentage text - Regular weight */
+        .swiss-cards [class*="DataCard"] [class*="opacity-60"] {
+          color: #000000 !important;
+          opacity: 0.6 !important;
+          font-weight: 100 !important;
+        }
+
+        /* Color squares in legends - Pure geometric shapes */
+        .swiss-cards [class*="DataCard"] [class*="w-4 h-4"],
+        .swiss-cards [class*="DataCard"] [class*="w-3 h-3"] {
+          border: 1px solid #000000 !important;
+          border-radius: 0 !important;
+          box-shadow: none !important;
+        }
+
+        /* Tooltip styling - Clean, minimal */
+        .recharts-tooltip-wrapper {
+          border: 1px solid #000000 !important;
+          background: #ffffff !important;
+          box-shadow: none !important;
+        }
+
+        .recharts-default-tooltip {
+          background: #ffffff !important;
+          border: 1px solid #000000 !important;
+          border-radius: 0 !important;
+          padding: 16px !important;
+        }
+
+        /* Remove all gradients and rounded corners */
+        * {
+          border-radius: 0 !important;
+        }
+
+        /* Ensure 8px grid alignment */
+        .swiss-cards [class*="DataCard"] > * {
+          margin-bottom: 8px !important;
+        }
+
+        /* Last element no margin */
+        .swiss-cards [class*="DataCard"] > *:last-child {
+          margin-bottom: 0 !important;
         }
       `}</style>
     </div>
