@@ -1,42 +1,12 @@
 import { useEffect, useState } from 'react';
 import { io, Socket } from 'socket.io-client';
-
-interface FirehoseStats {
-  totalPosts: number;
-  postsPerMinute: number;
-  sentimentCounts: {
-    positive: number;
-    negative: number;
-    neutral: number;
-  };
-  duration: number;
-  running: boolean;
-  inDatabase?: number;
-}
-
-interface Post {
-  text: string;
-  sentiment: 'positive' | 'negative' | 'neutral';
-  sentimentScore: number;
-  createdAt: string;
-  language?: string;
-  hasImages?: boolean;
-  hasVideo?: boolean;
-  hasLink?: boolean;
-  author?: {
-    did: string;
-    handle: string;
-  };
-  uri?: string;
-  isReply?: boolean;
-  isQuote?: boolean;
-}
+import type { FirehoseStats, FirehosePost } from '@/variants/types';
 
 export function useSocket() {
   const [socket, setSocket] = useState<Socket | null>(null);
   const [connected, setConnected] = useState(false);
   const [stats, setStats] = useState<FirehoseStats | null>(null);
-  const [latestPost, setLatestPost] = useState<Post | null>(null);
+  const [latestPost, setLatestPost] = useState<FirehosePost | null>(null);
 
   useEffect(() => {
     // Connect to Socket.IO server with correct base path
@@ -59,7 +29,7 @@ export function useSocket() {
       setStats(data);
     });
 
-    socketInstance.on('post', (data: Post) => {
+    socketInstance.on('post', (data: FirehosePost) => {
       setLatestPost(data);
     });
 

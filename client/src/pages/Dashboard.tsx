@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { Link } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -422,21 +423,28 @@ export default function Dashboard() {
               REAL-TIME SENTIMENT ANALYSIS · AT PROTOCOL NETWORK
             </p>
           </div>
-          <button
-            onClick={handleToggleFirehose}
-            disabled={startMutation.isPending || stopMutation.isPending}
-            className={`px-4 py-2 border-2 self-start sm:self-auto cursor-pointer transition-all hover:opacity-80 active:scale-95 ${stats.running ? 'bg-[#01AAFF]/10' : 'bg-red-500/10'}`}
-            style={{ borderColor: stats.running ? '#01AAFF' : '#ef4444' }}
-            title={stats.running ? 'Click to pause firehose' : 'Click to resume firehose'}
-          >
-            <span className="text-xs font-bold uppercase tracking-widest">
-              {startMutation.isPending || stopMutation.isPending
-                ? '◐ UPDATING...'
-                : stats.running
-                  ? '▶ RUNNING'
-                  : '⏸ PAUSED'}
-            </span>
-          </button>
+          <div className="flex gap-3 items-center self-start sm:self-auto">
+            <Link href="/variants">
+              <a className="px-3 py-1.5 border border-foreground/20 hover:border-foreground/40 transition-colors text-xs uppercase tracking-wider hover:bg-foreground/5">
+                UX Variants →
+              </a>
+            </Link>
+            <button
+              onClick={handleToggleFirehose}
+              disabled={startMutation.isPending || stopMutation.isPending}
+              className={`px-4 py-2 border-2 cursor-pointer transition-all hover:opacity-80 active:scale-95 ${stats.running ? 'bg-[#01AAFF]/10' : 'bg-red-500/10'}`}
+              style={{ borderColor: stats.running ? '#01AAFF' : '#ef4444' }}
+              title={stats.running ? 'Click to pause firehose' : 'Click to resume firehose'}
+            >
+              <span className="text-xs font-bold uppercase tracking-widest">
+                {startMutation.isPending || stopMutation.isPending
+                  ? '◐ UPDATING...'
+                  : stats.running
+                    ? '▶ RUNNING'
+                    : '⏸ PAUSED'}
+              </span>
+            </button>
+          </div>
         </div>
       </header>
 
