@@ -799,7 +799,7 @@ export default function CosmicNexus({ onNavigateBack }: VariantProps) {
                   fontWeight: 700,
                   fontFamily: '"Cinzel", serif',
                 }}>
-                  {(stats as any)?.sentimentDistribution?.positive || 0}
+                  {(stats as any)?.sentimentCounts?.positive || 0}
                 </span>
               </div>
             </div>
@@ -837,7 +837,7 @@ export default function CosmicNexus({ onNavigateBack }: VariantProps) {
                   fontWeight: 700,
                   fontFamily: '"Cinzel", serif',
                 }}>
-                  {(stats as any)?.sentimentDistribution?.neutral || 0}
+                  {(stats as any)?.sentimentCounts?.neutral || 0}
                 </span>
               </div>
             </div>
@@ -875,7 +875,7 @@ export default function CosmicNexus({ onNavigateBack }: VariantProps) {
                   fontWeight: 700,
                   fontFamily: '"Cinzel", serif',
                 }}>
-                  {(stats as any)?.sentimentDistribution?.negative || 0}
+                  {(stats as any)?.sentimentCounts?.negative || 0}
                 </span>
               </div>
             </div>

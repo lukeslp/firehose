@@ -567,10 +567,10 @@ export default function RetroArcade({ onNavigateBack }: VariantProps) {
               sentimentCounts={stats?.sentimentCounts || { positive: 0, neutral: 0, negative: 0 }}
             />
             <SentimentTimelineCard
-              sentimentTimeline={sentimentTimeline}
+              data={sentimentTimeline}
             />
             <PostsPerMinuteCard
-              postsPerMinuteTimeline={postsPerMinuteTimeline}
+              data={postsPerMinuteTimeline}
               currentRate={stats?.postsPerMinute || 0}
             />
             <LanguagesCard
