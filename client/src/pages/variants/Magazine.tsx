@@ -19,10 +19,6 @@ import { PostsPerMinuteCard } from '@/components/cards/PostsPerMinuteCard';
 import { LanguagesCard } from '@/components/cards/LanguagesCard';
 import { ContentTypesCard } from '@/components/cards/ContentTypesCard';
 
-// Import Playfair Display for serif headings
-import '@fontsource/playfair-display/700.css';
-import '@fontsource/playfair-display/900.css';
-
 export function Magazine({ className }: VariantProps) {
   const { connected, stats, latestPost } = useSocket();
   const [posts, setPosts] = useState<FirehosePost[]>([]);
@@ -184,20 +180,23 @@ export function Magazine({ className }: VariantProps) {
     switch (sentiment) {
       case 'positive':
         return {
-          border: 'border-l-2 border-green-600',
-          accent: 'bg-green-600',
+          border: 'border-l-4 border-emerald-600',
+          accent: 'bg-emerald-600',
+          text: 'text-emerald-600',
           label: 'Positive'
         };
       case 'negative':
         return {
-          border: 'border-l-2 border-red-600',
-          accent: 'bg-red-600',
+          border: 'border-l-4 border-rose-600',
+          accent: 'bg-rose-600',
+          text: 'text-rose-600',
           label: 'Negative'
         };
       default:
         return {
-          border: 'border-l-2 border-gray-400',
-          accent: 'bg-gray-400',
+          border: 'border-l-4 border-neutral-400',
+          accent: 'bg-neutral-400',
+          text: 'text-neutral-600',
           label: 'Neutral'
         };
     }
@@ -205,31 +204,40 @@ export function Magazine({ className }: VariantProps) {
 
   return (
     <div
-      className={`magazine min-h-screen bg-white ${className || ''}`}
+      className={`magazine min-h-screen bg-white text-black ${className || ''}`}
     >
       {/* Main content */}
       <div className="relative">
         {/* Masthead - Editorial style */}
-        <header className="border-b border-black sticky top-0 z-30 bg-white">
-          <div className="max-w-7xl mx-auto px-8 py-6">
-            <div className="flex items-end justify-between">
-              <div>
-                <h1 className="font-serif text-7xl md:text-8xl font-bold tracking-tight leading-none mb-1">
+        <header className="border-b-2 border-black sticky top-0 z-30 bg-white">
+          <div className="max-w-7xl mx-auto px-6 md:px-12 py-8">
+            <div className="flex items-end justify-between gap-8">
+              <div className="flex-1">
+                <h1 className="magazine-title text-6xl md:text-8xl lg:text-9xl font-black tracking-tighter leading-[0.85] mb-3">
                   Bluesky
                 </h1>
-                <p className="text-sm uppercase tracking-[0.2em] text-gray-600 font-sans">
-                  Live Social Stream
+                <p className="text-xs md:text-sm uppercase tracking-[0.3em] text-neutral-500 font-sans font-medium">
+                  Live Social Stream — Real Time
                 </p>
               </div>
-              <div className="flex items-center gap-3">
-                <div
-                  className={`w-2 h-2 rounded-full ${
-                    connected ? 'bg-[#0047FF]' : 'bg-gray-400'
-                  }`}
-                />
-                <span className="text-xs uppercase tracking-wider font-sans">
-                  {connected ? 'Live' : 'Offline'}
-                </span>
+              <div className="flex flex-col items-end gap-2">
+                <div className="flex items-center gap-2">
+                  <div
+                    className={`w-3 h-3 rounded-full transition-colors ${
+                      connected ? 'bg-[#0047FF]' : 'bg-neutral-400'
+                    }`}
+                  />
+                  <span className="text-xs uppercase tracking-wider font-sans font-medium">
+                    {connected ? 'Live' : 'Offline'}
+                  </span>
+                </div>
+                <time className="text-xs text-neutral-500 font-sans">
+                  {new Date().toLocaleDateString('en-US', {
+                    month: 'short',
+                    day: 'numeric',
+                    year: 'numeric'
+                  })}
+                </time>
               </div>
             </div>
           </div>

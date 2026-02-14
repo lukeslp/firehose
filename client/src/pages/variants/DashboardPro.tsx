@@ -443,109 +443,109 @@ export function DashboardPro({ className }: VariantProps) {
 
         {/* Main Dashboard */}
         <main className="p-8">
-          {/* Premier Metrics - Art Deco KPI Grid */}
+          {/* Premier Metrics - Neumorphic KPI Grid */}
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-6 mb-8">
             {/* Total Posts */}
-            <div className="art-deco-card p-6 text-center">
-              <div className="art-deco-heading text-xs text-[#0a0e27]/60 uppercase tracking-[0.15em] mb-2">
+            <div className="neuro-card p-6 text-center">
+              <div className="text-xs text-[#64748b] uppercase tracking-wider mb-2 font-medium">
                 Total Posts
               </div>
-              <div className="art-deco-metric text-4xl mb-2">
+              <div className="neuro-metric text-4xl mb-2">
                 {(stats?.totalPosts || 0).toLocaleString()}
               </div>
-              <div className="art-deco-shimmer h-0.5 w-full mb-2"></div>
-              <div className="text-sm text-[#1b4332] font-semibold">
+              <div className="neuro-divider my-2"></div>
+              <div className="text-sm text-[#475569] font-semibold">
                 ↑ {Math.round(stats?.postsPerMinute || 0)}/min
               </div>
             </div>
 
             {/* Filtered View */}
-            <div className="art-deco-card p-6 text-center">
-              <div className="art-deco-heading text-xs text-[#0a0e27]/60 uppercase tracking-[0.15em] mb-2">
+            <div className="neuro-card p-6 text-center">
+              <div className="text-xs text-[#64748b] uppercase tracking-wider mb-2 font-medium">
                 Filtered
               </div>
-              <div className="art-deco-metric text-4xl mb-2">
+              <div className="neuro-metric text-4xl mb-2">
                 {filteredPosts.length}
               </div>
-              <div className="art-deco-shimmer h-0.5 w-full mb-2"></div>
-              <div className="text-sm text-[#0a0e27]/70 font-semibold">
+              <div className="neuro-divider my-2"></div>
+              <div className="text-sm text-[#475569] font-semibold">
                 {((filteredPosts.length / posts.length) * 100 || 0).toFixed(1)}% visible
               </div>
             </div>
 
             {/* Positive Sentiment */}
-            <div className="art-deco-card p-6 text-center">
-              <div className="art-deco-heading text-xs text-[#0a0e27]/60 uppercase tracking-[0.15em] mb-2">
+            <div className="neuro-card p-6 text-center">
+              <div className="text-xs text-[#64748b] uppercase tracking-wider mb-2 font-medium">
                 Positive
               </div>
-              <div className="text-4xl font-black text-[#1b4332] mb-2" style={{ fontFamily: 'Playfair Display, serif' }}>
+              <div className="neuro-metric text-4xl mb-2 text-[#22c55e]">
                 {analytics.sentimentPercent.positive}%
               </div>
-              <div className="art-deco-shimmer h-0.5 w-full mb-2"></div>
-              <div className="text-sm text-[#0a0e27]/70 font-semibold">
+              <div className="neuro-divider my-2"></div>
+              <div className="text-sm text-[#475569] font-semibold">
                 {stats?.sentimentCounts?.positive || 0} posts
               </div>
             </div>
 
             {/* Negative Sentiment */}
-            <div className="art-deco-card p-6 text-center">
-              <div className="art-deco-heading text-xs text-[#0a0e27]/60 uppercase tracking-[0.15em] mb-2">
+            <div className="neuro-card p-6 text-center">
+              <div className="text-xs text-[#64748b] uppercase tracking-wider mb-2 font-medium">
                 Negative
               </div>
-              <div className="text-4xl font-black text-[#8b0000] mb-2" style={{ fontFamily: 'Playfair Display, serif' }}>
+              <div className="neuro-metric text-4xl mb-2 text-[#ef4444]">
                 {analytics.sentimentPercent.negative}%
               </div>
-              <div className="art-deco-shimmer h-0.5 w-full mb-2"></div>
-              <div className="text-sm text-[#0a0e27]/70 font-semibold">
+              <div className="neuro-divider my-2"></div>
+              <div className="text-sm text-[#475569] font-semibold">
                 {stats?.sentimentCounts?.negative || 0} posts
               </div>
             </div>
 
             {/* Media Posts */}
-            <div className="art-deco-card p-6 text-center">
-              <div className="art-deco-heading text-xs text-[#0a0e27]/60 uppercase tracking-[0.15em] mb-2">
+            <div className="neuro-card p-6 text-center">
+              <div className="text-xs text-[#64748b] uppercase tracking-wider mb-2 font-medium">
                 Media
               </div>
-              <div className="art-deco-metric text-4xl mb-2">
+              <div className="neuro-metric text-4xl mb-2">
                 {analytics.mediaPercent}%
               </div>
-              <div className="art-deco-shimmer h-0.5 w-full mb-2"></div>
-              <div className="text-sm text-[#0a0e27]/70 font-semibold">
+              <div className="neuro-divider my-2"></div>
+              <div className="text-sm text-[#475569] font-semibold">
                 Images/Videos
               </div>
             </div>
 
             {/* Engagement */}
-            <div className="art-deco-card p-6 text-center">
-              <div className="art-deco-heading text-xs text-[#0a0e27]/60 uppercase tracking-[0.15em] mb-2">
+            <div className="neuro-card p-6 text-center">
+              <div className="text-xs text-[#64748b] uppercase tracking-wider mb-2 font-medium">
                 Replies
               </div>
-              <div className="art-deco-metric text-4xl mb-2">
+              <div className="neuro-metric text-4xl mb-2">
                 {analytics.repliesPercent}%
               </div>
-              <div className="art-deco-shimmer h-0.5 w-full mb-2"></div>
-              <div className="text-sm text-[#0a0e27]/70 font-semibold">
+              <div className="neuro-divider my-2"></div>
+              <div className="text-sm text-[#475569] font-semibold">
                 Conversations
               </div>
             </div>
           </div>
 
           {/* Filter Controls */}
-          <div className="art-deco-card p-6 mb-8">
-            <div className="art-deco-heading text-sm font-bold text-[#0a0e27] uppercase tracking-[0.2em] mb-4 text-center">
-              Refinement Controls
+          <div className="neuro-card p-6 mb-8">
+            <div className="text-sm font-semibold text-[#1e293b] uppercase tracking-wider mb-4 text-center">
+              Filter Controls
             </div>
-            <div className="art-deco-divider mb-6"></div>
+            <div className="neuro-divider mb-6"></div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-3xl mx-auto">
               {/* Language */}
               <div>
-                <label className="art-deco-heading text-sm text-[#0a0e27]/80 block mb-2 tracking-wider">
+                <label className="text-sm text-[#475569] block mb-3 font-medium">
                   Language
                 </label>
                 <select
                   value={selectedLanguage}
                   onChange={(e) => setSelectedLanguage(e.target.value)}
-                  className="art-deco-input w-full px-4 py-3"
+                  className="neuro-input w-full px-4 py-3"
                 >
                   <option value="all">All Languages</option>
                   <option value="en">EN</option>
@@ -559,7 +559,7 @@ export function DashboardPro({ className }: VariantProps) {
 
               {/* Keyword */}
               <div>
-                <label className="art-deco-heading text-sm text-[#0a0e27]/80 block mb-2 tracking-wider">
+                <label className="text-sm text-[#475569] block mb-3 font-medium">
                   Keyword
                 </label>
                 <input
@@ -567,7 +567,7 @@ export function DashboardPro({ className }: VariantProps) {
                   value={keywordFilter}
                   onChange={(e) => setKeywordFilter(e.target.value)}
                   placeholder="Filter content..."
-                  className="art-deco-input w-full px-4 py-3 placeholder:text-[#0a0e27]/40"
+                  className="neuro-input w-full px-4 py-3"
                 />
               </div>
             </div>

@@ -212,31 +212,31 @@ export default function RetroArcade({ onNavigateBack }: VariantProps) {
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
-          padding: '32px',
-          background: 'rgba(255, 255, 255, 0.1)',
+          padding: '40px',
+          background: 'rgba(255, 255, 255, 0.15)',
           backdropFilter: 'blur(20px)',
           borderRadius: '24px',
-          border: '1px solid rgba(255, 255, 255, 0.2)',
+          border: '1px solid rgba(255, 255, 255, 0.3)',
           boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)',
           marginBottom: '20px',
         }}>
           <div>
             <div style={{
               fontSize: '13px',
-              fontWeight: 500,
+              fontWeight: 600,
               letterSpacing: '3px',
               textTransform: 'uppercase',
-              marginBottom: '8px',
-              color: 'rgba(255, 255, 255, 0.8)',
+              marginBottom: '12px',
+              color: 'rgba(255, 255, 255, 0.9)',
             }}>
               Bluesky Firehose
             </div>
             <div style={{
-              fontSize: '48px',
+              fontSize: '52px',
               fontWeight: 700,
               lineHeight: 1,
               letterSpacing: '-2px',
-              background: 'linear-gradient(135deg, #fff 0%, rgba(255, 255, 255, 0.8) 100%)',
+              background: 'linear-gradient(135deg, #fff 0%, rgba(255, 255, 255, 0.9) 100%)',
               WebkitBackgroundClip: 'text',
               WebkitTextFillColor: 'transparent',
               backgroundClip: 'text',
@@ -247,10 +247,10 @@ export default function RetroArcade({ onNavigateBack }: VariantProps) {
           <Link href="/variants">
             <a style={{
               padding: '16px 32px',
-              background: 'rgba(255, 255, 255, 0.2)',
+              background: 'rgba(255, 255, 255, 0.25)',
               backdropFilter: 'blur(10px)',
-              border: '1px solid rgba(255, 255, 255, 0.3)',
-              borderRadius: '12px',
+              border: '1px solid rgba(255, 255, 255, 0.4)',
+              borderRadius: '16px',
               color: '#ffffff',
               textDecoration: 'none',
               fontSize: '14px',
@@ -261,12 +261,12 @@ export default function RetroArcade({ onNavigateBack }: VariantProps) {
               boxShadow: '0 4px 16px rgba(0, 0, 0, 0.1)',
             }}
             onMouseEnter={(e) => {
-              e.currentTarget.style.background = 'rgba(255, 255, 255, 0.3)';
+              e.currentTarget.style.background = 'rgba(255, 255, 255, 0.35)';
               e.currentTarget.style.transform = 'translateY(-2px)';
               e.currentTarget.style.boxShadow = '0 6px 20px rgba(0, 0, 0, 0.15)';
             }}
             onMouseLeave={(e) => {
-              e.currentTarget.style.background = 'rgba(255, 255, 255, 0.2)';
+              e.currentTarget.style.background = 'rgba(255, 255, 255, 0.25)';
               e.currentTarget.style.transform = 'translateY(0)';
               e.currentTarget.style.boxShadow = '0 4px 16px rgba(0, 0, 0, 0.1)';
             }}>
@@ -524,28 +524,31 @@ export default function RetroArcade({ onNavigateBack }: VariantProps) {
           </div>
         )}
 
-        {/* Filter Controls - Full Width */}
+        {/* Filter Controls - Glassmorphic Cards */}
         <div style={{
           gridColumn: '1 / -1',
           display: 'grid',
           gridTemplateColumns: 'repeat(2, 1fr)',
-          gap: '8px',
-          marginBottom: '16px',
+          gap: '16px',
+          marginBottom: '20px',
         }}>
           {/* Language Filter */}
           <div style={{
-            padding: '24px',
-            border: '1px solid #000000',
-            background: '#f5f5f5',
+            padding: '28px',
+            background: 'rgba(255, 255, 255, 0.12)',
+            backdropFilter: 'blur(20px)',
+            borderRadius: '20px',
+            border: '1px solid rgba(255, 255, 255, 0.25)',
+            boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)',
           }}>
             <label style={{
-              fontSize: '10px',
-              fontWeight: 100,
+              fontSize: '11px',
+              fontWeight: 600,
               letterSpacing: '2px',
               textTransform: 'uppercase',
               display: 'block',
               marginBottom: '16px',
-              color: '#000000',
+              color: 'rgba(255, 255, 255, 0.9)',
             }}>
               Language Filter
             </label>
@@ -554,42 +557,47 @@ export default function RetroArcade({ onNavigateBack }: VariantProps) {
               onChange={(e) => setSelectedLanguage(e.target.value)}
               style={{
                 width: '100%',
-                padding: '16px',
-                background: '#ffffff',
-                border: '1px solid #000000',
-                color: '#000000',
+                padding: '14px 16px',
+                background: 'rgba(255, 255, 255, 0.2)',
+                backdropFilter: 'blur(10px)',
+                border: '1px solid rgba(255, 255, 255, 0.3)',
+                color: '#ffffff',
                 fontSize: '14px',
-                fontFamily: "'Helvetica Neue', Arial, sans-serif",
-                fontWeight: 400,
-                borderRadius: 0,
+                fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+                fontWeight: 500,
+                borderRadius: '12px',
                 appearance: 'none',
                 cursor: 'pointer',
+                boxShadow: '0 4px 16px rgba(0, 0, 0, 0.1)',
               }}
             >
-              <option value="all">All Languages</option>
-              <option value="en">English</option>
-              <option value="es">Spanish</option>
-              <option value="fr">French</option>
-              <option value="de">German</option>
-              <option value="ja">Japanese</option>
-              <option value="pt">Portuguese</option>
+              <option value="all" style={{ background: '#764ba2', color: '#ffffff' }}>All Languages</option>
+              <option value="en" style={{ background: '#764ba2', color: '#ffffff' }}>English</option>
+              <option value="es" style={{ background: '#764ba2', color: '#ffffff' }}>Spanish</option>
+              <option value="fr" style={{ background: '#764ba2', color: '#ffffff' }}>French</option>
+              <option value="de" style={{ background: '#764ba2', color: '#ffffff' }}>German</option>
+              <option value="ja" style={{ background: '#764ba2', color: '#ffffff' }}>Japanese</option>
+              <option value="pt" style={{ background: '#764ba2', color: '#ffffff' }}>Portuguese</option>
             </select>
           </div>
 
           {/* Keyword Filter */}
           <div style={{
-            padding: '24px',
-            border: '1px solid #000000',
-            background: '#f5f5f5',
+            padding: '28px',
+            background: 'rgba(255, 255, 255, 0.12)',
+            backdropFilter: 'blur(20px)',
+            borderRadius: '20px',
+            border: '1px solid rgba(255, 255, 255, 0.25)',
+            boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)',
           }}>
             <label style={{
-              fontSize: '10px',
-              fontWeight: 100,
+              fontSize: '11px',
+              fontWeight: 600,
               letterSpacing: '2px',
               textTransform: 'uppercase',
               display: 'block',
               marginBottom: '16px',
-              color: '#000000',
+              color: 'rgba(255, 255, 255, 0.9)',
             }}>
               Keyword Filter
             </label>
@@ -600,41 +608,46 @@ export default function RetroArcade({ onNavigateBack }: VariantProps) {
               placeholder="Search content..."
               style={{
                 width: '100%',
-                padding: '16px',
-                background: '#ffffff',
-                border: '1px solid #000000',
-                color: '#000000',
+                padding: '14px 16px',
+                background: 'rgba(255, 255, 255, 0.2)',
+                backdropFilter: 'blur(10px)',
+                border: '1px solid rgba(255, 255, 255, 0.3)',
+                color: '#ffffff',
                 fontSize: '14px',
-                fontFamily: "'Helvetica Neue', Arial, sans-serif",
-                fontWeight: 400,
-                borderRadius: 0,
+                fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+                fontWeight: 500,
+                borderRadius: '12px',
                 boxSizing: 'border-box',
+                boxShadow: '0 4px 16px rgba(0, 0, 0, 0.1)',
               }}
             />
           </div>
         </div>
 
-        {/* Data Visualization - Swiss Modernism */}
+        {/* Data Visualization - Glassmorphic Analytics */}
         <div style={{
           gridColumn: '1 / -1',
-          border: '2px solid #000000',
-          padding: '32px',
-          marginBottom: '16px',
-          background: '#ffffff',
+          padding: '40px',
+          marginBottom: '20px',
+          background: 'rgba(255, 255, 255, 0.12)',
+          backdropFilter: 'blur(20px)',
+          borderRadius: '24px',
+          border: '1px solid rgba(255, 255, 255, 0.25)',
+          boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)',
         }}>
           <div style={{
-            fontSize: '14px',
-            fontWeight: 100,
+            fontSize: '13px',
+            fontWeight: 600,
             letterSpacing: '3px',
             textTransform: 'uppercase',
             marginBottom: '32px',
-            color: '#000000',
-            paddingBottom: '16px',
-            borderBottom: '1px solid #000000',
+            color: 'rgba(255, 255, 255, 0.95)',
+            paddingBottom: '20px',
+            borderBottom: '1px solid rgba(255, 255, 255, 0.2)',
           }}>
             Analytics Dashboard
           </div>
-          <CardWall className="swiss-cards">
+          <CardWall className="gradient-cards">
             <SentimentDistributionCard
               sentimentCounts={stats?.sentimentCounts || { positive: 0, neutral: 0, negative: 0 }}
             />

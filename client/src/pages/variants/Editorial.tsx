@@ -209,115 +209,151 @@ export default function Editorial({ onNavigateBack }: VariantProps) {
         }
         .editorial-rule {
           height: 1px;
-          background: #000;
-          margin: 24px 0;
+          background: #d0d0d0;
+          margin: 16px 0;
         }
         .editorial-double-rule {
           border-top: 3px double #000;
+          margin: 24px 0;
+        }
+        .editorial-section-rule {
+          height: 2px;
+          background: #8B0000;
           margin: 32px 0;
         }
-        .collapsible-card {
-          transition: max-height 0.3s ease, padding 0.3s ease;
-          overflow: hidden;
+        .editorial-card:hover {
+          background: #f9f9f9;
+          transition: background 0.2s ease;
+        }
+        .editorial-link {
+          color: #8B0000;
+          text-decoration: none;
+          border-bottom: 1px solid transparent;
+          transition: border-bottom 0.2s ease;
+        }
+        .editorial-link:hover {
+          border-bottom: 1px solid #8B0000;
         }
       `}</style>
 
       <div style={{
         minHeight: '100vh',
-        background: '#f8f8f8',
+        background: '#fff',
         fontFamily: "'Libre Franklin', sans-serif",
-        color: '#000',
+        color: '#1a1a1a',
       }}>
         {/* Header - Newspaper Masthead */}
         <header style={{
           borderBottom: '4px solid #000',
-          padding: '40px 24px 24px',
+          padding: '32px 24px 16px',
           background: '#fff',
         }}>
-          <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+          <div style={{ maxWidth: '1400px', margin: '0 auto' }}>
+            {/* Top bar with date and navigation */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
               <div style={{
-                fontSize: '11px',
+                fontSize: '10px',
                 fontWeight: 600,
                 textTransform: 'uppercase',
-                letterSpacing: '0.5px',
+                letterSpacing: '1px',
+                color: '#666',
               }} className="editorial-sans">
                 {formatDate(new Date().toISOString())}
               </div>
               <Link href="/variants">
-                <a style={{
-                  fontSize: '11px',
+                <a className="editorial-link" style={{
+                  fontSize: '10px',
                   fontWeight: 600,
-                  color: '#000',
-                  textDecoration: 'none',
-                  borderBottom: '1px solid #000',
-                  paddingBottom: '2px',
                   textTransform: 'uppercase',
-                  letterSpacing: '0.5px',
-                }} className="editorial-sans">
-                  ← All Variants
+                  letterSpacing: '1px',
+                }}>
+                  ← All Editions
                 </a>
               </Link>
             </div>
-            <div className="editorial-rule" />
-            <h1 style={{
-              fontSize: '64px',
-              fontWeight: 700,
-              margin: '16px 0',
-              textAlign: 'center',
-              letterSpacing: '-1px',
-            }} className="editorial-serif">
-              The Bluesky Chronicle
-            </h1>
+
+            {/* Main masthead */}
+            <div style={{ textAlign: 'center', marginTop: '16px' }}>
+              <h1 style={{
+                fontSize: '72px',
+                fontWeight: 700,
+                margin: '0',
+                letterSpacing: '-2px',
+                lineHeight: '1',
+              }} className="editorial-serif">
+                The Bluesky Times
+              </h1>
+              <div style={{
+                fontSize: '11px',
+                fontWeight: 400,
+                fontStyle: 'italic',
+                marginTop: '8px',
+                color: '#666',
+              }} className="editorial-serif">
+                "All the Posts Fit to Stream"
+              </div>
+            </div>
+
+            {/* Edition info bar */}
             <div style={{
               textAlign: 'center',
-              fontSize: '13px',
-              fontWeight: 500,
+              fontSize: '10px',
+              fontWeight: 600,
               textTransform: 'uppercase',
-              borderTop: '2px solid #000',
-              borderBottom: '1px solid #000',
-              padding: '8px 0',
+              borderTop: '1px solid #000',
+              borderBottom: '3px double #000',
+              padding: '6px 0',
               margin: '16px 0 0',
-              letterSpacing: '1px',
+              letterSpacing: '1.5px',
+              display: 'flex',
+              justifyContent: 'center',
+              gap: '32px',
             }} className="editorial-sans">
-              Real-Time Coverage • All The News As It Happens
+              <span>Real-Time Edition</span>
+              <span style={{ color: '#8B0000' }}>•</span>
+              <span>Live Coverage</span>
+              <span style={{ color: '#8B0000' }}>•</span>
+              <span>{connected ? 'Connected' : 'Offline'}</span>
             </div>
           </div>
         </header>
 
-        {/* Stats Bar - Neon HUD */}
+        {/* Stats Bar - Newspaper style */}
         <div style={{
-          background: 'rgba(10, 14, 26, 0.8)',
-          borderBottom: '1px solid #00d9ff',
-          padding: '16px 24px',
-          boxShadow: '0 0 20px rgba(0, 217, 255, 0.2)',
+          background: '#f5f5f5',
+          borderBottom: '1px solid #d0d0d0',
+          padding: '12px 24px',
         }}>
           <div style={{
-            maxWidth: '1200px',
+            maxWidth: '1400px',
             margin: '0 auto',
             display: 'flex',
             gap: '48px',
             justifyContent: 'center',
-            fontFamily: "'Share Tech Mono', monospace",
-            fontSize: '13px',
+            fontSize: '11px',
+            fontWeight: 600,
             textTransform: 'uppercase',
-          }}>
+            letterSpacing: '0.5px',
+          }} className="editorial-sans">
             <div>
-              <span style={{ color: '#7b2cbf' }}>TOTAL_ARTICLES: </span>
-              <span style={{ fontWeight: 700, color: '#ff0080' }} className="neon-text">{(stats?.totalPosts || 0).toLocaleString()}</span>
+              <span style={{ color: '#666' }}>Total: </span>
+              <span style={{ fontWeight: 700, color: '#000' }}>{(stats?.totalPosts || 0).toLocaleString()}</span>
             </div>
+            <div style={{ color: '#d0d0d0' }}>|</div>
             <div>
-              <span style={{ color: '#7b2cbf' }}>FILTERED: </span>
-              <span style={{ fontWeight: 700, color: '#00d9ff' }} className="neon-cyan">{filteredPosts.length}</span>
+              <span style={{ color: '#666' }}>Filtered: </span>
+              <span style={{ fontWeight: 700, color: '#000' }}>{filteredPosts.length}</span>
             </div>
+            <div style={{ color: '#d0d0d0' }}>|</div>
             <div>
-              <span style={{ color: '#7b2cbf' }}>RATE: </span>
-              <span style={{ fontWeight: 700, color: '#ffff00' }} className="neon-yellow">{Math.round(stats?.postsPerMinute || 0)}/MIN</span>
+              <span style={{ color: '#666' }}>Rate: </span>
+              <span style={{ fontWeight: 700, color: '#8B0000' }}>{Math.round(stats?.postsPerMinute || 0)}/min</span>
             </div>
+            <div style={{ color: '#d0d0d0' }}>|</div>
             <div>
-              <span style={{ color: '#7b2cbf' }}>CONNECTION: </span>
-              <span style={{ fontWeight: 700, color: connected ? '#00ff00' : '#ff0000' }}>
-                {connected ? '█ LIVE' : '░ OFFLINE'}
+              <span style={{ color: '#666' }}>Status: </span>
+              <span style={{ fontWeight: 700, color: connected ? '#2d6a2d' : '#8B0000' }}>
+                {connected ? 'Live' : 'Offline'}
               </span>
             </div>
           </div>

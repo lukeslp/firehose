@@ -377,28 +377,26 @@ export function Minimal({ className }: VariantProps) {
           ))}
         </div>
 
-        {/* Filter Controls - BRUTAL FIELDSET */}
-        <fieldset
+        {/* Filter Controls - Glassmorphic */}
+        <div
           style={{
-            border: '2px solid #1a1a1a',
+            ...glassCard,
             padding: '24px',
-            marginBottom: '32px',
-            backgroundColor: '#6b6b6b',
+            marginBottom: '24px',
           }}
         >
-          <legend
+          <h2
             style={{
-              fontSize: '12px',
-              color: '#1a1a1a',
-              letterSpacing: '2px',
-              fontWeight: 'bold',
-              padding: '0 8px',
-              backgroundColor: '#808080',
-              border: '2px solid #1a1a1a',
+              fontSize: '14px',
+              color: 'rgba(75, 85, 99, 0.9)',
+              fontWeight: '600',
+              marginBottom: '16px',
+              textTransform: 'uppercase',
+              letterSpacing: '0.05em',
             }}
           >
-            FILTERS
-          </legend>
+            Filters
+          </h2>
           <div
             style={{
               display: 'grid',
@@ -411,14 +409,13 @@ export function Minimal({ className }: VariantProps) {
               <label
                 style={{
                   display: 'block',
-                  fontSize: '10px',
-                  color: '#1a1a1a',
-                  letterSpacing: '1px',
-                  fontWeight: 'bold',
+                  fontSize: '12px',
+                  color: 'rgba(107, 114, 128, 0.8)',
+                  fontWeight: '500',
                   marginBottom: '8px',
                 }}
               >
-                LANGUAGE
+                Language
               </label>
               <select
                 value={selectedLanguage}
@@ -426,21 +423,22 @@ export function Minimal({ className }: VariantProps) {
                 style={{
                   width: '100%',
                   padding: '12px',
-                  backgroundColor: '#1a1a1a',
-                  border: '2px solid #1a1a1a',
-                  color: '#f5f5f5',
+                  backgroundColor: 'rgba(255, 255, 255, 0.5)',
+                  border: '1px solid rgba(209, 213, 219, 0.3)',
+                  borderRadius: '8px',
+                  color: 'rgba(31, 41, 55, 0.9)',
                   fontSize: '14px',
-                  fontFamily: '"Courier New", Courier, monospace',
                   cursor: 'pointer',
+                  outline: 'none',
                 }}
               >
-                <option value="all">ALL LANGUAGES</option>
-                <option value="en">ENGLISH</option>
-                <option value="es">SPANISH</option>
-                <option value="fr">FRENCH</option>
-                <option value="de">GERMAN</option>
-                <option value="ja">JAPANESE</option>
-                <option value="pt">PORTUGUESE</option>
+                <option value="all">All Languages</option>
+                <option value="en">English</option>
+                <option value="es">Spanish</option>
+                <option value="fr">French</option>
+                <option value="de">German</option>
+                <option value="ja">Japanese</option>
+                <option value="pt">Portuguese</option>
               </select>
             </div>
 
@@ -449,28 +447,28 @@ export function Minimal({ className }: VariantProps) {
               <label
                 style={{
                   display: 'block',
-                  fontSize: '10px',
-                  color: '#1a1a1a',
-                  letterSpacing: '1px',
-                  fontWeight: 'bold',
+                  fontSize: '12px',
+                  color: 'rgba(107, 114, 128, 0.8)',
+                  fontWeight: '500',
                   marginBottom: '8px',
                 }}
               >
-                KEYWORD
+                Keyword
               </label>
               <input
                 type="text"
                 value={keywordFilter}
                 onChange={(e) => setKeywordFilter(e.target.value)}
-                placeholder="FILTER BY KEYWORD..."
+                placeholder="Filter by keyword..."
                 style={{
                   width: '100%',
                   padding: '12px',
-                  backgroundColor: '#1a1a1a',
-                  border: '2px solid #1a1a1a',
-                  color: '#f5f5f5',
+                  backgroundColor: 'rgba(255, 255, 255, 0.5)',
+                  border: '1px solid rgba(209, 213, 219, 0.3)',
+                  borderRadius: '8px',
+                  color: 'rgba(31, 41, 55, 0.9)',
                   fontSize: '14px',
-                  fontFamily: '"Courier New", Courier, monospace',
+                  outline: 'none',
                 }}
               />
             </div>
@@ -482,11 +480,10 @@ export function Minimal({ className }: VariantProps) {
                   display: 'flex',
                   alignItems: 'center',
                   gap: '12px',
-                  fontSize: '10px',
-                  color: '#1a1a1a',
-                  letterSpacing: '1px',
-                  fontWeight: 'bold',
-                  marginTop: '24px',
+                  fontSize: '12px',
+                  color: 'rgba(107, 114, 128, 0.8)',
+                  fontWeight: '500',
+                  marginTop: '28px',
                   cursor: 'pointer',
                 }}
               >
@@ -495,39 +492,38 @@ export function Minimal({ className }: VariantProps) {
                   checked={hideNSFW}
                   onChange={(e) => setHideNSFW(e.target.checked)}
                   style={{
-                    width: '20px',
-                    height: '20px',
+                    width: '18px',
+                    height: '18px',
                     cursor: 'pointer',
+                    accentColor: 'rgba(124, 58, 237, 0.8)',
                   }}
                 />
-                HIDE NSFW
+                Hide NSFW Content
               </label>
             </div>
           </div>
-        </fieldset>
+        </div>
 
-        {/* Data Visualization Cards - COLLAPSIBLE CONCRETE BLOCKS */}
-        <fieldset
+        {/* Data Visualization Cards - Glassmorphic */}
+        <div
           style={{
-            border: '2px solid #1a1a1a',
+            ...glassCard,
             padding: '24px',
-            marginBottom: '32px',
-            backgroundColor: '#6b6b6b',
+            marginBottom: '24px',
           }}
         >
-          <legend
+          <h2
             style={{
-              fontSize: '12px',
-              color: '#1a1a1a',
-              letterSpacing: '2px',
-              fontWeight: 'bold',
-              padding: '0 8px',
-              backgroundColor: '#808080',
-              border: '2px solid #1a1a1a',
+              fontSize: '14px',
+              color: 'rgba(75, 85, 99, 0.9)',
+              fontWeight: '600',
+              marginBottom: '16px',
+              textTransform: 'uppercase',
+              letterSpacing: '0.05em',
             }}
           >
-            ANALYTICS
-          </legend>
+            Analytics
+          </h2>
 
           {/* Toggle Controls */}
           <div
@@ -539,26 +535,25 @@ export function Minimal({ className }: VariantProps) {
             }}
           >
             {[
-              { label: 'SENTIMENT DIST', state: showSentimentDist, setState: setShowSentimentDist },
-              { label: 'SENTIMENT TIME', state: showSentimentTimeline, setState: setShowSentimentTimeline },
-              { label: 'POST RATE', state: showPostRate, setState: setShowPostRate },
-              { label: 'LANGUAGES', state: showLanguages, setState: setShowLanguages },
-              { label: 'CONTENT TYPES', state: showContentTypes, setState: setShowContentTypes },
+              { label: 'Sentiment Distribution', state: showSentimentDist, setState: setShowSentimentDist },
+              { label: 'Sentiment Timeline', state: showSentimentTimeline, setState: setShowSentimentTimeline },
+              { label: 'Post Rate', state: showPostRate, setState: setShowPostRate },
+              { label: 'Languages', state: showLanguages, setState: setShowLanguages },
+              { label: 'Content Types', state: showContentTypes, setState: setShowContentTypes },
             ].map((toggle, idx) => (
               <button
                 key={idx}
                 onClick={() => toggle.setState(!toggle.state)}
                 style={{
                   padding: '12px',
-                  backgroundColor: toggle.state ? '#1a1a1a' : '#808080',
-                  border: '2px solid #1a1a1a',
-                  color: toggle.state ? '#ff0000' : '#1a1a1a',
-                  fontSize: '10px',
-                  fontWeight: 'bold',
-                  letterSpacing: '1px',
+                  backgroundColor: toggle.state ? 'rgba(124, 58, 237, 0.15)' : 'rgba(255, 255, 255, 0.4)',
+                  border: '1px solid rgba(209, 213, 219, 0.3)',
+                  borderRadius: '8px',
+                  color: toggle.state ? 'rgba(124, 58, 237, 0.95)' : 'rgba(107, 114, 128, 0.8)',
+                  fontSize: '12px',
+                  fontWeight: '500',
                   cursor: 'pointer',
-                  fontFamily: '"Courier New", Courier, monospace',
-                  transition: 'none',
+                  transition: 'all 0.2s ease',
                 }}
               >
                 {toggle.state ? '▼' : '▶'} {toggle.label}
@@ -569,19 +564,19 @@ export function Minimal({ className }: VariantProps) {
           {/* Card Wall - Only show enabled cards */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '16px' }}>
             {showSentimentDist && (
-              <div style={{ border: '2px solid #1a1a1a', backgroundColor: '#1a1a1a', boxShadow: '4px 4px 0 rgba(0, 0, 0, 0.6)' }}>
+              <div style={{ ...glassCard }}>
                 <SentimentDistributionCard
                   sentimentCounts={stats?.sentimentCounts || { positive: 0, neutral: 0, negative: 0 }}
                 />
               </div>
             )}
             {showSentimentTimeline && (
-              <div style={{ border: '2px solid #1a1a1a', backgroundColor: '#1a1a1a', boxShadow: '4px 4px 0 rgba(0, 0, 0, 0.6)' }}>
+              <div style={{ ...glassCard }}>
                 <SentimentTimelineCard data={sentimentTimeline} />
               </div>
             )}
             {showPostRate && (
-              <div style={{ border: '2px solid #1a1a1a', backgroundColor: '#1a1a1a', boxShadow: '4px 4px 0 rgba(0, 0, 0, 0.6)' }}>
+              <div style={{ ...glassCard }}>
                 <PostsPerMinuteCard
                   timelineData={postsPerMinuteTimeline}
                   currentRate={stats?.postsPerMinute || 0}
@@ -589,17 +584,17 @@ export function Minimal({ className }: VariantProps) {
               </div>
             )}
             {showLanguages && (
-              <div style={{ border: '2px solid #1a1a1a', backgroundColor: '#1a1a1a', boxShadow: '4px 4px 0 rgba(0, 0, 0, 0.6)' }}>
+              <div style={{ ...glassCard }}>
                 <LanguagesCard languageCounts={languageCounts} />
               </div>
             )}
             {showContentTypes && (
-              <div style={{ border: '2px solid #1a1a1a', backgroundColor: '#1a1a1a', boxShadow: '4px 4px 0 rgba(0, 0, 0, 0.6)' }}>
+              <div style={{ ...glassCard }}>
                 <ContentTypesCard contentTypeCounts={contentTypeCounts} />
               </div>
             )}
           </div>
-        </fieldset>
+        </div>
 
         {/* Posts Feed - STAMPED CONCRETE POSTS */}
         <div style={{ display: 'grid', gap: '2px', backgroundColor: '#1a1a1a' }}>

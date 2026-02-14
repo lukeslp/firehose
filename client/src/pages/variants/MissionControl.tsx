@@ -342,166 +342,132 @@ export function MissionControl({ className }: VariantProps) {
           </motion.div>
         </motion.div>
 
-        {/* Seed Packet Stats - organic blob cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
-          {/* Growing Time Seed Packet */}
+        {/* System Metrics - geometric cards */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
+          {/* Uptime */}
           <motion.div
-            initial={!prefersReducedMotion ? { x: -50, opacity: 0, rotate: -5 } : {}}
-            animate={{ x: 0, opacity: 1, rotate: 0 }}
+            initial={!prefersReducedMotion ? { x: -50, opacity: 0 } : {}}
+            animate={{ x: 0, opacity: 1 }}
             transition={springTransition}
-            className="relative p-6 bg-white/80 backdrop-blur-sm"
+            className="relative p-6 bg-[#2d2d2d] border-2 border-[#00d9ff]/30 overflow-hidden"
             style={{
-              borderRadius: '58% 42% 61% 39% / 48% 53% 47% 52%',
-              boxShadow: '0 8px 32px rgba(45, 74, 43, 0.15)',
-              border: '3px solid #8fbc8f',
+              clipPath: 'polygon(0 0, 100% 0, 100% calc(100% - 12px), calc(100% - 12px) 100%, 0 100%)',
             }}
           >
-            <div
-              className="text-sm mb-2 text-[#5f7161] uppercase tracking-wider"
-              style={{ fontFamily: '"Indie Flower", cursive' }}
-            >
-              Growing Time
+            {/* Corner accent */}
+            <div className="absolute bottom-0 right-0 w-12 h-12 bg-[#00d9ff]/10" />
+
+            <div className="text-xs mb-2 text-gray-400 uppercase tracking-widest font-mono">
+              SYSTEM UPTIME
             </div>
-            <div
-              className="text-5xl font-bold text-[#2d4a2b] tabular-nums mb-2"
-              style={{ fontFamily: '"Caveat", cursive' }}
-            >
+            <div className="text-5xl font-bold text-white tabular-nums mb-2 font-mono">
               {gardenTime}
             </div>
-            <div className="text-xs text-[#5f7161]">
-              {stats?.running ? '🌱 Seeds sprouting' : '🌙 Garden resting'}
+            <div className="text-xs text-[#00d9ff] font-mono">
+              {stats?.running ? '▸ ACTIVE' : '■ STANDBY'}
             </div>
           </motion.div>
 
-          {/* Total Seeds Planted */}
+          {/* Total Posts */}
           <motion.div
             initial={!prefersReducedMotion ? { y: -50, opacity: 0 } : {}}
             animate={{ y: 0, opacity: 1 }}
             transition={{ ...springTransition, delay: 0.1 }}
-            className="relative p-6 bg-white/80 backdrop-blur-sm"
+            className="relative p-6 bg-[#2d2d2d] border-2 border-[#0080ff]/30 overflow-hidden"
             style={{
-              borderRadius: '43% 57% 46% 54% / 61% 48% 52% 39%',
-              boxShadow: '0 8px 32px rgba(95, 113, 97, 0.15)',
-              border: '3px solid #2d4a2b',
+              clipPath: 'polygon(12px 0, 100% 0, 100% 100%, 0 100%, 0 12px)',
             }}
           >
-            <div
-              className="text-sm mb-2 text-[#5f7161] uppercase tracking-wider"
-              style={{ fontFamily: '"Indie Flower", cursive' }}
-            >
-              Seeds Planted
+            {/* Corner accent */}
+            <div className="absolute top-0 left-0 w-12 h-12 bg-[#0080ff]/10" />
+
+            <div className="text-xs mb-2 text-gray-400 uppercase tracking-widest font-mono">
+              POSTS PROCESSED
             </div>
             <motion.div
-              className="text-5xl font-bold text-[#2d4a2b] tabular-nums mb-2"
-              style={{ fontFamily: '"Caveat", cursive' }}
+              className="text-5xl font-bold text-white tabular-nums mb-2 font-mono"
               key={stats?.totalPosts || 0}
-              initial={!prefersReducedMotion ? { scale: 1.3 } : {}}
+              initial={!prefersReducedMotion ? { scale: 1.2 } : {}}
               animate={{ scale: 1 }}
               transition={springTransition}
             >
               {(stats?.totalPosts || 0).toLocaleString()}
             </motion.div>
-            <div className="text-xs text-[#5f7161]">
-              🌾 In garden: {(stats?.inDatabase || 0).toLocaleString()}
+            <div className="text-xs text-[#0080ff] font-mono">
+              DB: {(stats?.inDatabase || 0).toLocaleString()}
             </div>
           </motion.div>
 
-          {/* Growth Rate */}
+          {/* Data Rate */}
           <motion.div
-            initial={!prefersReducedMotion ? { x: 50, opacity: 0, rotate: 5 } : {}}
-            animate={{ x: 0, opacity: 1, rotate: 0 }}
+            initial={!prefersReducedMotion ? { x: 50, opacity: 0 } : {}}
+            animate={{ x: 0, opacity: 1 }}
             transition={{ ...springTransition, delay: 0.2 }}
-            className="relative p-6 bg-white/80 backdrop-blur-sm"
+            className="relative p-6 bg-[#2d2d2d] border-2 border-[#00d9ff]/30 overflow-hidden"
             style={{
-              borderRadius: '51% 49% 38% 62% / 57% 44% 56% 43%',
-              boxShadow: '0 8px 32px rgba(212, 165, 116, 0.15)',
-              border: '3px solid #d4a574',
+              clipPath: 'polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 0 100%)',
             }}
           >
-            <div
-              className="text-sm mb-2 text-[#5f7161] uppercase tracking-wider"
-              style={{ fontFamily: '"Indie Flower", cursive' }}
-            >
-              Growth Rate
+            {/* Corner accent */}
+            <div className="absolute top-0 right-0 w-12 h-12 bg-[#00d9ff]/10" />
+
+            <div className="text-xs mb-2 text-gray-400 uppercase tracking-widest font-mono">
+              DATA RATE
             </div>
-            <div
-              className="text-5xl font-bold text-[#2d4a2b] tabular-nums mb-2"
-              style={{ fontFamily: '"Caveat", cursive' }}
-            >
+            <div className="text-5xl font-bold text-white tabular-nums mb-2 font-mono">
               {Math.round(stats?.postsPerMinute || 0)}
             </div>
-            <div className="text-xs text-[#5f7161]">
-              🌻 seeds per minute
+            <div className="text-xs text-[#00d9ff] font-mono">
+              POSTS/MIN
             </div>
           </motion.div>
         </div>
 
-        {/* Garden Tools - Filter Controls */}
+        {/* Filter Controls - angular panels */}
         <motion.div
           initial={!prefersReducedMotion ? { y: 20, opacity: 0 } : {}}
           animate={{ y: 0, opacity: 1 }}
           transition={{ ...springTransition, delay: 0.3 }}
-          className="mb-12 p-8 bg-white/70 backdrop-blur-sm"
+          className="mb-12 p-6 bg-[#2d2d2d] border-2 border-[#00d9ff]/20"
           style={{
-            borderRadius: '48% 52% 43% 57% / 51% 49% 51% 49%',
-            boxShadow: '0 8px 32px rgba(45, 74, 43, 0.12)',
-            border: '2px dashed #8fbc8f',
+            clipPath: 'polygon(0 12px, 12px 0, 100% 0, 100% calc(100% - 12px), calc(100% - 12px) 100%, 0 100%)',
           }}
         >
-          <h2
-            className="text-3xl font-bold text-[#2d4a2b] mb-6"
-            style={{ fontFamily: '"Caveat", cursive' }}
-          >
-            Garden Tools
+          <h2 className="text-2xl font-bold text-white mb-6 tracking-wide uppercase">
+            FILTER CONTROLS
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Language Selector */}
             <div>
-              <label
-                className="block mb-3 text-lg text-[#5f7161]"
-                style={{ fontFamily: '"Indie Flower", cursive' }}
-              >
-                🌍 Language Filter
+              <label className="block mb-3 text-xs text-gray-400 uppercase tracking-widest font-mono">
+                LANGUAGE
               </label>
               <select
                 value={selectedLanguage}
                 onChange={(e) => setSelectedLanguage(e.target.value)}
-                className="w-full p-4 bg-white/90 border-2 border-[#8fbc8f] text-[#2d4a2b] focus:outline-none focus:ring-2 focus:ring-[#2d4a2b]/30"
-                style={{
-                  borderRadius: '12px',
-                  fontFamily: '"Lora", serif',
-                  boxShadow: 'inset 0 2px 8px rgba(45, 74, 43, 0.05)',
-                }}
+                className="w-full p-3 bg-[#1a1a1a] border border-[#00d9ff]/30 text-white focus:outline-none focus:border-[#00d9ff] transition-colors font-mono"
               >
-                <option value="all">All Languages</option>
-                <option value="en">English</option>
-                <option value="es">Spanish</option>
-                <option value="fr">French</option>
-                <option value="de">German</option>
-                <option value="ja">Japanese</option>
-                <option value="pt">Portuguese</option>
+                <option value="all">ALL LANGUAGES</option>
+                <option value="en">ENGLISH</option>
+                <option value="es">SPANISH</option>
+                <option value="fr">FRENCH</option>
+                <option value="de">GERMAN</option>
+                <option value="ja">JAPANESE</option>
+                <option value="pt">PORTUGUESE</option>
               </select>
             </div>
 
             {/* Keyword Search */}
             <div>
-              <label
-                className="block mb-3 text-lg text-[#5f7161]"
-                style={{ fontFamily: '"Indie Flower", cursive' }}
-              >
-                🔍 Keyword Search
+              <label className="block mb-3 text-xs text-gray-400 uppercase tracking-widest font-mono">
+                KEYWORD FILTER
               </label>
               <input
                 type="text"
                 value={keywordFilter}
                 onChange={(e) => setKeywordFilter(e.target.value)}
-                placeholder="Search the garden..."
-                className="w-full p-4 bg-white/90 border-2 border-[#8fbc8f] text-[#2d4a2b] placeholder:text-[#8fbc8f]/60 focus:outline-none focus:ring-2 focus:ring-[#2d4a2b]/30"
-                style={{
-                  borderRadius: '12px',
-                  fontFamily: '"Lora", serif',
-                  boxShadow: 'inset 0 2px 8px rgba(45, 74, 43, 0.05)',
-                }}
+                placeholder="ENTER SEARCH TERM..."
+                className="w-full p-3 bg-[#1a1a1a] border border-[#00d9ff]/30 text-white placeholder:text-gray-600 focus:outline-none focus:border-[#00d9ff] transition-colors font-mono"
               />
             </div>
           </div>

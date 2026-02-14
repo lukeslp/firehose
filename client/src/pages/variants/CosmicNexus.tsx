@@ -56,6 +56,9 @@ export default function CosmicNexus({ onNavigateBack }: VariantProps) {
   // CardWall visibility toggle
   const [showCardWall, setShowCardWall] = useState(false);
 
+  // Collapsed cards state
+  const [collapsedCards, setCollapsedCards] = useState<Set<string>>(new Set());
+
   // Add new posts AND track data for CardWall (Dashboard.tsx pattern)
   useEffect(() => {
     if (latestPost) {
@@ -106,20 +109,25 @@ export default function CosmicNexus({ onNavigateBack }: VariantProps) {
         hasImages,
         hasVideo,
         hasLink: hasLinks,
+        y: -100, // Start above viewport
+        vy: 2, // Fall speed
       };
 
-      setRecentPosts(prev => [...prev, newPostCard].slice(-12)); // Keep last 12 posts
+      setRecentPosts(prev => [...prev, newPostCard].slice(-20)); // Keep last 20 posts
     }
   }, [latestPost, selectedLanguage, keywordFilter]);
 
-  // Fade out old posts
+  // Animate falling posts
   useEffect(() => {
     const interval = setInterval(() => {
       setRecentPosts(prev =>
-        prev.map(p => ({ ...p, opacity: Math.max(0, p.opacity - 0.01) }))
-           .filter(p => p.opacity > 0.05)
+        prev.map(p => {
+          const newY = (p.y || 0) + (p.vy || 2);
+          const newOpacity = newY > window.innerHeight - 200 ? Math.max(0, p.opacity - 0.02) : p.opacity;
+          return { ...p, y: newY, opacity: newOpacity };
+        }).filter(p => p.opacity > 0.05)
       );
-    }, 100);
+    }, 50);
     return () => clearInterval(interval);
   }, []);
 
@@ -181,149 +189,24 @@ export default function CosmicNexus({ onNavigateBack }: VariantProps) {
     return () => clearInterval(interval);
   }, []);
 
-  // Canvas animation - draw gears instead of particles
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    const resize = () => {
-      canvas.width = window.innerWidth;
-      canvas.height = window.innerHeight;
-    };
-    resize();
-    window.addEventListener('resize', resize);
-
-    // Draw a gear shape
-    const drawGear = (x: number, y: number, radius: number, teeth: number, rotation: number, color: string) => {
-      ctx.save();
-      ctx.translate(x, y);
-      ctx.rotate((rotation * Math.PI) / 180);
-
-      const toothDepth = radius * 0.3;
-      const innerRadius = radius - toothDepth;
-
-      ctx.beginPath();
-      for (let i = 0; i < teeth; i++) {
-        const angle = (i / teeth) * Math.PI * 2;
-        const nextAngle = ((i + 1) / teeth) * Math.PI * 2;
-
-        // Outer tooth
-        const outerX1 = Math.cos(angle) * radius;
-        const outerY1 = Math.sin(angle) * radius;
-        const outerX2 = Math.cos(nextAngle) * radius;
-        const outerY2 = Math.sin(nextAngle) * radius;
-
-        // Inner valley
-        const innerX1 = Math.cos(angle + (Math.PI / teeth) * 0.5) * innerRadius;
-        const innerY1 = Math.sin(angle + (Math.PI / teeth) * 0.5) * innerRadius;
-
-        if (i === 0) ctx.moveTo(outerX1, outerY1);
-        ctx.lineTo(outerX2, outerY2);
-        ctx.lineTo(innerX1, innerY1);
-      }
-      ctx.closePath();
-
-      // Brass gradient fill
-      const gradient = ctx.createRadialGradient(0, 0, 0, 0, 0, radius);
-      gradient.addColorStop(0, color);
-      gradient.addColorStop(0.5, '#daa520');
-      gradient.addColorStop(1, '#8b6914');
-      ctx.fillStyle = gradient;
-      ctx.fill();
-
-      // Dark outline
-      ctx.strokeStyle = '#4a4a4a';
-      ctx.lineWidth = 1;
-      ctx.stroke();
-
-      // Central hub
-      ctx.beginPath();
-      ctx.arc(0, 0, radius * 0.3, 0, Math.PI * 2);
-      ctx.fillStyle = '#4a4a4a';
-      ctx.fill();
-      ctx.strokeStyle = '#2c1810';
-      ctx.lineWidth = 2;
-      ctx.stroke();
-
-      ctx.restore();
-    };
-
-    const animate = () => {
-      // Dark walnut background
-      ctx.fillStyle = '#2c1810';
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-      // Draw gears as particles
-      particles.forEach((particle) => {
-        // Gravity toward mouse (steam pressure pulling gears)
-        const dx = mousePos.x - particle.x;
-        const dy = mousePos.y - particle.y;
-        const dist = Math.sqrt(dx * dx + dy * dy);
-        if (dist < 200) {
-          particle.vx += (dx / dist) * 0.02;
-          particle.vy += (dy / dist) * 0.02;
-        }
-
-        // Update position
-        particle.x += particle.vx;
-        particle.y += particle.vy;
-
-        // Damping
-        particle.vx *= 0.99;
-        particle.vy *= 0.99;
-
-        // Bounce off edges
-        if (particle.x < 0 || particle.x > canvas.width) particle.vx *= -1;
-        if (particle.y < 0 || particle.y > canvas.height) particle.vy *= -1;
-
-        // Update rotation
-        particle.rotation += particle.rotationSpeed;
-
-        // Fade out old particles (slowly - last ~5min)
-        particle.opacity = Math.max(0, particle.opacity - 0.0002);
-
-        // Get sentiment color (brass variations)
-        let color;
-        switch (particle.sentiment) {
-          case 'positive':
-            color = `rgba(255, 165, 0, ${particle.opacity})`; // Warm Edison glow
-            break;
-          case 'negative':
-            color = `rgba(139, 69, 19, ${particle.opacity})`; // Leather brown
-            break;
-          default:
-            color = `rgba(184, 134, 11, ${particle.opacity})`; // Brass
-        }
-
-        // Draw gear
-        ctx.globalAlpha = particle.opacity;
-        drawGear(particle.x, particle.y, particle.size, 8, particle.rotation, color);
-        ctx.globalAlpha = 1;
-      });
-
-      // Remove faded particles
-      setParticles(prev => prev.filter(p => p.opacity > 0.05));
-
-      animationRef.current = requestAnimationFrame(animate);
-    };
-
-    animate();
-
-    return () => {
-      window.removeEventListener('resize', resize);
-      if (animationRef.current) cancelAnimationFrame(animationRef.current);
-    };
-  }, [particles, mousePos]);
-
   const getSentimentColor = (sentiment: string) => {
     switch (sentiment) {
-      case 'positive': return '#ffa500'; // Edison glow
-      case 'negative': return '#8b4513'; // Leather brown
-      default: return '#b8860b'; // Brass
+      case 'positive': return '#06b6d4'; // Teal
+      case 'negative': return '#e879f9'; // Violet
+      default: return '#64748b'; // Slate
     }
+  };
+
+  const toggleCard = (id: string) => {
+    setCollapsedCards(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
   };
 
   return (
@@ -332,8 +215,8 @@ export default function CosmicNexus({ onNavigateBack }: VariantProps) {
       width: '100vw',
       height: '100vh',
       overflow: 'hidden',
-      background: '#2c1810', // Dark walnut
-      fontFamily: '"Crimson Text", Georgia, serif',
+      background: '#0a0a0a',
+      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
     }}>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Crimson+Text:wght@400;600&family=Special+Elite&display=swap');
