@@ -1,19 +1,26 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { io, Socket } from 'socket.io-client';
 import type { FirehoseStats, FirehosePost } from '@/variants/types';
 
-export function useSocket() {
-  const [socket, setSocket] = useState<Socket | null>(null);
+export function useSocket(sampleRate: number = 1) {
   const [connected, setConnected] = useState(false);
   const [stats, setStats] = useState<FirehoseStats | null>(null);
   const [latestPost, setLatestPost] = useState<FirehosePost | null>(null);
+  const socketRef = useRef<Socket | null>(null);
 
   useEffect(() => {
-    // Connect to Socket.IO server with correct base path
+    // Disconnect previous socket if sample rate changed
+    if (socketRef.current) {
+      socketRef.current.disconnect();
+    }
+
     const socketInstance = io({
       path: `${import.meta.env.BASE_URL}socket.io`,
       transports: ['websocket', 'polling'],
+      query: { sampleRate: String(sampleRate) },
     });
+
+    socketRef.current = socketInstance;
 
     socketInstance.on('connect', () => {
       console.log('[Socket.IO] Connected');
@@ -33,17 +40,11 @@ export function useSocket() {
       setLatestPost(data);
     });
 
-    setSocket(socketInstance);
-
     return () => {
       socketInstance.disconnect();
+      socketRef.current = null;
     };
-  }, []);
+  }, [sampleRate]);
 
-  return {
-    socket,
-    connected,
-    stats,
-    latestPost,
-  };
+  return { connected, stats, latestPost };
 }

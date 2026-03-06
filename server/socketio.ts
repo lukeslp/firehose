@@ -14,26 +14,29 @@ export function setupSocketIO(httpServer: HTTPServer) {
   const firehose = getFirehoseService();
 
   io.on('connection', (socket) => {
-    console.log('[Socket.IO] Client connected:', socket.id);
+    // Read sample rate from handshake query (default: 1 = 100%)
+    const rawRate = socket.handshake.query.sampleRate;
+    const sampleRate = Math.min(1, Math.max(0.01, Number(rawRate) || 1));
+    console.log(`[Socket.IO] Client connected: ${socket.id} (sample: ${(sampleRate * 100).toFixed(0)}%)`);
 
     // Send initial stats
     const stats = firehose.getStats();
     socket.emit('stats', stats);
 
-    // Listen for firehose events and broadcast to clients
+    // Forward posts with sampling — stats always go through at full accuracy
     const handlePost = (post: any) => {
-      socket.emit('post', post);
+      if (sampleRate >= 1 || Math.random() < sampleRate) {
+        socket.emit('post', post);
+      }
     };
 
     const handleStats = () => {
-      const currentStats = firehose.getStats();
-      socket.emit('stats', currentStats);
+      socket.emit('stats', firehose.getStats());
     };
 
-    // Attach listeners
     firehose.on('post', handlePost);
 
-    // Send stats updates every second
+    // Stats every second (always full accuracy, not sampled)
     const statsInterval = setInterval(handleStats, 1000);
 
     socket.on('disconnect', () => {
