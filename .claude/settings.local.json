@@ -1,0 +1,39 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python:*)",
+      "Bash(curl:*)",
+      "Bash(python3:*)",
+      "Bash(sudo -S cp:*)",
+      "Bash(cat:*)",
+      "Bash(sudo -S caddy validate:*)",
+      "Bash(sudo -S caddy reload:*)",
+      "Bash(pnpm build:*)",
+      "Bash(sudo cat:*)",
+      "Bash(npm run build:*)",
+      "Bash(sudo -S cat:*)",
+      "Bash(lsof:*)",
+      "Bash(ps:*)",
+      "Bash(kill:*)",
+      "Bash(pkill:*)",
+      "Bash(mysql:*)",
+      "Bash(pnpm add:*)",
+      "Bash(pnpm approve-builds:*)",
+      "Bash(pnpm db:push:*)",
+      "Bash(npm run build-release:*)",
+      "Bash(drizzle/meta/_journal.json)",
+      "Bash(npx drizzle-kit generate:*)",
+      "Bash(npx drizzle-kit:*)",
+      "Bash(sqlite3:*)",
+      "mcp__executeautomation-playwright-mcp-server__playwright_navigate",
+      "Bash(git add:*)",
+      "Bash(git commit:*)"
+    ],
+    "deny": [],
+    "ask": []
+  },
+  "enabledMcpjsonServers": [
+    "orchestrator"
+  ],
+  "enableAllProjectMcpServers": true
+}

@@ -14,7 +14,6 @@ export default function Editorial({ onNavigateBack }: VariantProps) {
   const { connected, stats, latestPost } = useSocket();
   const [posts, setPosts] = useState<FirehosePost[]>([]);
   const [selectedPost, setSelectedPost] = useState<FirehosePost | null>(null);
-  const [expandedCards, setExpandedCards] = useState<Set<string>>(new Set());
 
   // Filter state
   const [selectedLanguage, setSelectedLanguage] = useState<string>('all');
@@ -50,18 +49,6 @@ export default function Editorial({ onNavigateBack }: VariantProps) {
     withVideo: 0,
     withLinks: 0,
   });
-
-  const toggleCard = (cardId: string) => {
-    setExpandedCards(prev => {
-      const next = new Set(prev);
-      if (next.has(cardId)) {
-        next.delete(cardId);
-      } else {
-        next.add(cardId);
-      }
-      return next;
-    });
-  };
 
   // Add new posts to feed and track metrics
   useEffect(() => {
@@ -174,9 +161,9 @@ export default function Editorial({ onNavigateBack }: VariantProps) {
 
   const getSentimentLabel = (sentiment: string) => {
     switch (sentiment) {
-      case 'positive': return 'Opinion';
-      case 'negative': return 'Analysis';
-      default: return 'News';
+      case 'positive': return 'OPTIMISTIC';
+      case 'negative': return 'CRITICAL';
+      default: return 'NEUTRAL';
     }
   };
 
@@ -193,180 +180,288 @@ export default function Editorial({ onNavigateBack }: VariantProps) {
     });
   }, [posts, selectedLanguage, keywordFilter]);
 
+  // Random Japanese decorative characters
+  const japaneseChars = ['サイバー', 'ネオン', '未来', '東京', '夜', 'データ', '電脳'];
+  const getRandomJapanese = () => japaneseChars[Math.floor(Math.random() * japaneseChars.length)];
+
   return (
     <>
-      {/* Google Fonts - Professional Newspaper Typography */}
+      {/* Google Fonts */}
       <link rel="preconnect" href="https://fonts.googleapis.com" />
       <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-      <link href="https://fonts.googleapis.com/css2?family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=Libre+Franklin:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+      <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet" />
 
+      {/* Keyframes and animations */}
       <style>{`
-        .editorial-serif {
-          font-family: 'Libre Baskerville', serif;
+        @keyframes scanline {
+          0% { transform: translateY(-100%); }
+          100% { transform: translateY(100vh); }
         }
-        .editorial-sans {
-          font-family: 'Libre Franklin', sans-serif;
+        @keyframes rain {
+          0% { transform: translateY(-100%); opacity: 1; }
+          100% { transform: translateY(100vh); opacity: 0; }
         }
-        .editorial-rule {
-          height: 1px;
-          background: #d0d0d0;
-          margin: 16px 0;
+        @keyframes glitch {
+          0%, 100% { transform: translate(0); }
+          20% { transform: translate(-2px, 2px); }
+          40% { transform: translate(-2px, -2px); }
+          60% { transform: translate(2px, 2px); }
+          80% { transform: translate(2px, -2px); }
         }
-        .editorial-double-rule {
-          border-top: 3px double #000;
-          margin: 24px 0;
+        @keyframes holographic {
+          0% { background-position: 0% 50%; }
+          50% { background-position: 100% 50%; }
+          100% { background-position: 0% 50%; }
         }
-        .editorial-section-rule {
+        @keyframes pulse-glow {
+          0%, 100% { filter: drop-shadow(0 0 5px #ff0080) drop-shadow(0 0 10px #ff0080); }
+          50% { filter: drop-shadow(0 0 10px #ff0080) drop-shadow(0 0 20px #ff0080) drop-shadow(0 0 30px #ff0080); }
+        }
+        .neon-text {
+          text-shadow:
+            0 0 10px #ff0080,
+            0 0 20px #ff0080,
+            0 0 30px #ff0080,
+            0 0 40px #ff0080,
+            0 0 70px #ff0080,
+            0 0 80px #ff0080;
+        }
+        .neon-cyan {
+          text-shadow:
+            0 0 10px #00d9ff,
+            0 0 20px #00d9ff,
+            0 0 30px #00d9ff,
+            0 0 40px #00d9ff;
+        }
+        .neon-yellow {
+          text-shadow:
+            0 0 10px #ffff00,
+            0 0 20px #ffff00,
+            0 0 30px #ffff00;
+        }
+        .holographic-card {
+          position: relative;
+          background: linear-gradient(
+            135deg,
+            rgba(255, 0, 128, 0.1) 0%,
+            rgba(0, 217, 255, 0.1) 25%,
+            rgba(123, 44, 191, 0.1) 50%,
+            rgba(0, 217, 255, 0.1) 75%,
+            rgba(255, 0, 128, 0.1) 100%
+          );
+          background-size: 200% 200%;
+          animation: holographic 3s ease infinite;
+          border: 2px solid;
+          border-image: linear-gradient(
+            135deg,
+            #ff0080,
+            #00d9ff,
+            #7b2cbf,
+            #ff0080
+          ) 1;
+        }
+        .holographic-card::before {
+          content: '';
+          position: absolute;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background: linear-gradient(
+            135deg,
+            rgba(255, 0, 128, 0.2),
+            transparent,
+            rgba(0, 217, 255, 0.2)
+          );
+          pointer-events: none;
+        }
+        .reflection {
+          transform: scaleY(-1);
+          opacity: 0.3;
+          filter: blur(2px);
+          position: absolute;
+          bottom: 0;
+          left: 0;
+          right: 0;
+          pointer-events: none;
+        }
+        .rain-line {
+          position: absolute;
+          width: 1px;
+          height: 100px;
+          background: linear-gradient(to bottom, transparent, #00d9ff, transparent);
+          animation: rain linear infinite;
+        }
+        .scanline-overlay {
+          position: fixed;
+          top: 0;
+          left: 0;
+          width: 100%;
           height: 2px;
-          background: #8B0000;
-          margin: 32px 0;
+          background: linear-gradient(to bottom, transparent, #00d9ff, transparent);
+          animation: scanline 4s linear infinite;
+          pointer-events: none;
+          z-index: 9999;
+          opacity: 0.5;
         }
-        .editorial-card:hover {
-          background: #f9f9f9;
-          transition: background 0.2s ease;
+        .diagonal-skew {
+          transform: skewY(-2deg);
         }
-        .editorial-link {
-          color: #8B0000;
-          text-decoration: none;
-          border-bottom: 1px solid transparent;
-          transition: border-bottom 0.2s ease;
+        .perspective-card {
+          transform: perspective(1000px) rotateX(5deg);
+          transition: transform 0.3s ease;
         }
-        .editorial-link:hover {
-          border-bottom: 1px solid #8B0000;
+        .perspective-card:hover {
+          transform: perspective(1000px) rotateX(0deg) scale(1.02);
         }
       `}</style>
 
+      {/* Scanline overlay */}
+      <div className="scanline-overlay" />
+
+      {/* Rain effect */}
+      {[...Array(20)].map((_, i) => (
+        <div
+          key={i}
+          className="rain-line"
+          style={{
+            left: `${Math.random() * 100}%`,
+            animationDuration: `${Math.random() * 2 + 1}s`,
+            animationDelay: `${Math.random() * 2}s`,
+          }}
+        />
+      ))}
+
       <div style={{
         minHeight: '100vh',
-        background: '#fff',
-        fontFamily: "'Libre Franklin', sans-serif",
-        color: '#1a1a1a',
+        background: 'linear-gradient(135deg, #0a0e1a 0%, #1a0a2e 100%)',
+        fontFamily: "'Share Tech Mono', monospace",
+        color: '#00d9ff',
+        position: 'relative',
+        overflow: 'hidden',
       }}>
-        {/* Header - Newspaper Masthead */}
+        {/* Header - Cyberpunk masthead */}
         <header style={{
-          borderBottom: '4px solid #000',
-          padding: '32px 24px 16px',
-          background: '#fff',
+          borderBottom: '2px solid #ff0080',
+          padding: '32px 24px 24px',
+          background: 'rgba(10, 14, 26, 0.95)',
+          backdropFilter: 'blur(10px)',
+          position: 'relative',
+          boxShadow: '0 0 30px rgba(255, 0, 128, 0.3)',
         }}>
-          <div style={{ maxWidth: '1400px', margin: '0 auto' }}>
-            {/* Top bar with date and navigation */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+          {/* Japanese decoration */}
+          <div style={{
+            position: 'absolute',
+            top: '10px',
+            right: '24px',
+            fontSize: '14px',
+            color: '#7b2cbf',
+            opacity: 0.6,
+            fontFamily: "'Share Tech Mono', monospace",
+          }}>
+            {getRandomJapanese()}
+          </div>
+
+          <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
               <div style={{
-                fontSize: '10px',
-                fontWeight: 600,
+                fontSize: '12px',
+                color: '#ffff00',
+                fontFamily: "'Share Tech Mono', monospace",
                 textTransform: 'uppercase',
-                letterSpacing: '1px',
-                color: '#666',
-              }} className="editorial-sans">
+              }} className="neon-yellow">
                 {formatDate(new Date().toISOString())}
               </div>
               <Link href="/variants">
-                <a className="editorial-link" style={{
-                  fontSize: '10px',
-                  fontWeight: 600,
+                <a style={{
+                  fontSize: '12px',
+                  color: '#00d9ff',
+                  textDecoration: 'none',
+                  fontFamily: "'Share Tech Mono', monospace",
+                  borderBottom: '1px solid #00d9ff',
+                  paddingBottom: '2px',
                   textTransform: 'uppercase',
-                  letterSpacing: '1px',
-                }}>
-                  ← All Editions
+                }} className="neon-cyan">
+                  ← RETURN TO VARIANTS
                 </a>
               </Link>
             </div>
-
-            {/* Main masthead */}
-            <div style={{ textAlign: 'center', marginTop: '16px' }}>
-              <h1 style={{
-                fontSize: '72px',
-                fontWeight: 700,
-                margin: '0',
-                letterSpacing: '-2px',
-                lineHeight: '1',
-              }} className="editorial-serif">
-                The Bluesky Times
-              </h1>
-              <div style={{
-                fontSize: '11px',
-                fontWeight: 400,
-                fontStyle: 'italic',
-                marginTop: '8px',
-                color: '#666',
-              }} className="editorial-serif">
-                "All the Posts Fit to Stream"
-              </div>
-            </div>
-
-            {/* Edition info bar */}
+            <h1 style={{
+              fontSize: '72px',
+              fontWeight: 900,
+              fontFamily: "'Orbitron', sans-serif",
+              margin: '16px 0',
+              letterSpacing: '0.1em',
+              textAlign: 'center',
+              textTransform: 'uppercase',
+              color: '#ff0080',
+            }} className="neon-text">
+              BLUESKY_CHRONICLE
+            </h1>
             <div style={{
               textAlign: 'center',
-              fontSize: '10px',
-              fontWeight: 600,
+              fontSize: '14px',
+              color: '#00d9ff',
+              fontFamily: "'Share Tech Mono', monospace",
               textTransform: 'uppercase',
-              borderTop: '1px solid #000',
-              borderBottom: '3px double #000',
-              padding: '6px 0',
+              borderTop: '1px solid #7b2cbf',
+              borderBottom: '1px solid #7b2cbf',
+              padding: '8px 0',
               margin: '16px 0 0',
-              letterSpacing: '1.5px',
-              display: 'flex',
-              justifyContent: 'center',
-              gap: '32px',
-            }} className="editorial-sans">
-              <span>Real-Time Edition</span>
-              <span style={{ color: '#8B0000' }}>•</span>
-              <span>Live Coverage</span>
-              <span style={{ color: '#8B0000' }}>•</span>
-              <span>{connected ? 'Connected' : 'Offline'}</span>
+              letterSpacing: '0.05em',
+            }} className="neon-cyan">
+              REAL-TIME COVERAGE • NEURAL STREAM • ALL VOICES PRESERVED
             </div>
           </div>
         </header>
 
-        {/* Stats Bar - Newspaper style */}
+        {/* Stats Bar - Neon HUD */}
         <div style={{
-          background: '#f5f5f5',
-          borderBottom: '1px solid #d0d0d0',
-          padding: '12px 24px',
+          background: 'rgba(10, 14, 26, 0.8)',
+          borderBottom: '1px solid #00d9ff',
+          padding: '16px 24px',
+          boxShadow: '0 0 20px rgba(0, 217, 255, 0.2)',
         }}>
           <div style={{
-            maxWidth: '1400px',
+            maxWidth: '1200px',
             margin: '0 auto',
             display: 'flex',
             gap: '48px',
             justifyContent: 'center',
-            fontSize: '11px',
-            fontWeight: 600,
+            fontFamily: "'Share Tech Mono', monospace",
+            fontSize: '13px',
             textTransform: 'uppercase',
-            letterSpacing: '0.5px',
-          }} className="editorial-sans">
+          }}>
             <div>
-              <span style={{ color: '#666' }}>Total: </span>
-              <span style={{ fontWeight: 700, color: '#000' }}>{(stats?.totalPosts || 0).toLocaleString()}</span>
+              <span style={{ color: '#7b2cbf' }}>TOTAL_ARTICLES: </span>
+              <span style={{ fontWeight: 700, color: '#ff0080' }} className="neon-text">{(stats?.totalPosts || 0).toLocaleString()}</span>
             </div>
-            <div style={{ color: '#d0d0d0' }}>|</div>
             <div>
-              <span style={{ color: '#666' }}>Filtered: </span>
-              <span style={{ fontWeight: 700, color: '#000' }}>{filteredPosts.length}</span>
+              <span style={{ color: '#7b2cbf' }}>FILTERED: </span>
+              <span style={{ fontWeight: 700, color: '#00d9ff' }} className="neon-cyan">{filteredPosts.length}</span>
             </div>
-            <div style={{ color: '#d0d0d0' }}>|</div>
             <div>
-              <span style={{ color: '#666' }}>Rate: </span>
-              <span style={{ fontWeight: 700, color: '#8B0000' }}>{Math.round(stats?.postsPerMinute || 0)}/min</span>
+              <span style={{ color: '#7b2cbf' }}>RATE: </span>
+              <span style={{ fontWeight: 700, color: '#ffff00' }} className="neon-yellow">{Math.round(stats?.postsPerMinute || 0)}/MIN</span>
             </div>
-            <div style={{ color: '#d0d0d0' }}>|</div>
             <div>
-              <span style={{ color: '#666' }}>Status: </span>
-              <span style={{ fontWeight: 700, color: connected ? '#2d6a2d' : '#8B0000' }}>
-                {connected ? 'Live' : 'Offline'}
+              <span style={{ color: '#7b2cbf' }}>CONNECTION: </span>
+              <span style={{ fontWeight: 700, color: connected ? '#00ff00' : '#ff0000' }}>
+                {connected ? '█ LIVE' : '░ OFFLINE'}
               </span>
             </div>
           </div>
         </div>
 
-        {/* Filter Controls - Newspaper style */}
+        {/* Filter Controls - Cyberpunk Interface */}
         <div style={{
-          background: '#fafafa',
-          borderBottom: '2px solid #000',
-          padding: '20px 24px',
+          background: 'rgba(26, 10, 46, 0.6)',
+          borderBottom: '1px solid #7b2cbf',
+          padding: '24px',
+          backdropFilter: 'blur(5px)',
         }}>
           <div style={{
-            maxWidth: '1400px',
+            maxWidth: '1200px',
             margin: '0 auto',
             display: 'grid',
             gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
@@ -376,36 +471,38 @@ export default function Editorial({ onNavigateBack }: VariantProps) {
             <div>
               <label style={{
                 display: 'block',
-                fontSize: '10px',
+                fontSize: '11px',
                 fontWeight: 700,
+                fontFamily: "'Orbitron', sans-serif",
                 textTransform: 'uppercase',
-                letterSpacing: '1px',
+                letterSpacing: '0.1em',
                 marginBottom: '8px',
-                color: '#666',
-              }} className="editorial-sans">
-                Language
+                color: '#ff0080',
+              }} className="neon-text">
+                LANGUAGE
               </label>
               <select
                 value={selectedLanguage}
                 onChange={(e) => setSelectedLanguage(e.target.value)}
                 style={{
                   width: '100%',
-                  padding: '10px 12px',
-                  border: '1px solid #d0d0d0',
-                  background: '#fff',
+                  padding: '8px 12px',
+                  border: '2px solid #00d9ff',
+                  background: 'rgba(10, 14, 26, 0.9)',
                   fontSize: '13px',
-                  fontWeight: 500,
-                  color: '#1a1a1a',
+                  fontFamily: "'Share Tech Mono', monospace",
+                  color: '#00d9ff',
+                  textTransform: 'uppercase',
+                  boxShadow: '0 0 10px rgba(0, 217, 255, 0.3)',
                 }}
-                className="editorial-sans"
               >
-                <option value="all">All Languages</option>
-                <option value="en">English</option>
-                <option value="es">Spanish</option>
-                <option value="fr">French</option>
-                <option value="de">German</option>
-                <option value="ja">Japanese</option>
-                <option value="pt">Portuguese</option>
+                <option value="all">ALL LANGUAGES</option>
+                <option value="en">ENGLISH</option>
+                <option value="es">SPANISH</option>
+                <option value="fr">FRENCH</option>
+                <option value="de">GERMAN</option>
+                <option value="ja">JAPANESE</option>
+                <option value="pt">PORTUGUESE</option>
               </select>
             </div>
 
@@ -413,62 +510,80 @@ export default function Editorial({ onNavigateBack }: VariantProps) {
             <div>
               <label style={{
                 display: 'block',
-                fontSize: '10px',
+                fontSize: '11px',
                 fontWeight: 700,
+                fontFamily: "'Orbitron', sans-serif",
                 textTransform: 'uppercase',
-                letterSpacing: '1px',
+                letterSpacing: '0.1em',
                 marginBottom: '8px',
-                color: '#666',
-              }} className="editorial-sans">
-                Search Keywords
+                color: '#ff0080',
+              }} className="neon-text">
+                SEARCH_KEYWORDS
               </label>
               <input
                 type="text"
                 value={keywordFilter}
                 onChange={(e) => setKeywordFilter(e.target.value)}
-                placeholder="Filter by keyword..."
+                placeholder="FILTER BY KEYWORD..."
                 style={{
                   width: '100%',
-                  padding: '10px 12px',
-                  border: '1px solid #d0d0d0',
-                  background: '#fff',
+                  padding: '8px 12px',
+                  border: '2px solid #00d9ff',
+                  background: 'rgba(10, 14, 26, 0.9)',
                   fontSize: '13px',
-                  fontWeight: 500,
-                  color: '#1a1a1a',
+                  fontFamily: "'Share Tech Mono', monospace",
+                  color: '#00d9ff',
+                  textTransform: 'uppercase',
+                  boxShadow: '0 0 10px rgba(0, 217, 255, 0.3)',
                 }}
-                className="editorial-sans"
               />
             </div>
           </div>
         </div>
 
-        {/* Data Analytics Section */}
+        {/* Data Analytics Section - Neon Grid */}
         <section style={{
-          background: '#fff',
-          borderBottom: '3px solid #000',
+          background: 'rgba(10, 14, 26, 0.7)',
+          borderBottom: '3px solid #ff0080',
           padding: '32px 24px',
+          boxShadow: '0 0 40px rgba(255, 0, 128, 0.2)',
         }}>
-          <div style={{ maxWidth: '1400px', margin: '0 auto' }}>
-            <div style={{ textAlign: 'center', marginBottom: '32px' }}>
-              <h2 style={{
-                fontSize: '36px',
-                fontWeight: 700,
-                marginBottom: '8px',
-                color: '#000',
-              }} className="editorial-serif">
-                Statistical Overview
-              </h2>
-              <div className="editorial-rule" style={{ width: '100px', margin: '12px auto', background: '#8B0000', height: '2px' }} />
-              <p style={{
-                fontSize: '13px',
-                color: '#666',
-                fontStyle: 'italic',
-                maxWidth: '600px',
-                margin: '0 auto',
-              }} className="editorial-serif">
-                Real-time analytics and metrics from the Bluesky network
-              </p>
+          <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
+            {/* Japanese decoration */}
+            <div style={{
+              textAlign: 'center',
+              fontSize: '12px',
+              color: '#7b2cbf',
+              opacity: 0.5,
+              marginBottom: '8px',
+            }}>
+              データ分析
             </div>
+            <h2 style={{
+              fontSize: '32px',
+              fontWeight: 900,
+              fontFamily: "'Orbitron', sans-serif",
+              marginBottom: '8px',
+              textAlign: 'center',
+              borderBottom: '2px solid #ff0080',
+              paddingBottom: '12px',
+              color: '#ff0080',
+              textTransform: 'uppercase',
+              letterSpacing: '0.15em',
+            }} className="neon-text">
+              DATA_BUREAU
+            </h2>
+            <p style={{
+              textAlign: 'center',
+              fontSize: '12px',
+              color: '#00d9ff',
+              fontFamily: "'Share Tech Mono', monospace",
+              textTransform: 'uppercase',
+              marginBottom: '32px',
+              letterSpacing: '0.05em',
+            }} className="neon-cyan">
+              LIVE STATISTICAL ANALYSIS FROM THE NEURAL STREAM
+            </p>
             <CardWall>
               <SentimentDistributionCard
                 sentimentCounts={stats?.sentimentCounts || { positive: 0, neutral: 0, negative: 0 }}
@@ -490,101 +605,147 @@ export default function Editorial({ onNavigateBack }: VariantProps) {
           </div>
         </section>
 
-        {/* Main content area - Newspaper layout */}
-        <main style={{ maxWidth: '1400px', margin: '0 auto', padding: '40px 24px' }}>
-          {/* Lead story - Above the fold */}
+        {/* Main content area - Holographic cards */}
+        <main style={{ maxWidth: '1200px', margin: '0 auto', padding: '48px 24px' }}>
+          {/* Lead story - Large holographic card */}
           {filteredPosts.length > 0 && (
             <article
-              className="editorial-card"
+              className="holographic-card perspective-card"
               style={{
-                marginBottom: '40px',
+                marginBottom: '48px',
                 paddingBottom: '32px',
-                borderBottom: '3px solid #000',
+                borderBottom: '2px solid #ff0080',
+                padding: '24px',
+                background: 'rgba(10, 14, 26, 0.8)',
+                backdropFilter: 'blur(10px)',
+                boxShadow: '0 8px 32px rgba(255, 0, 128, 0.3)',
                 cursor: 'pointer',
+                position: 'relative',
               }}
               onClick={() => setSelectedPost(filteredPosts[0])}
             >
+              {/* Japanese decoration */}
+              <div style={{
+                position: 'absolute',
+                top: '12px',
+                right: '12px',
+                fontSize: '10px',
+                color: '#7b2cbf',
+                opacity: 0.4,
+              }}>
+                {getRandomJapanese()}
+              </div>
+
               <div style={{
                 display: 'inline-block',
-                padding: '4px 12px',
-                background: '#8B0000',
-                fontSize: '10px',
+                padding: '4px 16px',
+                background: filteredPosts[0].sentiment === 'positive' ? 'rgba(0, 255, 0, 0.2)' : filteredPosts[0].sentiment === 'negative' ? 'rgba(255, 0, 0, 0.2)' : 'rgba(0, 217, 255, 0.2)',
+                fontSize: '11px',
                 fontWeight: 700,
+                fontFamily: "'Orbitron', sans-serif",
                 textTransform: 'uppercase',
-                letterSpacing: '1px',
-                marginBottom: '12px',
-                color: '#fff',
-              }} className="editorial-sans">
-                {getSentimentLabel(filteredPosts[0].sentiment)}
+                letterSpacing: '0.1em',
+                marginBottom: '16px',
+                color: filteredPosts[0].sentiment === 'positive' ? '#00ff00' : filteredPosts[0].sentiment === 'negative' ? '#ff0000' : '#00d9ff',
+                border: `1px solid ${filteredPosts[0].sentiment === 'positive' ? '#00ff00' : filteredPosts[0].sentiment === 'negative' ? '#ff0000' : '#00d9ff'}`,
+                boxShadow: `0 0 10px ${filteredPosts[0].sentiment === 'positive' ? 'rgba(0, 255, 0, 0.3)' : filteredPosts[0].sentiment === 'negative' ? 'rgba(255, 0, 0, 0.3)' : 'rgba(0, 217, 255, 0.3)'}`,
+              }}>
+                {getSentimentLabel(filteredPosts[0].sentiment)} • JUST_NOW
               </div>
               <h2 style={{
-                fontSize: '48px',
-                fontWeight: 700,
-                lineHeight: '1.1',
+                fontSize: '42px',
+                fontWeight: 900,
+                fontFamily: "'Orbitron', sans-serif",
+                lineHeight: '1.2',
                 marginBottom: '16px',
-                color: '#000',
-              }} className="editorial-serif">
+                color: '#ff0080',
+                textTransform: 'uppercase',
+              }} className="neon-text">
                 {filteredPosts[0].text.length > 120 ? `${filteredPosts[0].text.slice(0, 120)}...` : filteredPosts[0].text}
               </h2>
               <div style={{
-                fontSize: '13px',
-                color: '#666',
+                fontSize: '14px',
+                color: '#00d9ff',
+                fontFamily: "'Share Tech Mono', monospace",
                 marginBottom: '8px',
-                fontWeight: 500,
-              }} className="editorial-sans">
-                By <span style={{ fontWeight: 700, color: '#000' }}>@{filteredPosts[0].author?.handle || 'Anonymous'}</span> • {formatTime(filteredPosts[0].createdAt)}
+                textTransform: 'uppercase',
+              }}>
+                BY <span style={{ fontWeight: 700, color: '#ffff00' }} className="neon-yellow">@{filteredPosts[0].author?.handle || 'ANONYMOUS'}</span> • {formatTime(filteredPosts[0].createdAt)}
               </div>
               {filteredPosts[0].language && (
                 <div style={{
-                  fontSize: '11px',
-                  color: '#999',
+                  fontSize: '12px',
+                  color: '#7b2cbf',
+                  fontFamily: "'Share Tech Mono', monospace",
                   textTransform: 'uppercase',
-                  letterSpacing: '0.5px',
-                }} className="editorial-sans">
-                  {filteredPosts[0].language}
+                }}>
+                  LANGUAGE: {filteredPosts[0].language.toUpperCase()}
                 </div>
               )}
             </article>
           )}
 
-          {/* Three-column layout - Classic newspaper columns */}
+          {/* Three-column layout - Holographic cards */}
           <div style={{
             display: 'grid',
-            gridTemplateColumns: 'repeat(3, 1fr)',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
             gap: '32px',
-            marginBottom: '40px',
+            marginBottom: '48px',
           }}>
             {filteredPosts.slice(1, 10).map((post, index) => (
               <article
                 key={post.uri || index}
-                className="editorial-card"
+                className="holographic-card perspective-card"
                 style={{
-                  paddingBottom: '20px',
-                  borderBottom: '1px solid #d0d0d0',
+                  paddingBottom: '24px',
+                  borderBottom: '2px solid #00d9ff',
                   cursor: 'pointer',
+                  padding: '20px',
+                  background: 'rgba(10, 14, 26, 0.7)',
+                  backdropFilter: 'blur(8px)',
+                  boxShadow: '0 4px 20px rgba(0, 217, 255, 0.2)',
+                  position: 'relative',
                 }}
                 onClick={() => setSelectedPost(post)}
               >
+                {/* Random Japanese decoration */}
+                {index % 3 === 0 && (
+                  <div style={{
+                    position: 'absolute',
+                    top: '8px',
+                    right: '8px',
+                    fontSize: '8px',
+                    color: '#7b2cbf',
+                    opacity: 0.3,
+                  }}>
+                    {getRandomJapanese()}
+                  </div>
+                )}
+
                 <div style={{
                   display: 'inline-block',
-                  padding: '3px 10px',
-                  background: post.sentiment === 'positive' ? '#2d6a2d' : post.sentiment === 'negative' ? '#8B0000' : '#666',
+                  padding: '2px 12px',
+                  background: post.sentiment === 'positive' ? 'rgba(0, 255, 0, 0.2)' : post.sentiment === 'negative' ? 'rgba(255, 0, 0, 0.2)' : 'rgba(0, 217, 255, 0.2)',
                   fontSize: '9px',
                   fontWeight: 700,
+                  fontFamily: "'Orbitron', sans-serif",
                   textTransform: 'uppercase',
-                  letterSpacing: '0.5px',
+                  letterSpacing: '0.1em',
                   marginBottom: '12px',
-                  color: '#fff',
-                }} className="editorial-sans">
+                  color: post.sentiment === 'positive' ? '#00ff00' : post.sentiment === 'negative' ? '#ff0000' : '#00d9ff',
+                  border: `1px solid ${post.sentiment === 'positive' ? '#00ff00' : post.sentiment === 'negative' ? '#ff0000' : '#00d9ff'}`,
+                }}>
                   {getSentimentLabel(post.sentiment)}
                 </div>
                 <h3 style={{
-                  fontSize: '18px',
+                  fontSize: '20px',
                   fontWeight: 700,
+                  fontFamily: "'Orbitron', sans-serif",
                   lineHeight: '1.3',
-                  marginBottom: '10px',
-                  color: '#000',
-                }} className="editorial-serif">
+                  marginBottom: '8px',
+                  color: '#00d9ff',
+                  textTransform: 'uppercase',
+                }}>
                   {post.text.length > 80 ? `${post.text.slice(0, 80)}...` : post.text}
                 </h3>
                 {(post.images || post.videos) && (
@@ -598,66 +759,87 @@ export default function Editorial({ onNavigateBack }: VariantProps) {
                   </div>
                 )}
                 <div style={{
-                  fontSize: '11px',
-                  color: '#999',
-                  fontWeight: 500,
-                }} className="editorial-sans">
-                  @{post.author?.handle || 'Anonymous'} • {formatTime(post.createdAt)}
+                  fontSize: '12px',
+                  color: '#7b2cbf',
+                  fontFamily: "'Share Tech Mono', monospace",
+                  textTransform: 'uppercase',
+                }}>
+                  @{post.author?.handle || 'ANONYMOUS'} • {formatTime(post.createdAt)}
                   {post.images?.some(img => !img.alt) && (
-                    <span style={{ color: '#8B0000', marginLeft: '8px', fontWeight: 600 }}>⚠ No alt text</span>
+                    <span style={{ color: '#ff0000', marginLeft: '8px' }}>⚠ NO_ALT</span>
                   )}
                 </div>
               </article>
             ))}
           </div>
 
-          {/* Archive section - Compact list */}
-          <div style={{ borderTop: '2px solid #000', paddingTop: '32px' }}>
+          {/* Archive section - Diagonal skew design */}
+          <div style={{ borderTop: '2px solid #ff0080', paddingTop: '32px' }}>
             <h2 style={{
-              fontSize: '28px',
-              fontWeight: 700,
+              fontSize: '24px',
+              fontWeight: 900,
+              fontFamily: "'Orbitron', sans-serif",
+              textTransform: 'uppercase',
+              letterSpacing: '0.15em',
               marginBottom: '24px',
-              color: '#000',
-            }} className="editorial-serif">
-              Earlier Today
+              color: '#ff0080',
+            }} className="neon-text">
+              EARLIER_TODAY
             </h2>
-            <div style={{ display: 'grid', gap: '12px' }}>
+            <div style={{ display: 'grid', gap: '16px' }}>
               {filteredPosts.slice(10, 30).map((post, index) => (
                 <div
                   key={post.uri || index}
-                  className="editorial-card"
                   style={{
                     display: 'flex',
                     gap: '16px',
-                    paddingBottom: '12px',
-                    borderBottom: '1px solid #e0e0e0',
+                    paddingBottom: '16px',
+                    borderBottom: '1px solid #7b2cbf',
                     cursor: 'pointer',
+                    padding: '16px',
+                    background: 'rgba(10, 14, 26, 0.5)',
+                    border: '1px solid #7b2cbf',
+                    boxShadow: '0 2px 10px rgba(123, 44, 191, 0.2)',
+                    transform: 'skewY(-1deg)',
+                    transition: 'all 0.3s ease',
                   }}
                   onClick={() => setSelectedPost(post)}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.transform = 'skewY(0deg) translateX(8px)';
+                    e.currentTarget.style.borderColor = '#00d9ff';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.transform = 'skewY(-1deg)';
+                    e.currentTarget.style.borderColor = '#7b2cbf';
+                  }}
                 >
-                  <div style={{
-                    width: '4px',
-                    background: post.sentiment === 'positive' ? '#2d6a2d' : post.sentiment === 'negative' ? '#8B0000' : '#666',
-                    flexShrink: 0,
-                  }} />
                   <div style={{ flex: 1 }}>
                     <div style={{
-                      fontSize: '15px',
-                      fontWeight: 600,
+                      fontSize: '16px',
+                      fontWeight: 700,
+                      fontFamily: "'Share Tech Mono', monospace",
                       lineHeight: '1.4',
-                      marginBottom: '6px',
-                      color: '#000',
-                    }} className="editorial-serif">
+                      marginBottom: '4px',
+                      color: '#00d9ff',
+                      textTransform: 'uppercase',
+                    }}>
                       {post.text.length > 100 ? `${post.text.slice(0, 100)}...` : post.text}
                     </div>
                     <div style={{
                       fontSize: '11px',
-                      color: '#999',
-                      fontWeight: 500,
-                    }} className="editorial-sans">
-                      @{post.author?.handle || 'Anonymous'} • {formatTime(post.createdAt)}
+                      color: '#7b2cbf',
+                      fontFamily: "'Share Tech Mono', monospace",
+                      textTransform: 'uppercase',
+                    }}>
+                      @{post.author?.handle || 'ANONYMOUS'} • {formatTime(post.createdAt)}
                     </div>
                   </div>
+                  <div style={{
+                    width: '4px',
+                    background: post.sentiment === 'positive' ? '#00ff00' : post.sentiment === 'negative' ? '#ff0000' : '#00d9ff',
+                    flexShrink: 0,
+                    boxShadow: `0 0 10px ${post.sentiment === 'positive' ? 'rgba(0, 255, 0, 0.5)' : post.sentiment === 'negative' ? 'rgba(255, 0, 0, 0.5)' : 'rgba(0, 217, 255, 0.5)'}`,
+                  }} />
                 </div>
               ))}
             </div>
@@ -666,28 +848,26 @@ export default function Editorial({ onNavigateBack }: VariantProps) {
 
         {/* Footer */}
         <footer style={{
-          borderTop: '4px solid #000',
-          background: '#f5f5f5',
+          borderTop: '4px solid #ff0080',
+          background: 'rgba(10, 14, 26, 0.95)',
           padding: '32px 24px',
           textAlign: 'center',
+          fontFamily: "'Share Tech Mono', monospace",
+          fontSize: '12px',
+          color: '#00d9ff',
+          textTransform: 'uppercase',
+          boxShadow: '0 -5px 30px rgba(255, 0, 128, 0.3)',
         }}>
-          <div style={{
-            maxWidth: '1400px',
-            margin: '0 auto',
-          }}>
-            <div style={{ fontSize: '24px', fontWeight: 700, marginBottom: '8px', color: '#000' }} className="editorial-serif">
-              The Bluesky Times
-            </div>
-            <div style={{ fontSize: '11px', color: '#666', marginBottom: '4px' }} className="editorial-sans">
-              All content sourced from the AT Protocol network
-            </div>
-            <div style={{ fontSize: '10px', color: '#999', marginTop: '12px' }} className="editorial-sans">
-              Real-time editorial coverage • Established 2025
-            </div>
+          <div className="neon-text" style={{ color: '#ff0080', fontSize: '14px', marginBottom: '8px' }}>
+            THE_BLUESKY_CHRONICLE
+          </div>
+          <div style={{ color: '#7b2cbf' }}>ALL CONTENT SOURCED FROM THE AT_PROTOCOL NETWORK</div>
+          <div style={{ marginTop: '8px', color: '#00d9ff' }}>
+            REAL-TIME EDITORIAL VARIANT • 東京_NIGHTS • BLADE_RUNNER_AESTHETIC
           </div>
         </footer>
 
-        {/* Modal for selected post */}
+        {/* Modal for selected post - Holographic display */}
         {selectedPost && (
           <div
             style={{
@@ -696,78 +876,96 @@ export default function Editorial({ onNavigateBack }: VariantProps) {
               left: 0,
               right: 0,
               bottom: 0,
-              background: 'rgba(0, 0, 0, 0.85)',
+              background: 'rgba(0, 0, 0, 0.95)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               padding: '24px',
               zIndex: 1000,
+              backdropFilter: 'blur(10px)',
             }}
             onClick={() => setSelectedPost(null)}
           >
             <div
+              className="holographic-card"
               style={{
-                background: '#fff',
+                background: 'rgba(10, 14, 26, 0.95)',
                 maxWidth: '700px',
                 width: '100%',
                 padding: '48px',
                 maxHeight: '80vh',
                 overflowY: 'auto',
-                boxShadow: '0 8px 32px rgba(0, 0, 0, 0.4)',
-                border: '2px solid #000',
+                boxShadow: '0 0 60px rgba(255, 0, 128, 0.5)',
+                position: 'relative',
               }}
               onClick={(e) => e.stopPropagation()}
             >
+              {/* Japanese decoration */}
               <div style={{
-                fontSize: '10px',
+                position: 'absolute',
+                top: '16px',
+                right: '16px',
+                fontSize: '12px',
+                color: '#7b2cbf',
+                opacity: 0.5,
+              }}>
+                {getRandomJapanese()}
+              </div>
+
+              <div style={{
+                fontSize: '11px',
                 fontWeight: 700,
+                fontFamily: "'Orbitron', sans-serif",
                 textTransform: 'uppercase',
-                letterSpacing: '1px',
-                marginBottom: '20px',
-                color: '#666',
-              }} className="editorial-sans">
+                letterSpacing: '0.1em',
+                marginBottom: '24px',
+                color: '#ffff00',
+              }} className="neon-yellow">
                 {getSentimentLabel(selectedPost.sentiment)} • {formatDate(selectedPost.createdAt)}
               </div>
               <h2 style={{
-                fontSize: '32px',
-                fontWeight: 700,
+                fontSize: '36px',
+                fontWeight: 900,
+                fontFamily: "'Orbitron', sans-serif",
                 lineHeight: '1.2',
-                marginBottom: '20px',
-                color: '#000',
-              }} className="editorial-serif">
+                marginBottom: '24px',
+                color: '#ff0080',
+                textTransform: 'uppercase',
+              }} className="neon-text">
                 {selectedPost.text}
               </h2>
-              <div className="editorial-rule" />
               <div style={{
-                fontSize: '13px',
-                color: '#666',
-                marginBottom: '24px',
-                fontWeight: 500,
-              }} className="editorial-sans">
-                By <span style={{ fontWeight: 700, color: '#000' }}>@{selectedPost.author?.handle || 'Anonymous'}</span> • {formatTime(selectedPost.createdAt)}
+                fontSize: '14px',
+                color: '#00d9ff',
+                fontFamily: "'Share Tech Mono', monospace",
+                marginBottom: '32px',
+                textTransform: 'uppercase',
+              }}>
+                BY <span style={{ fontWeight: 700, color: '#ffff00' }}>@{selectedPost.author?.handle || 'ANONYMOUS'}</span> • {formatTime(selectedPost.createdAt)}
               </div>
               {selectedPost.hashtags && selectedPost.hashtags.length > 0 && (
-                <div style={{ marginTop: '24px', paddingTop: '24px', borderTop: '1px solid #e0e0e0' }}>
+                <div style={{ marginTop: '24px', paddingTop: '24px', borderTop: '1px solid #7b2cbf' }}>
                   <div style={{
-                    fontSize: '11px',
-                    color: '#666',
-                    marginBottom: '12px',
-                    fontWeight: 600,
+                    fontSize: '12px',
+                    color: '#7b2cbf',
+                    marginBottom: '8px',
+                    fontFamily: "'Share Tech Mono', monospace",
                     textTransform: 'uppercase',
-                    letterSpacing: '0.5px',
-                  }} className="editorial-sans">
-                    Topics
+                  }}>
+                    TOPICS:
                   </div>
                   <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                     {selectedPost.hashtags.map(tag => (
                       <span key={tag} style={{
                         padding: '4px 12px',
-                        background: '#f5f5f5',
+                        background: 'rgba(0, 217, 255, 0.2)',
                         fontSize: '12px',
-                        color: '#666',
-                        border: '1px solid #d0d0d0',
-                        fontWeight: 500,
-                      }} className="editorial-sans">
+                        fontFamily: "'Share Tech Mono', monospace",
+                        color: '#00d9ff',
+                        border: '1px solid #00d9ff',
+                        textTransform: 'uppercase',
+                        boxShadow: '0 0 5px rgba(0, 217, 255, 0.3)',
+                      }}>
                         #{tag}
                       </span>
                     ))}
@@ -779,25 +977,28 @@ export default function Editorial({ onNavigateBack }: VariantProps) {
                 style={{
                   marginTop: '32px',
                   padding: '12px 32px',
-                  background: '#8B0000',
-                  color: '#fff',
-                  border: 'none',
-                  fontSize: '11px',
+                  background: 'rgba(255, 0, 128, 0.2)',
+                  color: '#ff0080',
+                  border: '2px solid #ff0080',
+                  fontFamily: "'Orbitron', sans-serif",
+                  fontSize: '12px',
                   textTransform: 'uppercase',
-                  letterSpacing: '1px',
+                  letterSpacing: '0.1em',
                   cursor: 'pointer',
                   fontWeight: 700,
-                  transition: 'background 0.2s ease',
+                  boxShadow: '0 0 20px rgba(255, 0, 128, 0.4)',
+                  transition: 'all 0.3s ease',
                 }}
-                className="editorial-sans"
                 onMouseEnter={(e) => {
-                  e.currentTarget.style.background = '#6d0000';
+                  e.currentTarget.style.background = 'rgba(255, 0, 128, 0.4)';
+                  e.currentTarget.style.boxShadow = '0 0 30px rgba(255, 0, 128, 0.6)';
                 }}
                 onMouseLeave={(e) => {
-                  e.currentTarget.style.background = '#8B0000';
+                  e.currentTarget.style.background = 'rgba(255, 0, 128, 0.2)';
+                  e.currentTarget.style.boxShadow = '0 0 20px rgba(255, 0, 128, 0.4)';
                 }}
               >
-                Close
+                CLOSE
               </button>
             </div>
           </div>

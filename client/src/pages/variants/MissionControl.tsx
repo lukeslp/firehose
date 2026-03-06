@@ -1,11 +1,10 @@
 /**
- * MissionControl.tsx - Dark Geometric Command Center Variant
+ * MissionControl.tsx - Organic Garden Dashboard Variant
  *
- * Aesthetic: Dark mode with geometric precision
- * Theme: Dark grays (#1a1a1a - #2d2d2d), electric blue/cyan accents (#00d9ff, #0080ff)
- * Typography: Sharp sans-serif (Inter, system fonts), monospace for data
- * Layout: Angular grid-based design with sharp corners and defined edges
- * Design: Professional command center feel with geometric shapes
+ * Aesthetic: Nature-inspired, handwritten, organic garden
+ * Theme: Forest greens, sage, terracotta with watercolor washes
+ * Typography: Handwritten headers (Caveat/Indie Flower), organic serif body (Lora)
+ * Layout: Flowing asymmetric design with organic blob shapes
  */
 
 import { useSocket } from '@/hooks/useSocket';
@@ -184,26 +183,26 @@ export function MissionControl({ className }: VariantProps) {
   const getSentimentColor = (sentiment: string): string => {
     switch (sentiment) {
       case 'positive':
-        return 'text-[#00d9ff]'; // Electric cyan
+        return 'text-[#2d4a2b]'; // Forest green
       case 'negative':
-        return 'text-[#ff4d6d]'; // Electric red
+        return 'text-[#d4a574]'; // Terracotta
       case 'neutral':
-        return 'text-[#a0a0a0]'; // Cool gray
+        return 'text-[#5f7161]'; // Moss
       default:
-        return 'text-[#00d9ff]';
+        return 'text-[#2d4a2b]';
     }
   };
 
   const getSentimentBg = (sentiment: string): string => {
     switch (sentiment) {
       case 'positive':
-        return 'bg-[#00d9ff]'; // Electric cyan
+        return 'bg-[#2d4a2b]'; // Forest green
       case 'negative':
-        return 'bg-[#ff4d6d]'; // Electric red
+        return 'bg-[#d4a574]'; // Terracotta
       case 'neutral':
-        return 'bg-[#a0a0a0]'; // Cool gray
+        return 'bg-[#5f7161]'; // Moss
       default:
-        return 'bg-[#00d9ff]';
+        return 'bg-[#2d4a2b]';
     }
   };
 
@@ -220,282 +219,321 @@ export function MissionControl({ className }: VariantProps) {
     });
   }, [posts, selectedLanguage, keywordFilter]);
 
-  // Sharp, precise transitions for geometric aesthetic
-  const springTransition = { type: "tween", duration: 0.3, ease: "easeOut" };
+  // Spring physics for organic motion
+  const springTransition = { type: "spring", stiffness: 50, damping: 15 };
 
   return (
     <div
-      className={`mission-control min-h-screen relative overflow-hidden ${className || ''}`}
+      className={`organic-garden min-h-screen relative overflow-hidden ${className || ''}`}
       style={{
         background: `
-          linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%)
+          radial-gradient(ellipse at 20% 30%, rgba(143, 188, 143, 0.15) 0%, transparent 50%),
+          radial-gradient(ellipse at 80% 70%, rgba(95, 113, 97, 0.12) 0%, transparent 50%),
+          radial-gradient(ellipse at 50% 50%, rgba(212, 165, 116, 0.08) 0%, transparent 60%),
+          #f0ead6
         `,
-        fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+        fontFamily: '"Lora", Georgia, serif',
       }}
     >
-      {/* Geometric grid overlay */}
-      <div className="absolute inset-0 pointer-events-none opacity-5">
+      {/* Watercolor wash backgrounds - layered for depth */}
+      <div className="absolute inset-0 pointer-events-none opacity-30">
         <div
-          className="absolute inset-0"
+          className="absolute top-0 left-0 w-96 h-96 rounded-full blur-3xl"
           style={{
-            backgroundImage: `
-              linear-gradient(to right, #00d9ff 1px, transparent 1px),
-              linear-gradient(to bottom, #00d9ff 1px, transparent 1px)
-            `,
-            backgroundSize: '40px 40px',
+            background: 'radial-gradient(circle, rgba(143, 188, 143, 0.3) 0%, transparent 70%)',
+          }}
+        />
+        <div
+          className="absolute bottom-0 right-0 w-96 h-96 rounded-full blur-3xl"
+          style={{
+            background: 'radial-gradient(circle, rgba(212, 165, 116, 0.25) 0%, transparent 70%)',
+          }}
+        />
+        <div
+          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full blur-3xl"
+          style={{
+            background: 'radial-gradient(circle, rgba(95, 113, 97, 0.15) 0%, transparent 70%)',
           }}
         />
       </div>
 
-      {/* Angular accent elements */}
-      <div className="absolute inset-0 pointer-events-none overflow-hidden">
-        <div
-          className="absolute top-0 right-0 w-96 h-96 opacity-10"
-          style={{
-            background: 'linear-gradient(135deg, transparent 50%, #00d9ff 50%)',
-            clipPath: 'polygon(100% 0, 100% 100%, 0 0)',
-          }}
-        />
-        <div
-          className="absolute bottom-0 left-0 w-96 h-96 opacity-10"
-          style={{
-            background: 'linear-gradient(45deg, #0080ff 50%, transparent 50%)',
-            clipPath: 'polygon(0 100%, 100% 100%, 0 0)',
-          }}
-        />
-      </div>
-
-      {/* Main content with precise spacing */}
+      {/* Main content with organic padding */}
       <div className="relative z-10 p-8 max-w-[1600px] mx-auto">
-        {/* Header - sharp geometric style */}
+        {/* Header - flowing handwritten style */}
         <motion.div
           initial={!prefersReducedMotion ? { y: -20, opacity: 0 } : {}}
           animate={{ y: 0, opacity: 1 }}
           transition={springTransition}
-          className="mb-12 relative"
+          className="mb-12 text-center relative"
         >
-          {/* Geometric accent lines */}
-          <div className="absolute -top-4 left-0 w-32 h-1 bg-gradient-to-r from-[#00d9ff] to-transparent" />
-
-          <div className="flex items-center gap-4 mb-6">
-            {/* Angular icon */}
-            <div className="w-12 h-12 bg-[#00d9ff] clip-hexagon flex items-center justify-center">
-              <svg viewBox="0 0 24 24" className="w-6 h-6 text-[#1a1a1a]" fill="currentColor">
-                <path d="M12 2L2 7v10l10 5 10-5V7L12 2zm0 2.18l8 4v8.64l-8 4-8-4V8.18l8-4z"/>
-                <circle cx="12" cy="12" r="3"/>
-              </svg>
-            </div>
-
-            <div>
-              <h1
-                className="text-5xl font-bold text-white mb-2 tracking-tight"
-                style={{
-                  textShadow: '0 0 20px rgba(0, 217, 255, 0.3)',
-                }}
-              >
-                MISSION CONTROL
-              </h1>
-              <p className="text-lg text-[#00d9ff] font-mono tracking-wide">
-                BLUESKY FIREHOSE COMMAND CENTER
-              </p>
-            </div>
+          {/* Decorative leaf shadows */}
+          <div className="absolute -top-8 left-1/4 w-16 h-16 opacity-20 pointer-events-none">
+            <svg viewBox="0 0 100 100" className="w-full h-full text-[#2d4a2b]">
+              <path
+                d="M50,10 Q70,30 80,50 Q70,70 50,90 Q30,70 20,50 Q30,30 50,10 Z"
+                fill="currentColor"
+              />
+            </svg>
           </div>
 
-          {/* Connection status - geometric indicator */}
-          <motion.div
-            className="flex items-center gap-3 bg-[#2d2d2d] px-6 py-3 border-l-4 border-[#00d9ff]"
-            initial={!prefersReducedMotion ? { x: -20, opacity: 0 } : {}}
-            animate={{ x: 0, opacity: 1 }}
-            transition={{ ...springTransition, delay: 0.1 }}
+          <h1
+            className="text-6xl font-bold text-[#2d4a2b] mb-4"
+            style={{
+              fontFamily: '"Caveat", cursive',
+              textShadow: '2px 2px 4px rgba(45, 74, 43, 0.1)',
+            }}
           >
-            <span className="text-sm text-gray-400 font-mono uppercase tracking-wider">
-              System Status:
+            Garden of Voices
+          </h1>
+          <p
+            className="text-xl text-[#5f7161]"
+            style={{ fontFamily: '"Indie Flower", cursive' }}
+          >
+            Bluesky Firehose ~ where ideas grow
+          </p>
+
+          {/* Connection status - organic indicator */}
+          <motion.div
+            className="mt-6 flex items-center justify-center gap-3"
+            initial={!prefersReducedMotion ? { scale: 0 } : {}}
+            animate={{ scale: 1 }}
+            transition={{ ...springTransition, delay: 0.2 }}
+          >
+            <span className="text-sm text-[#5f7161]" style={{ fontFamily: '"Indie Flower", cursive' }}>
+              Garden Status:
             </span>
             <motion.div
-              className={`w-3 h-3 ${connected ? 'bg-[#00d9ff]' : 'bg-gray-600'}`}
+              className={`w-4 h-4 ${connected ? 'bg-[#8fbc8f]' : 'bg-[#d4a574]'}`}
               style={{
-                clipPath: 'polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%)',
+                borderRadius: '63% 37% 54% 46% / 55% 48% 52% 45%',
                 boxShadow: connected
-                  ? '0 0 15px rgba(0, 217, 255, 0.8)'
-                  : '0 0 5px rgba(160, 160, 160, 0.3)',
+                  ? '0 0 20px rgba(143, 188, 143, 0.6)'
+                  : '0 0 20px rgba(212, 165, 116, 0.4)',
               }}
               animate={
                 !prefersReducedMotion && connected
                   ? {
-                      rotate: [0, 360],
+                      scale: [1, 1.15, 1],
+                      boxShadow: [
+                        '0 0 20px rgba(143, 188, 143, 0.6)',
+                        '0 0 30px rgba(143, 188, 143, 0.8)',
+                        '0 0 20px rgba(143, 188, 143, 0.6)',
+                      ]
                     }
                   : {}
               }
-              transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
+              transition={{ duration: 2, repeat: Infinity }}
             />
             <span
-              className={`text-sm font-mono uppercase ${connected ? 'text-[#00d9ff]' : 'text-gray-600'}`}
+              className={`text-sm ${connected ? 'text-[#2d4a2b]' : 'text-[#d4a574]'}`}
+              style={{ fontFamily: '"Indie Flower", cursive' }}
             >
-              {connected ? 'ONLINE' : 'OFFLINE'}
+              {connected ? 'Growing' : 'Resting'}
             </span>
-            {connected && (
-              <div className="ml-auto flex items-center gap-2">
-                <div className="w-1 h-1 bg-[#00d9ff] animate-pulse" />
-                <span className="text-xs text-gray-500 font-mono">LIVE</span>
-              </div>
-            )}
           </motion.div>
         </motion.div>
 
-        {/* System Metrics - geometric cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
-          {/* Uptime */}
+        {/* Seed Packet Stats - organic blob cards */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
+          {/* Growing Time Seed Packet */}
           <motion.div
-            initial={!prefersReducedMotion ? { x: -50, opacity: 0 } : {}}
-            animate={{ x: 0, opacity: 1 }}
+            initial={!prefersReducedMotion ? { x: -50, opacity: 0, rotate: -5 } : {}}
+            animate={{ x: 0, opacity: 1, rotate: 0 }}
             transition={springTransition}
-            className="relative p-6 bg-[#2d2d2d] border-2 border-[#00d9ff]/30 overflow-hidden"
+            className="relative p-6 bg-white/80 backdrop-blur-sm"
             style={{
-              clipPath: 'polygon(0 0, 100% 0, 100% calc(100% - 12px), calc(100% - 12px) 100%, 0 100%)',
+              borderRadius: '58% 42% 61% 39% / 48% 53% 47% 52%',
+              boxShadow: '0 8px 32px rgba(45, 74, 43, 0.15)',
+              border: '3px solid #8fbc8f',
             }}
           >
-            {/* Corner accent */}
-            <div className="absolute bottom-0 right-0 w-12 h-12 bg-[#00d9ff]/10" />
-
-            <div className="text-xs mb-2 text-gray-400 uppercase tracking-widest font-mono">
-              SYSTEM UPTIME
+            <div
+              className="text-sm mb-2 text-[#5f7161] uppercase tracking-wider"
+              style={{ fontFamily: '"Indie Flower", cursive' }}
+            >
+              Growing Time
             </div>
-            <div className="text-5xl font-bold text-white tabular-nums mb-2 font-mono">
+            <div
+              className="text-5xl font-bold text-[#2d4a2b] tabular-nums mb-2"
+              style={{ fontFamily: '"Caveat", cursive' }}
+            >
               {gardenTime}
             </div>
-            <div className="text-xs text-[#00d9ff] font-mono">
-              {stats?.running ? '▸ ACTIVE' : '■ STANDBY'}
+            <div className="text-xs text-[#5f7161]">
+              {stats?.running ? '🌱 Seeds sprouting' : '🌙 Garden resting'}
             </div>
           </motion.div>
 
-          {/* Total Posts */}
+          {/* Total Seeds Planted */}
           <motion.div
             initial={!prefersReducedMotion ? { y: -50, opacity: 0 } : {}}
             animate={{ y: 0, opacity: 1 }}
             transition={{ ...springTransition, delay: 0.1 }}
-            className="relative p-6 bg-[#2d2d2d] border-2 border-[#0080ff]/30 overflow-hidden"
+            className="relative p-6 bg-white/80 backdrop-blur-sm"
             style={{
-              clipPath: 'polygon(12px 0, 100% 0, 100% 100%, 0 100%, 0 12px)',
+              borderRadius: '43% 57% 46% 54% / 61% 48% 52% 39%',
+              boxShadow: '0 8px 32px rgba(95, 113, 97, 0.15)',
+              border: '3px solid #2d4a2b',
             }}
           >
-            {/* Corner accent */}
-            <div className="absolute top-0 left-0 w-12 h-12 bg-[#0080ff]/10" />
-
-            <div className="text-xs mb-2 text-gray-400 uppercase tracking-widest font-mono">
-              POSTS PROCESSED
+            <div
+              className="text-sm mb-2 text-[#5f7161] uppercase tracking-wider"
+              style={{ fontFamily: '"Indie Flower", cursive' }}
+            >
+              Seeds Planted
             </div>
             <motion.div
-              className="text-5xl font-bold text-white tabular-nums mb-2 font-mono"
+              className="text-5xl font-bold text-[#2d4a2b] tabular-nums mb-2"
+              style={{ fontFamily: '"Caveat", cursive' }}
               key={stats?.totalPosts || 0}
-              initial={!prefersReducedMotion ? { scale: 1.2 } : {}}
+              initial={!prefersReducedMotion ? { scale: 1.3 } : {}}
               animate={{ scale: 1 }}
               transition={springTransition}
             >
               {(stats?.totalPosts || 0).toLocaleString()}
             </motion.div>
-            <div className="text-xs text-[#0080ff] font-mono">
-              DB: {(stats?.inDatabase || 0).toLocaleString()}
+            <div className="text-xs text-[#5f7161]">
+              🌾 In garden: {(stats?.inDatabase || 0).toLocaleString()}
             </div>
           </motion.div>
 
-          {/* Data Rate */}
+          {/* Growth Rate */}
           <motion.div
-            initial={!prefersReducedMotion ? { x: 50, opacity: 0 } : {}}
-            animate={{ x: 0, opacity: 1 }}
+            initial={!prefersReducedMotion ? { x: 50, opacity: 0, rotate: 5 } : {}}
+            animate={{ x: 0, opacity: 1, rotate: 0 }}
             transition={{ ...springTransition, delay: 0.2 }}
-            className="relative p-6 bg-[#2d2d2d] border-2 border-[#00d9ff]/30 overflow-hidden"
+            className="relative p-6 bg-white/80 backdrop-blur-sm"
             style={{
-              clipPath: 'polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 0 100%)',
+              borderRadius: '51% 49% 38% 62% / 57% 44% 56% 43%',
+              boxShadow: '0 8px 32px rgba(212, 165, 116, 0.15)',
+              border: '3px solid #d4a574',
             }}
           >
-            {/* Corner accent */}
-            <div className="absolute top-0 right-0 w-12 h-12 bg-[#00d9ff]/10" />
-
-            <div className="text-xs mb-2 text-gray-400 uppercase tracking-widest font-mono">
-              DATA RATE
+            <div
+              className="text-sm mb-2 text-[#5f7161] uppercase tracking-wider"
+              style={{ fontFamily: '"Indie Flower", cursive' }}
+            >
+              Growth Rate
             </div>
-            <div className="text-5xl font-bold text-white tabular-nums mb-2 font-mono">
+            <div
+              className="text-5xl font-bold text-[#2d4a2b] tabular-nums mb-2"
+              style={{ fontFamily: '"Caveat", cursive' }}
+            >
               {Math.round(stats?.postsPerMinute || 0)}
             </div>
-            <div className="text-xs text-[#00d9ff] font-mono">
-              POSTS/MIN
+            <div className="text-xs text-[#5f7161]">
+              🌻 seeds per minute
             </div>
           </motion.div>
         </div>
 
-        {/* Filter Controls - angular panels */}
+        {/* Garden Tools - Filter Controls */}
         <motion.div
           initial={!prefersReducedMotion ? { y: 20, opacity: 0 } : {}}
           animate={{ y: 0, opacity: 1 }}
           transition={{ ...springTransition, delay: 0.3 }}
-          className="mb-12 p-6 bg-[#2d2d2d] border-2 border-[#00d9ff]/20"
+          className="mb-12 p-8 bg-white/70 backdrop-blur-sm"
           style={{
-            clipPath: 'polygon(0 12px, 12px 0, 100% 0, 100% calc(100% - 12px), calc(100% - 12px) 100%, 0 100%)',
+            borderRadius: '48% 52% 43% 57% / 51% 49% 51% 49%',
+            boxShadow: '0 8px 32px rgba(45, 74, 43, 0.12)',
+            border: '2px dashed #8fbc8f',
           }}
         >
-          <h2 className="text-2xl font-bold text-white mb-6 tracking-wide uppercase">
-            FILTER CONTROLS
+          <h2
+            className="text-3xl font-bold text-[#2d4a2b] mb-6"
+            style={{ fontFamily: '"Caveat", cursive' }}
+          >
+            Garden Tools
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Language Selector */}
             <div>
-              <label className="block mb-3 text-xs text-gray-400 uppercase tracking-widest font-mono">
-                LANGUAGE
+              <label
+                className="block mb-3 text-lg text-[#5f7161]"
+                style={{ fontFamily: '"Indie Flower", cursive' }}
+              >
+                🌍 Language Filter
               </label>
               <select
                 value={selectedLanguage}
                 onChange={(e) => setSelectedLanguage(e.target.value)}
-                className="w-full p-3 bg-[#1a1a1a] border border-[#00d9ff]/30 text-white focus:outline-none focus:border-[#00d9ff] transition-colors font-mono"
+                className="w-full p-4 bg-white/90 border-2 border-[#8fbc8f] text-[#2d4a2b] focus:outline-none focus:ring-2 focus:ring-[#2d4a2b]/30"
+                style={{
+                  borderRadius: '12px',
+                  fontFamily: '"Lora", serif',
+                  boxShadow: 'inset 0 2px 8px rgba(45, 74, 43, 0.05)',
+                }}
               >
-                <option value="all">ALL LANGUAGES</option>
-                <option value="en">ENGLISH</option>
-                <option value="es">SPANISH</option>
-                <option value="fr">FRENCH</option>
-                <option value="de">GERMAN</option>
-                <option value="ja">JAPANESE</option>
-                <option value="pt">PORTUGUESE</option>
+                <option value="all">All Languages</option>
+                <option value="en">English</option>
+                <option value="es">Spanish</option>
+                <option value="fr">French</option>
+                <option value="de">German</option>
+                <option value="ja">Japanese</option>
+                <option value="pt">Portuguese</option>
               </select>
             </div>
 
             {/* Keyword Search */}
             <div>
-              <label className="block mb-3 text-xs text-gray-400 uppercase tracking-widest font-mono">
-                KEYWORD FILTER
+              <label
+                className="block mb-3 text-lg text-[#5f7161]"
+                style={{ fontFamily: '"Indie Flower", cursive' }}
+              >
+                🔍 Keyword Search
               </label>
               <input
                 type="text"
                 value={keywordFilter}
                 onChange={(e) => setKeywordFilter(e.target.value)}
-                placeholder="ENTER SEARCH TERM..."
-                className="w-full p-3 bg-[#1a1a1a] border border-[#00d9ff]/30 text-white placeholder:text-gray-600 focus:outline-none focus:border-[#00d9ff] transition-colors font-mono"
+                placeholder="Search the garden..."
+                className="w-full p-4 bg-white/90 border-2 border-[#8fbc8f] text-[#2d4a2b] placeholder:text-[#8fbc8f]/60 focus:outline-none focus:ring-2 focus:ring-[#2d4a2b]/30"
+                style={{
+                  borderRadius: '12px',
+                  fontFamily: '"Lora", serif',
+                  boxShadow: 'inset 0 2px 8px rgba(45, 74, 43, 0.05)',
+                }}
               />
             </div>
           </div>
         </motion.div>
 
-        {/* Sentiment Analysis - geometric bars */}
+        {/* Garden Sentiment - Plant labels style */}
         <motion.div
-          initial={!prefersReducedMotion ? { scale: 0.95, opacity: 0 } : {}}
+          initial={!prefersReducedMotion ? { scale: 0.9, opacity: 0 } : {}}
           animate={{ scale: 1, opacity: 1 }}
           transition={{ ...springTransition, delay: 0.4 }}
-          className="mb-12 p-6 bg-[#2d2d2d] border-2 border-[#0080ff]/20"
+          className="mb-12 p-8 bg-white/70 backdrop-blur-sm"
+          style={{
+            borderRadius: '55% 45% 58% 42% / 49% 56% 44% 51%',
+            boxShadow: '0 8px 32px rgba(95, 113, 97, 0.12)',
+            border: '2px solid #5f7161',
+          }}
         >
-          <h2 className="text-2xl font-bold text-white mb-8 tracking-wide uppercase">
-            SENTIMENT ANALYSIS
+          <h2
+            className="text-3xl font-bold text-[#2d4a2b] mb-8"
+            style={{ fontFamily: '"Caveat", cursive' }}
+          >
+            Garden Sentiment
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {/* Positive */}
-            <div className="relative">
-              <div className="text-xs mb-3 text-gray-400 uppercase tracking-widest font-mono flex items-center gap-2">
-                <div className="w-3 h-3 bg-[#00d9ff]" />
-                POSITIVE
+            {/* Positive - Growing */}
+            <div className="text-center">
+              <div
+                className="text-sm mb-2 text-[#5f7161] uppercase"
+                style={{ fontFamily: '"Indie Flower", cursive' }}
+              >
+                🌻 Growing
               </div>
-              <div className="text-4xl font-bold text-white mb-4 tabular-nums font-mono">
+              <div
+                className="text-5xl font-bold text-[#2d4a2b] mb-4"
+                style={{ fontFamily: '"Caveat", cursive' }}
+              >
                 {(stats?.sentimentCounts?.positive || 0).toLocaleString()}
               </div>
-              <div className="h-2 bg-[#1a1a1a] overflow-hidden relative">
+              <div className="h-3 bg-[#8fbc8f]/20 rounded-full overflow-hidden">
                 <motion.div
-                  className="h-full bg-[#00d9ff] absolute top-0 left-0"
+                  className="h-full bg-[#2d4a2b] rounded-full"
                   initial={{ width: 0 }}
                   animate={{
                     width: stats?.totalPosts
@@ -504,30 +542,29 @@ export function MissionControl({ className }: VariantProps) {
                   }}
                   transition={{ duration: 1, ease: "easeOut" }}
                   style={{
-                    boxShadow: '0 0 10px rgba(0, 217, 255, 0.5)',
+                    boxShadow: '0 2px 8px rgba(45, 74, 43, 0.3)',
                   }}
                 />
-                {/* Geometric notches */}
-                <div className="absolute inset-0 flex">
-                  {[...Array(10)].map((_, i) => (
-                    <div key={i} className="flex-1 border-r border-[#2d2d2d]" />
-                  ))}
-                </div>
               </div>
             </div>
 
-            {/* Neutral */}
-            <div className="relative">
-              <div className="text-xs mb-3 text-gray-400 uppercase tracking-widest font-mono flex items-center gap-2">
-                <div className="w-3 h-3 bg-[#a0a0a0]" />
-                NEUTRAL
+            {/* Neutral - Sprouting */}
+            <div className="text-center">
+              <div
+                className="text-sm mb-2 text-[#5f7161] uppercase"
+                style={{ fontFamily: '"Indie Flower", cursive' }}
+              >
+                🌿 Sprouting
               </div>
-              <div className="text-4xl font-bold text-white mb-4 tabular-nums font-mono">
+              <div
+                className="text-5xl font-bold text-[#5f7161] mb-4"
+                style={{ fontFamily: '"Caveat", cursive' }}
+              >
                 {(stats?.sentimentCounts?.neutral || 0).toLocaleString()}
               </div>
-              <div className="h-2 bg-[#1a1a1a] overflow-hidden relative">
+              <div className="h-3 bg-[#5f7161]/20 rounded-full overflow-hidden">
                 <motion.div
-                  className="h-full bg-[#a0a0a0] absolute top-0 left-0"
+                  className="h-full bg-[#5f7161] rounded-full"
                   initial={{ width: 0 }}
                   animate={{
                     width: stats?.totalPosts
@@ -536,30 +573,29 @@ export function MissionControl({ className }: VariantProps) {
                   }}
                   transition={{ duration: 1, ease: "easeOut" }}
                   style={{
-                    boxShadow: '0 0 10px rgba(160, 160, 160, 0.5)',
+                    boxShadow: '0 2px 8px rgba(95, 113, 97, 0.3)',
                   }}
                 />
-                {/* Geometric notches */}
-                <div className="absolute inset-0 flex">
-                  {[...Array(10)].map((_, i) => (
-                    <div key={i} className="flex-1 border-r border-[#2d2d2d]" />
-                  ))}
-                </div>
               </div>
             </div>
 
-            {/* Negative */}
-            <div className="relative">
-              <div className="text-xs mb-3 text-gray-400 uppercase tracking-widest font-mono flex items-center gap-2">
-                <div className="w-3 h-3 bg-[#ff4d6d]" />
-                NEGATIVE
+            {/* Negative - Wilting */}
+            <div className="text-center">
+              <div
+                className="text-sm mb-2 text-[#5f7161] uppercase"
+                style={{ fontFamily: '"Indie Flower", cursive' }}
+              >
+                🍂 Wilting
               </div>
-              <div className="text-4xl font-bold text-white mb-4 tabular-nums font-mono">
+              <div
+                className="text-5xl font-bold text-[#d4a574] mb-4"
+                style={{ fontFamily: '"Caveat", cursive' }}
+              >
                 {(stats?.sentimentCounts?.negative || 0).toLocaleString()}
               </div>
-              <div className="h-2 bg-[#1a1a1a] overflow-hidden relative">
+              <div className="h-3 bg-[#d4a574]/20 rounded-full overflow-hidden">
                 <motion.div
-                  className="h-full bg-[#ff4d6d] absolute top-0 left-0"
+                  className="h-full bg-[#d4a574] rounded-full"
                   initial={{ width: 0 }}
                   animate={{
                     width: stats?.totalPosts
@@ -568,127 +604,140 @@ export function MissionControl({ className }: VariantProps) {
                   }}
                   transition={{ duration: 1, ease: "easeOut" }}
                   style={{
-                    boxShadow: '0 0 10px rgba(255, 77, 109, 0.5)',
+                    boxShadow: '0 2px 8px rgba(212, 165, 116, 0.3)',
                   }}
                 />
-                {/* Geometric notches */}
-                <div className="absolute inset-0 flex">
-                  {[...Array(10)].map((_, i) => (
-                    <div key={i} className="flex-1 border-r border-[#2d2d2d]" />
-                  ))}
-                </div>
               </div>
             </div>
           </div>
         </motion.div>
 
-        {/* Data Visualization - geometric grid */}
+        {/* Data Visualization Garden Beds */}
         <motion.div
           initial={!prefersReducedMotion ? { y: 30, opacity: 0 } : {}}
           animate={{ y: 0, opacity: 1 }}
           transition={{ ...springTransition, delay: 0.5 }}
-          className="mb-12 p-6 bg-[#2d2d2d] border-2 border-[#00d9ff]/20"
+          className="mb-12 p-8 bg-white/60 backdrop-blur-sm"
+          style={{
+            borderRadius: '42% 58% 51% 49% / 56% 47% 53% 44%',
+            boxShadow: '0 8px 32px rgba(143, 188, 143, 0.12)',
+            border: '2px dashed #2d4a2b',
+          }}
         >
-          <h2 className="text-2xl font-bold text-white mb-8 tracking-wide uppercase">
-            DATA ANALYTICS
+          <h2
+            className="text-3xl font-bold text-[#2d4a2b] mb-8"
+            style={{ fontFamily: '"Caveat", cursive' }}
+          >
+            Garden Analytics
           </h2>
-          <CardWall className="geometric-analytics-grid">
+          <CardWall className="organic-garden-cards">
             <SentimentDistributionCard
               sentimentCounts={stats?.sentimentCounts || { positive: 0, neutral: 0, negative: 0 }}
-              className="bg-[#1a1a1a] border border-[#00d9ff]/30 shadow-lg"
+              className="bg-white/80 backdrop-blur-sm border-2 border-[#8fbc8f] rounded-3xl shadow-lg"
             />
             <SentimentTimelineCard
               data={sentimentTimeline}
-              className="bg-[#1a1a1a] border border-[#0080ff]/30 shadow-lg"
+              className="bg-white/80 backdrop-blur-sm border-2 border-[#5f7161] rounded-3xl shadow-lg"
             />
             <PostsPerMinuteCard
               data={postsPerMinuteTimeline}
               currentRate={stats?.postsPerMinute}
-              className="bg-[#1a1a1a] border border-[#00d9ff]/30 shadow-lg"
+              className="bg-white/80 backdrop-blur-sm border-2 border-[#2d4a2b] rounded-3xl shadow-lg"
             />
             <LanguagesCard
               languageCounts={languageCounts}
-              className="bg-[#1a1a1a] border border-[#0080ff]/30 shadow-lg"
+              className="bg-white/80 backdrop-blur-sm border-2 border-[#d4a574] rounded-3xl shadow-lg"
             />
             <ContentTypesCard
               contentTypeCounts={contentTypeCounts}
-              className="bg-[#1a1a1a] border border-[#00d9ff]/30 shadow-lg"
+              className="bg-white/80 backdrop-blur-sm border-2 border-[#8fbc8f] rounded-3xl shadow-lg"
             />
           </CardWall>
         </motion.div>
 
-        {/* Live Data Feed */}
+        {/* Living Garden Feed */}
         <motion.div
           initial={!prefersReducedMotion ? { y: 30, opacity: 0 } : {}}
           animate={{ y: 0, opacity: 1 }}
           transition={{ ...springTransition, delay: 0.6 }}
-          className="p-6 bg-[#2d2d2d] border-2 border-[#0080ff]/20"
+          className="p-8 bg-white/70 backdrop-blur-sm"
+          style={{
+            borderRadius: '46% 54% 49% 51% / 52% 48% 52% 48%',
+            boxShadow: '0 8px 32px rgba(45, 74, 43, 0.15)',
+            border: '2px solid #8fbc8f',
+          }}
         >
           <div className="flex items-center justify-between mb-6">
-            <h2 className="text-2xl font-bold text-white tracking-wide uppercase">
-              LIVE DATA FEED
+            <h2
+              className="text-3xl font-bold text-[#2d4a2b]"
+              style={{ fontFamily: '"Caveat", cursive' }}
+            >
+              Living Garden Feed
             </h2>
-            <span className="text-xs text-gray-400 font-mono">
-              {filteredPosts.length} / {posts.length} ENTRIES
+            <span
+              className="text-sm text-[#5f7161]"
+              style={{ fontFamily: '"Indie Flower", cursive' }}
+            >
+              Showing {filteredPosts.length} of {posts.length} seeds
             </span>
           </div>
 
-          <div className="space-y-3 max-h-[800px] overflow-y-auto pr-2 geometric-scrollbar">
+          <div className="space-y-4 max-h-[800px] overflow-y-auto pr-2">
             <AnimatePresence mode="popLayout">
               {filteredPosts.map((post, index) => (
                 <motion.div
                   key={post.uri || index}
-                  initial={!prefersReducedMotion ? { x: -20, opacity: 0 } : {}}
-                  animate={{ x: 0, opacity: 1 }}
-                  exit={!prefersReducedMotion ? { x: 20, opacity: 0 } : {}}
+                  initial={!prefersReducedMotion ? { x: -30, opacity: 0, scale: 0.95 } : {}}
+                  animate={{ x: 0, opacity: 1, scale: 1 }}
+                  exit={!prefersReducedMotion ? { x: 30, opacity: 0, scale: 0.95 } : {}}
                   transition={springTransition}
-                  className="p-4 bg-[#1a1a1a] border-l-4"
+                  className="p-5 bg-white/90 backdrop-blur-sm"
                   style={{
-                    borderLeftColor: post.sentiment === 'positive'
-                      ? '#00d9ff'
-                      : post.sentiment === 'negative'
-                      ? '#ff4d6d'
-                      : '#a0a0a0',
+                    borderRadius: '20px',
+                    boxShadow: '0 4px 16px rgba(45, 74, 43, 0.1)',
+                    border: '1px solid #8fbc8f',
                   }}
                 >
                   <div className="flex items-start gap-4">
-                    {/* Sentiment indicator - geometric */}
-                    <div className="flex flex-col items-center gap-1 mt-1">
-                      <motion.div
-                        className={`w-2 h-2 flex-shrink-0 ${getSentimentBg(post.sentiment)}`}
-                        style={{
-                          boxShadow: `0 0 10px ${
-                            post.sentiment === 'positive'
-                              ? 'rgba(0, 217, 255, 0.6)'
-                              : post.sentiment === 'negative'
-                              ? 'rgba(255, 77, 109, 0.6)'
-                              : 'rgba(160, 160, 160, 0.6)'
-                          }`,
-                        }}
-                        animate={
-                          !prefersReducedMotion
-                            ? {
-                                opacity: [0.5, 1, 0.5],
-                              }
-                            : {}
-                        }
-                        transition={{
-                          duration: 2,
-                          repeat: Infinity,
-                          ease: "linear",
-                        }}
-                      />
-                    </div>
+                    {/* Sentiment indicator - organic blob */}
+                    <motion.div
+                      className={`w-3 h-3 mt-1.5 flex-shrink-0 ${getSentimentBg(post.sentiment)}`}
+                      style={{
+                        borderRadius: '63% 37% 54% 46% / 55% 48% 52% 45%',
+                        boxShadow: `0 2px 8px ${
+                          post.sentiment === 'positive'
+                            ? 'rgba(45, 74, 43, 0.3)'
+                            : post.sentiment === 'negative'
+                            ? 'rgba(212, 165, 116, 0.3)'
+                            : 'rgba(95, 113, 97, 0.3)'
+                        }`,
+                      }}
+                      animate={
+                        !prefersReducedMotion
+                          ? {
+                              rotate: [0, 360],
+                            }
+                          : {}
+                      }
+                      transition={{
+                        duration: 20,
+                        repeat: Infinity,
+                        ease: "linear",
+                      }}
+                    />
 
                     {/* Post content */}
                     <div className="flex-1 min-w-0">
-                      <div className="text-[10px] mb-2 text-gray-500 uppercase tracking-wider font-mono">
+                      <div
+                        className="text-xs mb-2 text-[#5f7161]"
+                        style={{ fontFamily: '"Indie Flower", cursive' }}
+                      >
                         {new Date(post.createdAt).toLocaleString()}
-                        {' | '}
-                        {post.author?.handle || 'UNKNOWN'}
-                        {post.language && ` | ${post.language.toUpperCase()}`}
+                        {' ~ '}
+                        {post.author?.handle || 'unknown'}
+                        {post.language && ` ~ ${post.language.toUpperCase()}`}
                       </div>
-                      <div className={`${getSentimentColor(post.sentiment)} leading-relaxed text-sm mb-3`}>
+                      <div className={`${getSentimentColor(post.sentiment)} leading-relaxed text-base mb-3`}>
                         {post.text}
                       </div>
 
@@ -703,36 +752,54 @@ export function MissionControl({ className }: VariantProps) {
                         </div>
                       )}
 
-                      {/* Post metadata tags - geometric badges */}
+                      {/* Post metadata tags */}
                       <div className="flex flex-wrap gap-2">
                         {post.hasImages && (
-                          <span className="px-2 py-1 bg-[#00d9ff]/10 text-[#00d9ff] text-[10px] uppercase tracking-wider font-mono border border-[#00d9ff]/30">
-                            IMG
+                          <span
+                            className="px-2 py-1 bg-[#8fbc8f]/20 text-[#2d4a2b] text-xs rounded-full"
+                            style={{ fontFamily: '"Indie Flower", cursive' }}
+                          >
+                            📷 Image
                           </span>
                         )}
                         {post.hasVideo && (
-                          <span className="px-2 py-1 bg-[#0080ff]/10 text-[#0080ff] text-[10px] uppercase tracking-wider font-mono border border-[#0080ff]/30">
-                            VID
+                          <span
+                            className="px-2 py-1 bg-[#5f7161]/20 text-[#2d4a2b] text-xs rounded-full"
+                            style={{ fontFamily: '"Indie Flower", cursive' }}
+                          >
+                            🎥 Video
                           </span>
                         )}
                         {post.hasLink && (
-                          <span className="px-2 py-1 bg-[#00d9ff]/10 text-[#00d9ff] text-[10px] uppercase tracking-wider font-mono border border-[#00d9ff]/30">
-                            LINK
+                          <span
+                            className="px-2 py-1 bg-[#d4a574]/20 text-[#2d4a2b] text-xs rounded-full"
+                            style={{ fontFamily: '"Indie Flower", cursive' }}
+                          >
+                            🔗 Link
                           </span>
                         )}
                         {post.isReply && (
-                          <span className="px-2 py-1 bg-gray-700/50 text-gray-400 text-[10px] uppercase tracking-wider font-mono border border-gray-600">
-                            REPLY
+                          <span
+                            className="px-2 py-1 bg-[#8fbc8f]/30 text-[#2d4a2b] text-xs rounded-full"
+                            style={{ fontFamily: '"Indie Flower", cursive' }}
+                          >
+                            💬 Reply
                           </span>
                         )}
                         {post.isQuote && (
-                          <span className="px-2 py-1 bg-gray-700/50 text-gray-400 text-[10px] uppercase tracking-wider font-mono border border-gray-600">
-                            QUOTE
+                          <span
+                            className="px-2 py-1 bg-[#5f7161]/30 text-[#2d4a2b] text-xs rounded-full"
+                            style={{ fontFamily: '"Indie Flower", cursive' }}
+                          >
+                            ✨ Quote
                           </span>
                         )}
                         {post.images?.some(img => !img.alt) && (
-                          <span className="px-2 py-1 bg-[#ff4d6d]/10 text-[#ff4d6d] text-[10px] uppercase tracking-wider font-mono border border-[#ff4d6d]/30">
-                            NO ALT
+                          <span
+                            className="px-2 py-1 bg-[#d4a574]/40 text-[#2d4a2b] text-xs rounded-full"
+                            style={{ fontFamily: '"Indie Flower", cursive' }}
+                          >
+                            ⚠️ No Alt
                           </span>
                         )}
                       </div>
@@ -744,49 +811,45 @@ export function MissionControl({ className }: VariantProps) {
           </div>
         </motion.div>
 
-        {/* Footer - technical */}
+        {/* Footer - handwritten */}
         <motion.div
           initial={!prefersReducedMotion ? { opacity: 0 } : {}}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.8, duration: 1 }}
-          className="mt-12 text-center text-xs text-gray-600 font-mono uppercase tracking-widest"
+          className="mt-12 text-center text-sm text-[#5f7161]"
+          style={{ fontFamily: '"Indie Flower", cursive' }}
         >
-          <div className="flex items-center justify-center gap-3">
-            <div className="w-1 h-1 bg-[#00d9ff]" />
-            <span>BLUESKY FIREHOSE MONITORING SYSTEM</span>
-            <div className="w-1 h-1 bg-[#00d9ff]" />
-          </div>
+          <p>🌱 Cultivated with care ~ where every voice blooms 🌻</p>
         </motion.div>
       </div>
 
-      {/* Geometric styling */}
+      {/* Add font imports via inline style tag */}
       <style>{`
-        /* Custom scrollbar - geometric */
-        .geometric-scrollbar::-webkit-scrollbar {
-          width: 8px;
+        @import url('https://fonts.googleapis.com/css2?family=Caveat:wght@400;700&family=Indie+Flower&family=Lora:ital,wght@0,400;0,600;1,400&display=swap');
+
+        /* Custom scrollbar for organic feel */
+        .organic-garden ::-webkit-scrollbar {
+          width: 12px;
         }
 
-        .geometric-scrollbar::-webkit-scrollbar-track {
-          background: #1a1a1a;
+        .organic-garden ::-webkit-scrollbar-track {
+          background: rgba(143, 188, 143, 0.1);
+          border-radius: 10px;
         }
 
-        .geometric-scrollbar::-webkit-scrollbar-thumb {
-          background: #00d9ff;
-          border: 2px solid #1a1a1a;
+        .organic-garden ::-webkit-scrollbar-thumb {
+          background: #8fbc8f;
+          border-radius: 10px;
+          border: 2px solid #f0ead6;
         }
 
-        .geometric-scrollbar::-webkit-scrollbar-thumb:hover {
-          background: #0080ff;
+        .organic-garden ::-webkit-scrollbar-thumb:hover {
+          background: #2d4a2b;
         }
 
-        /* Precise animations for geometric grid */
-        .geometric-analytics-grid > * {
-          transition: all 0.3s cubic-bezier(0.4, 0.0, 0.2, 1);
-        }
-
-        /* Hexagon clip path utility */
-        .clip-hexagon {
-          clip-path: polygon(30% 0%, 70% 0%, 100% 50%, 70% 100%, 30% 100%, 0% 50%);
+        /* Smooth spring animations for card wall */
+        .organic-garden-cards > * {
+          transition: all 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
         }
       `}</style>
     </div>

@@ -5,12 +5,11 @@ import fs from "node:fs";
 import path from "path";
 import { fileURLToPath } from "url";
 import { defineConfig } from "vite";
-import { vitePluginManusRuntime } from "vite-plugin-manus-runtime";
 
 // Compatibility shim for Node.js < 20 (replaces import.meta.dirname)
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-const plugins = [react(), tailwindcss(), jsxLocPlugin(), vitePluginManusRuntime()];
+const plugins = [react(), tailwindcss(), jsxLocPlugin()];
 
 export default defineConfig({
   plugins,
@@ -32,13 +31,9 @@ export default defineConfig({
   server: {
     host: true,
     allowedHosts: [
-      ".manuspre.computer",
-      ".manus.computer",
-      ".manus-asia.computer",
-      ".manuscomputer.ai",
-      ".manusvm.computer",
       "localhost",
       "127.0.0.1",
+      "dr.eamer.dev",
     ],
     fs: {
       strict: true,

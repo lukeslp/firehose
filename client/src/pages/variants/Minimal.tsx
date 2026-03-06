@@ -1,11 +1,11 @@
 /**
- * Minimal.tsx - GLASSMORPHISM design variant
+ * Minimal.tsx - BRUTALIST CONCRETE design variant
  *
- * Aesthetic: Frosted glass cards with soft transparency
- * Theme: Modern, professional, clean
- * Typography: Inter/system sans-serif, refined hierarchy
- * Layout: Gentle spacing, subtle rounded corners
- * Effects: Backdrop blur, soft shadows, layered depth
+ * Aesthetic: Raw concrete, harsh angles, utilitarian forms
+ * Theme: Intentional "ugliness" through brutal honesty
+ * Typography: Courier New monospace ONLY, no font variation
+ * Layout: Harsh grid with visible lines, NO rounded corners
+ * Effects: Concrete texture (noise), embossed stamps, thick borders
  */
 
 import { useSocket } from '@/hooks/useSocket';
@@ -182,158 +182,168 @@ export function Minimal({ className }: VariantProps) {
   const getSentimentColor = (sentiment: string): string => {
     switch (sentiment) {
       case 'positive':
-        return 'rgba(34, 197, 94, 0.8)'; // Green
+        return '#f5f5f5';
       case 'negative':
-        return 'rgba(239, 68, 68, 0.8)'; // Red
+        return '#ff0000';
       case 'neutral':
-        return 'rgba(156, 163, 175, 0.8)'; // Gray
+        return '#808080';
       default:
-        return 'rgba(156, 163, 175, 0.8)';
+        return '#808080';
     }
   };
 
   const getSentimentBg = (sentiment: string): string => {
     switch (sentiment) {
       case 'positive':
-        return 'rgba(34, 197, 94, 0.05)';
+        return '#1a1a1a';
       case 'negative':
-        return 'rgba(239, 68, 68, 0.05)';
+        return '#1a1a1a';
       case 'neutral':
-        return 'rgba(156, 163, 175, 0.05)';
+        return '#1a1a1a';
       default:
-        return 'rgba(156, 163, 175, 0.05)';
+        return '#1a1a1a';
     }
   };
 
-  // Glassmorphism card style
-  const glassCard = {
-    background: 'rgba(255, 255, 255, 0.7)',
-    backdropFilter: 'blur(12px)',
-    WebkitBackdropFilter: 'blur(12px)',
-    border: '1px solid rgba(255, 255, 255, 0.3)',
-    borderRadius: '16px',
-    boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)',
+  // Concrete texture background style
+  const concreteTexture = {
+    backgroundImage: `
+      repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 2px,
+        rgba(128, 128, 128, 0.03) 2px,
+        rgba(128, 128, 128, 0.03) 4px
+      ),
+      repeating-linear-gradient(
+        90deg,
+        transparent,
+        transparent 2px,
+        rgba(128, 128, 128, 0.03) 2px,
+        rgba(128, 128, 128, 0.03) 4px
+      ),
+      linear-gradient(
+        180deg,
+        #808080 0%,
+        #6b6b6b 100%
+      )
+    `,
   };
 
   return (
     <div
-      className={`glassmorphism-minimal min-h-screen ${className || ''}`}
+      className={`brutalist-minimal min-h-screen text-white ${className || ''}`}
       style={{
-        fontFamily: '-apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
-        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%)',
-        minHeight: '100vh',
+        fontFamily: '"Courier New", Courier, monospace',
+        backgroundColor: '#808080',
+        ...concreteTexture,
       }}
     >
-      {/* Header - Frosted Glass */}
+      {/* Header - CONCRETE SLAB */}
       <header
         style={{
-          ...glassCard,
+          borderBottom: '2px solid #1a1a1a',
+          backgroundColor: '#808080',
+          boxShadow: '4px 4px 0 rgba(0, 0, 0, 0.8)',
           position: 'sticky',
-          top: '16px',
-          margin: '16px',
+          top: 0,
           zIndex: 10,
         }}
       >
         <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '24px' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', alignItems: 'center', gap: '24px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', alignItems: 'start', gap: '24px' }}>
             <div>
               <h1
                 style={{
-                  fontSize: '28px',
-                  fontWeight: '600',
-                  color: 'rgba(31, 41, 55, 0.95)',
-                  letterSpacing: '-0.025em',
+                  fontSize: '24px',
+                  fontWeight: 'bold',
+                  color: '#1a1a1a',
+                  letterSpacing: '2px',
+                  textTransform: 'uppercase',
                   margin: 0,
                 }}
               >
-                Bluesky Firehose
+                BLUESKY FIREHOSE
               </h1>
               <p
                 style={{
                   fontSize: '14px',
-                  color: 'rgba(75, 85, 99, 0.8)',
-                  marginTop: '4px',
-                  fontWeight: '400',
+                  color: '#1a1a1a',
+                  marginTop: '8px',
+                  letterSpacing: '1px',
                 }}
               >
-                Real-time social stream
+                REAL-TIME SOCIAL STREAM
               </p>
             </div>
             <div
               style={{
                 display: 'flex',
                 alignItems: 'center',
-                gap: '10px',
-                padding: '10px 20px',
-                background: connected
-                  ? 'rgba(34, 197, 94, 0.15)'
-                  : 'rgba(156, 163, 175, 0.15)',
-                borderRadius: '12px',
-                border: connected
-                  ? '1px solid rgba(34, 197, 94, 0.3)'
-                  : '1px solid rgba(156, 163, 175, 0.3)',
+                gap: '12px',
+                border: '2px solid #1a1a1a',
+                padding: '8px 16px',
+                backgroundColor: connected ? '#1a1a1a' : '#f5f5f5',
               }}
             >
               <div
                 style={{
-                  width: '10px',
-                  height: '10px',
-                  backgroundColor: connected ? '#22c55e' : '#9ca3af',
-                  borderRadius: '50%',
-                  boxShadow: connected
-                    ? '0 0 8px rgba(34, 197, 94, 0.6)'
-                    : 'none',
+                  width: '12px',
+                  height: '12px',
+                  backgroundColor: connected ? '#ff0000' : '#808080',
+                  border: '2px solid #1a1a1a',
                 }}
               />
               <span
                 style={{
-                  fontSize: '13px',
-                  color: connected
-                    ? 'rgba(22, 163, 74, 0.9)'
-                    : 'rgba(107, 114, 128, 0.9)',
-                  fontWeight: '600',
-                  letterSpacing: '0.025em',
+                  fontSize: '14px',
+                  color: connected ? '#ff0000' : '#1a1a1a',
+                  fontWeight: 'bold',
+                  letterSpacing: '1px',
                 }}
               >
-                {connected ? 'Live' : 'Offline'}
+                {connected ? 'LIVE' : 'OFFLINE'}
               </span>
             </div>
           </div>
         </div>
       </header>
 
-      {/* Main Content */}
-      <main style={{ maxWidth: '1200px', margin: '0 auto', padding: '0 16px 32px' }}>
-        {/* Stats Bar - Glass Cards */}
+      {/* Main Content - CONCRETE FOUNDATION */}
+      <main style={{ maxWidth: '1200px', margin: '0 auto', padding: '32px 24px' }}>
+        {/* Stats Bar - STAMPED DATA */}
         <div
           style={{
             display: 'grid',
             gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-            gap: '16px',
-            marginBottom: '24px',
+            gap: '2px',
+            marginBottom: '32px',
+            border: '2px solid #1a1a1a',
+            backgroundColor: '#1a1a1a',
           }}
         >
           {[
-            { label: 'Total Posts', value: (stats?.totalPosts || 0).toLocaleString() },
-            { label: 'Posts / Min', value: Math.round(stats?.postsPerMinute || 0).toString() },
-            { label: 'Showing', value: filteredPosts.length.toString() },
-            { label: 'Sentiment', value: null },
+            { label: 'TOTAL POSTS', value: (stats?.totalPosts || 0).toLocaleString() },
+            { label: 'POSTS / MIN', value: Math.round(stats?.postsPerMinute || 0).toString() },
+            { label: 'SHOWING', value: filteredPosts.length.toString() },
+            { label: 'SENTIMENT', value: null },
           ].map((stat, idx) => (
             <div
               key={idx}
               style={{
-                ...glassCard,
-                padding: '20px',
+                backgroundColor: '#808080',
+                padding: '16px',
+                border: '2px solid #1a1a1a',
+                boxShadow: 'inset 2px 2px 4px rgba(0, 0, 0, 0.4)',
               }}
             >
               <div
                 style={{
-                  fontSize: '12px',
-                  color: 'rgba(107, 114, 128, 0.8)',
-                  fontWeight: '500',
+                  fontSize: '10px',
+                  color: '#1a1a1a',
+                  letterSpacing: '1px',
+                  fontWeight: 'bold',
                   marginBottom: '8px',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.05em',
                 }}
               >
                 {stat.label}
@@ -341,32 +351,30 @@ export function Minimal({ className }: VariantProps) {
               {stat.value !== null ? (
                 <div
                   style={{
-                    fontSize: '32px',
-                    color: 'rgba(31, 41, 55, 0.95)',
-                    fontWeight: '600',
-                    letterSpacing: '-0.025em',
+                    fontSize: '28px',
+                    color: '#1a1a1a',
+                    fontWeight: 'bold',
                   }}
                 >
                   {stat.value}
                 </div>
               ) : (
-                <div style={{ display: 'flex', gap: '16px', marginTop: '8px' }}>
+                <div style={{ display: 'flex', gap: '12px', marginTop: '8px' }}>
                   {[
-                    { color: 'rgba(34, 197, 94, 0.8)', count: stats?.sentimentCounts?.positive || 0, label: 'Pos' },
-                    { color: 'rgba(156, 163, 175, 0.8)', count: stats?.sentimentCounts?.neutral || 0, label: 'Neu' },
-                    { color: 'rgba(239, 68, 68, 0.8)', count: stats?.sentimentCounts?.negative || 0, label: 'Neg' },
+                    { color: '#f5f5f5', count: stats?.sentimentCounts?.positive || 0 },
+                    { color: '#808080', count: stats?.sentimentCounts?.neutral || 0 },
+                    { color: '#ff0000', count: stats?.sentimentCounts?.negative || 0 },
                   ].map((s, i) => (
                     <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                       <div
                         style={{
-                          width: '10px',
-                          height: '10px',
+                          width: '12px',
+                          height: '12px',
                           backgroundColor: s.color,
-                          borderRadius: '50%',
-                          boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
+                          border: '2px solid #1a1a1a',
                         }}
                       />
-                      <span style={{ fontSize: '14px', color: 'rgba(31, 41, 55, 0.9)', fontWeight: '600' }}>
+                      <span style={{ fontSize: '14px', color: '#1a1a1a', fontWeight: 'bold' }}>
                         {s.count}
                       </span>
                     </div>
@@ -377,26 +385,28 @@ export function Minimal({ className }: VariantProps) {
           ))}
         </div>
 
-        {/* Filter Controls - Glassmorphic */}
-        <div
+        {/* Filter Controls - BRUTAL FIELDSET */}
+        <fieldset
           style={{
-            ...glassCard,
+            border: '2px solid #1a1a1a',
             padding: '24px',
-            marginBottom: '24px',
+            marginBottom: '32px',
+            backgroundColor: '#6b6b6b',
           }}
         >
-          <h2
+          <legend
             style={{
-              fontSize: '14px',
-              color: 'rgba(75, 85, 99, 0.9)',
-              fontWeight: '600',
-              marginBottom: '16px',
-              textTransform: 'uppercase',
-              letterSpacing: '0.05em',
+              fontSize: '12px',
+              color: '#1a1a1a',
+              letterSpacing: '2px',
+              fontWeight: 'bold',
+              padding: '0 8px',
+              backgroundColor: '#808080',
+              border: '2px solid #1a1a1a',
             }}
           >
-            Filters
-          </h2>
+            FILTERS
+          </legend>
           <div
             style={{
               display: 'grid',
@@ -409,13 +419,14 @@ export function Minimal({ className }: VariantProps) {
               <label
                 style={{
                   display: 'block',
-                  fontSize: '12px',
-                  color: 'rgba(107, 114, 128, 0.8)',
-                  fontWeight: '500',
+                  fontSize: '10px',
+                  color: '#1a1a1a',
+                  letterSpacing: '1px',
+                  fontWeight: 'bold',
                   marginBottom: '8px',
                 }}
               >
-                Language
+                LANGUAGE
               </label>
               <select
                 value={selectedLanguage}
@@ -423,22 +434,21 @@ export function Minimal({ className }: VariantProps) {
                 style={{
                   width: '100%',
                   padding: '12px',
-                  backgroundColor: 'rgba(255, 255, 255, 0.5)',
-                  border: '1px solid rgba(209, 213, 219, 0.3)',
-                  borderRadius: '8px',
-                  color: 'rgba(31, 41, 55, 0.9)',
+                  backgroundColor: '#1a1a1a',
+                  border: '2px solid #1a1a1a',
+                  color: '#f5f5f5',
                   fontSize: '14px',
+                  fontFamily: '"Courier New", Courier, monospace',
                   cursor: 'pointer',
-                  outline: 'none',
                 }}
               >
-                <option value="all">All Languages</option>
-                <option value="en">English</option>
-                <option value="es">Spanish</option>
-                <option value="fr">French</option>
-                <option value="de">German</option>
-                <option value="ja">Japanese</option>
-                <option value="pt">Portuguese</option>
+                <option value="all">ALL LANGUAGES</option>
+                <option value="en">ENGLISH</option>
+                <option value="es">SPANISH</option>
+                <option value="fr">FRENCH</option>
+                <option value="de">GERMAN</option>
+                <option value="ja">JAPANESE</option>
+                <option value="pt">PORTUGUESE</option>
               </select>
             </div>
 
@@ -447,28 +457,28 @@ export function Minimal({ className }: VariantProps) {
               <label
                 style={{
                   display: 'block',
-                  fontSize: '12px',
-                  color: 'rgba(107, 114, 128, 0.8)',
-                  fontWeight: '500',
+                  fontSize: '10px',
+                  color: '#1a1a1a',
+                  letterSpacing: '1px',
+                  fontWeight: 'bold',
                   marginBottom: '8px',
                 }}
               >
-                Keyword
+                KEYWORD
               </label>
               <input
                 type="text"
                 value={keywordFilter}
                 onChange={(e) => setKeywordFilter(e.target.value)}
-                placeholder="Filter by keyword..."
+                placeholder="FILTER BY KEYWORD..."
                 style={{
                   width: '100%',
                   padding: '12px',
-                  backgroundColor: 'rgba(255, 255, 255, 0.5)',
-                  border: '1px solid rgba(209, 213, 219, 0.3)',
-                  borderRadius: '8px',
-                  color: 'rgba(31, 41, 55, 0.9)',
+                  backgroundColor: '#1a1a1a',
+                  border: '2px solid #1a1a1a',
+                  color: '#f5f5f5',
                   fontSize: '14px',
-                  outline: 'none',
+                  fontFamily: '"Courier New", Courier, monospace',
                 }}
               />
             </div>
@@ -480,10 +490,11 @@ export function Minimal({ className }: VariantProps) {
                   display: 'flex',
                   alignItems: 'center',
                   gap: '12px',
-                  fontSize: '12px',
-                  color: 'rgba(107, 114, 128, 0.8)',
-                  fontWeight: '500',
-                  marginTop: '28px',
+                  fontSize: '10px',
+                  color: '#1a1a1a',
+                  letterSpacing: '1px',
+                  fontWeight: 'bold',
+                  marginTop: '24px',
                   cursor: 'pointer',
                 }}
               >
@@ -492,38 +503,39 @@ export function Minimal({ className }: VariantProps) {
                   checked={hideNSFW}
                   onChange={(e) => setHideNSFW(e.target.checked)}
                   style={{
-                    width: '18px',
-                    height: '18px',
+                    width: '20px',
+                    height: '20px',
                     cursor: 'pointer',
-                    accentColor: 'rgba(124, 58, 237, 0.8)',
                   }}
                 />
-                Hide NSFW Content
+                HIDE NSFW
               </label>
             </div>
           </div>
-        </div>
+        </fieldset>
 
-        {/* Data Visualization Cards - Glassmorphic */}
-        <div
+        {/* Data Visualization Cards - COLLAPSIBLE CONCRETE BLOCKS */}
+        <fieldset
           style={{
-            ...glassCard,
+            border: '2px solid #1a1a1a',
             padding: '24px',
-            marginBottom: '24px',
+            marginBottom: '32px',
+            backgroundColor: '#6b6b6b',
           }}
         >
-          <h2
+          <legend
             style={{
-              fontSize: '14px',
-              color: 'rgba(75, 85, 99, 0.9)',
-              fontWeight: '600',
-              marginBottom: '16px',
-              textTransform: 'uppercase',
-              letterSpacing: '0.05em',
+              fontSize: '12px',
+              color: '#1a1a1a',
+              letterSpacing: '2px',
+              fontWeight: 'bold',
+              padding: '0 8px',
+              backgroundColor: '#808080',
+              border: '2px solid #1a1a1a',
             }}
           >
-            Analytics
-          </h2>
+            ANALYTICS
+          </legend>
 
           {/* Toggle Controls */}
           <div
@@ -535,25 +547,26 @@ export function Minimal({ className }: VariantProps) {
             }}
           >
             {[
-              { label: 'Sentiment Distribution', state: showSentimentDist, setState: setShowSentimentDist },
-              { label: 'Sentiment Timeline', state: showSentimentTimeline, setState: setShowSentimentTimeline },
-              { label: 'Post Rate', state: showPostRate, setState: setShowPostRate },
-              { label: 'Languages', state: showLanguages, setState: setShowLanguages },
-              { label: 'Content Types', state: showContentTypes, setState: setShowContentTypes },
+              { label: 'SENTIMENT DIST', state: showSentimentDist, setState: setShowSentimentDist },
+              { label: 'SENTIMENT TIME', state: showSentimentTimeline, setState: setShowSentimentTimeline },
+              { label: 'POST RATE', state: showPostRate, setState: setShowPostRate },
+              { label: 'LANGUAGES', state: showLanguages, setState: setShowLanguages },
+              { label: 'CONTENT TYPES', state: showContentTypes, setState: setShowContentTypes },
             ].map((toggle, idx) => (
               <button
                 key={idx}
                 onClick={() => toggle.setState(!toggle.state)}
                 style={{
                   padding: '12px',
-                  backgroundColor: toggle.state ? 'rgba(124, 58, 237, 0.15)' : 'rgba(255, 255, 255, 0.4)',
-                  border: '1px solid rgba(209, 213, 219, 0.3)',
-                  borderRadius: '8px',
-                  color: toggle.state ? 'rgba(124, 58, 237, 0.95)' : 'rgba(107, 114, 128, 0.8)',
-                  fontSize: '12px',
-                  fontWeight: '500',
+                  backgroundColor: toggle.state ? '#1a1a1a' : '#808080',
+                  border: '2px solid #1a1a1a',
+                  color: toggle.state ? '#ff0000' : '#1a1a1a',
+                  fontSize: '10px',
+                  fontWeight: 'bold',
+                  letterSpacing: '1px',
                   cursor: 'pointer',
-                  transition: 'all 0.2s ease',
+                  fontFamily: '"Courier New", Courier, monospace',
+                  transition: 'none',
                 }}
               >
                 {toggle.state ? '▼' : '▶'} {toggle.label}
@@ -564,19 +577,19 @@ export function Minimal({ className }: VariantProps) {
           {/* Card Wall - Only show enabled cards */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '16px' }}>
             {showSentimentDist && (
-              <div style={{ ...glassCard }}>
+              <div style={{ border: '2px solid #1a1a1a', backgroundColor: '#1a1a1a', boxShadow: '4px 4px 0 rgba(0, 0, 0, 0.6)' }}>
                 <SentimentDistributionCard
                   sentimentCounts={stats?.sentimentCounts || { positive: 0, neutral: 0, negative: 0 }}
                 />
               </div>
             )}
             {showSentimentTimeline && (
-              <div style={{ ...glassCard }}>
+              <div style={{ border: '2px solid #1a1a1a', backgroundColor: '#1a1a1a', boxShadow: '4px 4px 0 rgba(0, 0, 0, 0.6)' }}>
                 <SentimentTimelineCard data={sentimentTimeline} />
               </div>
             )}
             {showPostRate && (
-              <div style={{ ...glassCard }}>
+              <div style={{ border: '2px solid #1a1a1a', backgroundColor: '#1a1a1a', boxShadow: '4px 4px 0 rgba(0, 0, 0, 0.6)' }}>
                 <PostsPerMinuteCard
                   timelineData={postsPerMinuteTimeline}
                   currentRate={stats?.postsPerMinute || 0}
@@ -584,36 +597,38 @@ export function Minimal({ className }: VariantProps) {
               </div>
             )}
             {showLanguages && (
-              <div style={{ ...glassCard }}>
+              <div style={{ border: '2px solid #1a1a1a', backgroundColor: '#1a1a1a', boxShadow: '4px 4px 0 rgba(0, 0, 0, 0.6)' }}>
                 <LanguagesCard languageCounts={languageCounts} />
               </div>
             )}
             {showContentTypes && (
-              <div style={{ ...glassCard }}>
+              <div style={{ border: '2px solid #1a1a1a', backgroundColor: '#1a1a1a', boxShadow: '4px 4px 0 rgba(0, 0, 0, 0.6)' }}>
                 <ContentTypesCard contentTypeCounts={contentTypeCounts} />
               </div>
             )}
           </div>
-        </div>
+        </fieldset>
 
-        {/* Posts Feed - Glassmorphic Cards */}
-        <div style={{ display: 'grid', gap: '16px' }}>
+        {/* Posts Feed - STAMPED CONCRETE POSTS */}
+        <div style={{ display: 'grid', gap: '2px', backgroundColor: '#1a1a1a' }}>
           {filteredPosts.length === 0 ? (
             <div
               style={{
-                ...glassCard,
                 textAlign: 'center',
                 padding: '64px 24px',
+                backgroundColor: '#808080',
+                border: '2px solid #1a1a1a',
               }}
             >
               <p
                 style={{
-                  color: 'rgba(107, 114, 128, 0.8)',
+                  color: '#1a1a1a',
                   fontSize: '14px',
-                  fontWeight: '500',
+                  fontWeight: 'bold',
+                  letterSpacing: '2px',
                 }}
               >
-                No posts match your filters
+                NO POSTS MATCH YOUR FILTERS
               </p>
             </div>
           ) : (
@@ -621,41 +636,42 @@ export function Minimal({ className }: VariantProps) {
               <article
                 key={post.uri || index}
                 style={{
-                  ...glassCard,
+                  backgroundColor: getSentimentBg(post.sentiment),
+                  border: '2px solid #1a1a1a',
                   padding: '24px',
-                  borderLeft: `4px solid ${getSentimentColor(post.sentiment)}`,
+                  boxShadow: 'inset 2px 2px 4px rgba(0, 0, 0, 0.4)',
                 }}
               >
-                {/* Post Header */}
+                {/* Post Header - STAMPED */}
                 <div
                   style={{
                     display: 'flex',
                     justifyContent: 'space-between',
                     alignItems: 'baseline',
                     marginBottom: '16px',
-                    paddingBottom: '12px',
-                    borderBottom: '1px solid rgba(209, 213, 219, 0.2)',
+                    paddingBottom: '8px',
+                    borderBottom: '2px solid ' + getSentimentColor(post.sentiment),
                   }}
                 >
-                  <div style={{ display: 'flex', alignItems: 'baseline', gap: '12px', flexWrap: 'wrap' }}>
+                  <div style={{ display: 'flex', alignItems: 'baseline', gap: '12px' }}>
                     <span
                       style={{
-                        fontSize: '13px',
-                        fontWeight: '600',
-                        color: 'rgba(31, 41, 55, 0.9)',
+                        fontSize: '12px',
+                        fontWeight: 'bold',
+                        color: getSentimentColor(post.sentiment),
+                        letterSpacing: '1px',
                       }}
                     >
-                      @{post.author?.handle || 'Anonymous'}
+                      @{post.author?.handle || 'ANONYMOUS'}
                     </span>
                     {post.language && (
                       <span
                         style={{
-                          fontSize: '11px',
-                          color: 'rgba(107, 114, 128, 0.7)',
-                          backgroundColor: 'rgba(209, 213, 219, 0.2)',
-                          padding: '3px 8px',
-                          borderRadius: '6px',
-                          fontWeight: '500',
+                          fontSize: '10px',
+                          color: '#808080',
+                          letterSpacing: '1px',
+                          border: '1px solid #808080',
+                          padding: '2px 6px',
                         }}
                       >
                         {post.language.toUpperCase()}
@@ -664,9 +680,9 @@ export function Minimal({ className }: VariantProps) {
                   </div>
                   <time
                     style={{
-                      fontSize: '12px',
-                      color: 'rgba(107, 114, 128, 0.7)',
-                      fontWeight: '400',
+                      fontSize: '10px',
+                      color: '#808080',
+                      letterSpacing: '1px',
                     }}
                   >
                     {new Date(post.createdAt).toLocaleTimeString()}
@@ -677,8 +693,8 @@ export function Minimal({ className }: VariantProps) {
                 <p
                   style={{
                     fontSize: '14px',
-                    lineHeight: '1.65',
-                    color: 'rgba(31, 41, 55, 0.85)',
+                    lineHeight: '1.6',
+                    color: getSentimentColor(post.sentiment),
                     marginBottom: '16px',
                     wordBreak: 'break-word',
                   }}
@@ -688,12 +704,7 @@ export function Minimal({ className }: VariantProps) {
 
                 {/* Media */}
                 {(post.images || post.videos) && (
-                  <div style={{
-                    marginBottom: '16px',
-                    borderRadius: '12px',
-                    overflow: 'hidden',
-                    border: '1px solid rgba(209, 213, 219, 0.2)'
-                  }}>
+                  <div style={{ marginBottom: '16px', border: '2px solid #808080' }}>
                     <MediaDisplay
                       images={post.images}
                       videos={post.videos}
@@ -703,105 +714,105 @@ export function Minimal({ className }: VariantProps) {
                   </div>
                 )}
 
-                {/* Post Meta - Soft Pills */}
+                {/* Post Meta - EMBOSSED STAMPS */}
                 <div
                   style={{
                     display: 'flex',
                     flexWrap: 'wrap',
                     gap: '8px',
-                    fontSize: '11px',
+                    fontSize: '10px',
                   }}
                 >
                   {post.hasImages && (
                     <span
                       style={{
-                        color: 'rgba(59, 130, 246, 0.8)',
-                        backgroundColor: 'rgba(59, 130, 246, 0.1)',
-                        padding: '5px 10px',
-                        borderRadius: '8px',
-                        fontWeight: '500',
+                        color: '#1a1a1a',
+                        backgroundColor: '#808080',
+                        padding: '4px 8px',
+                        border: '1px solid #1a1a1a',
+                        letterSpacing: '1px',
                       }}
                     >
-                      📷 Image
+                      IMAGE
                     </span>
                   )}
                   {post.hasVideo && (
                     <span
                       style={{
-                        color: 'rgba(139, 92, 246, 0.8)',
-                        backgroundColor: 'rgba(139, 92, 246, 0.1)',
-                        padding: '5px 10px',
-                        borderRadius: '8px',
-                        fontWeight: '500',
+                        color: '#1a1a1a',
+                        backgroundColor: '#808080',
+                        padding: '4px 8px',
+                        border: '1px solid #1a1a1a',
+                        letterSpacing: '1px',
                       }}
                     >
-                      🎬 Video
+                      VIDEO
                     </span>
                   )}
                   {post.hasLink && (
                     <span
                       style={{
-                        color: 'rgba(14, 165, 233, 0.8)',
-                        backgroundColor: 'rgba(14, 165, 233, 0.1)',
-                        padding: '5px 10px',
-                        borderRadius: '8px',
-                        fontWeight: '500',
+                        color: '#1a1a1a',
+                        backgroundColor: '#808080',
+                        padding: '4px 8px',
+                        border: '1px solid #1a1a1a',
+                        letterSpacing: '1px',
                       }}
                     >
-                      🔗 Link
+                      LINK
                     </span>
                   )}
                   {post.isReply && (
                     <span
                       style={{
-                        color: 'rgba(107, 114, 128, 0.8)',
-                        backgroundColor: 'rgba(107, 114, 128, 0.1)',
-                        padding: '5px 10px',
-                        borderRadius: '8px',
-                        fontWeight: '500',
+                        color: '#1a1a1a',
+                        backgroundColor: '#808080',
+                        padding: '4px 8px',
+                        border: '1px solid #1a1a1a',
+                        letterSpacing: '1px',
                       }}
                     >
-                      💬 Reply
+                      REPLY
                     </span>
                   )}
                   {post.isQuote && (
                     <span
                       style={{
-                        color: 'rgba(107, 114, 128, 0.8)',
-                        backgroundColor: 'rgba(107, 114, 128, 0.1)',
-                        padding: '5px 10px',
-                        borderRadius: '8px',
-                        fontWeight: '500',
+                        color: '#1a1a1a',
+                        backgroundColor: '#808080',
+                        padding: '4px 8px',
+                        border: '1px solid #1a1a1a',
+                        letterSpacing: '1px',
                       }}
                     >
-                      🔄 Quote
+                      QUOTE
                     </span>
                   )}
                   {post.hashtags && post.hashtags.length > 0 && (
                     <span
                       style={{
-                        color: 'rgba(16, 185, 129, 0.8)',
-                        backgroundColor: 'rgba(16, 185, 129, 0.1)',
-                        padding: '5px 10px',
-                        borderRadius: '8px',
-                        fontWeight: '500',
+                        color: '#1a1a1a',
+                        backgroundColor: '#808080',
+                        padding: '4px 8px',
+                        border: '1px solid #1a1a1a',
+                        letterSpacing: '1px',
                       }}
                     >
-                      # {post.hashtags.length} tag{post.hashtags.length !== 1 ? 's' : ''}
+                      {post.hashtags.length} HASHTAG{post.hashtags.length !== 1 ? 'S' : ''}
                     </span>
                   )}
                   {post.images?.some(img => !img.alt) && (
                     <span
                       style={{
-                        color: 'rgba(239, 68, 68, 0.9)',
-                        backgroundColor: 'rgba(239, 68, 68, 0.1)',
-                        padding: '5px 10px',
-                        borderRadius: '8px',
-                        fontWeight: '600',
-                        border: '1px solid rgba(239, 68, 68, 0.3)',
+                        color: '#1a1a1a',
+                        backgroundColor: '#ff0000',
+                        padding: '4px 8px',
+                        border: '2px solid #1a1a1a',
+                        fontWeight: 'bold',
+                        letterSpacing: '1px',
                       }}
                     >
-                      ⚠ No alt text
+                      ⚠ NO ALT TEXT
                     </span>
                   )}
                 </div>
@@ -811,30 +822,26 @@ export function Minimal({ className }: VariantProps) {
         </div>
       </main>
 
-      {/* Footer - Glassmorphic */}
+      {/* Footer - FOUNDATION STAMP */}
       <footer
         style={{
+          borderTop: '2px solid #1a1a1a',
           marginTop: '64px',
+          backgroundColor: '#1a1a1a',
         }}
       >
-        <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '0 16px 32px' }}>
-          <div
+        <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '24px' }}>
+          <p
             style={{
-              ...glassCard,
-              padding: '20px',
+              fontSize: '10px',
+              color: '#808080',
+              textAlign: 'center',
+              fontWeight: 'bold',
+              letterSpacing: '3px',
             }}
           >
-            <p
-              style={{
-                fontSize: '12px',
-                color: 'rgba(107, 114, 128, 0.7)',
-                textAlign: 'center',
-                fontWeight: '400',
-              }}
-            >
-              Glassmorphic Design
-            </p>
-          </div>
+            BRUTALIST CONCRETE DESIGN
+          </p>
         </div>
       </footer>
     </div>
