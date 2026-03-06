@@ -6,7 +6,9 @@
 
 Real-time analytics dashboard for the Bluesky social network. Taps into the Jetstream WebSocket to show a live feed of posts with sentiment analysis, rate tracking, and a sentiment timeline — all updating in real time.
 
-**Live**: [dr.eamer.dev/bluesky/firehose/](https://dr.eamer.dev/bluesky/firehose/)
+### **Live**: [dr.eamer.dev/bluesky/firehose/](https://dr.eamer.dev/bluesky/firehose/)
+
+<img width="2250" height="1424" alt="CleanShot 2026-03-06 at 11 34 08@2x" src="https://github.com/user-attachments/assets/dfd16755-0a5c-45d7-8fce-bcac5583c493" />
 
 <!-- TODO: screenshot -->
 
@@ -31,6 +33,7 @@ pnpm dev
 ```
 
 Opens at `http://localhost:3000/`. The firehose starts automatically.
+<img width="2616" height="1410" alt="CleanShot 2026-03-06 at 11 37 30@2x" src="https://github.com/user-attachments/assets/bb32286f-ce01-4066-ba8b-51408ece0d1e" />
 
 ## Stack
 
