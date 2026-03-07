@@ -147,6 +147,4 @@ import './variants/retro-arcade.css';
 
 ---
 
-**Author**: Luke Steuber (Color Architect)
-**Date**: 2026-02-14
-**Project**: Bluesky Firehose Dashboard
+**Luke Steuber** · 2026-02-14

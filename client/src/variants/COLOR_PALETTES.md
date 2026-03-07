@@ -1,8 +1,8 @@
-# Firehose Color Palettes — Comprehensive Guide
+# Firehose Color Palettes
 
 Accessible, colorblind-safe color systems for four distinct visual aesthetics. All palettes meet WCAG 2.1 AA contrast requirements.
 
-Created by Luke Steuber, Color Architect — 2026-02-14
+By Luke Steuber — 2026-02-14
 
 ## Quick Reference
 
@@ -497,9 +497,4 @@ document.documentElement.dataset.variant =
 
 ## Credits
 
-**Color Architect**: Luke Steuber
-**Portfolio**: [lukesteuber.com](https://lukesteuber.com)
-**Bluesky**: [@lukesteuber.com](https://bsky.app/profile/lukesteuber.com)
-**Date**: 2026-02-14
-
-Part of the Bluesky Firehose real-time analytics project.
+**Luke Steuber** · [lukesteuber.com](https://lukesteuber.com) · [@lukesteuber.com](https://bsky.app/profile/lukesteuber.com)
