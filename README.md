@@ -10,8 +10,6 @@ Real-time analytics dashboard for the Bluesky social network. Taps into the Jets
 
 <img width="2250" height="1424" alt="CleanShot 2026-03-06 at 11 34 08@2x" src="https://github.com/user-attachments/assets/dfd16755-0a5c-45d7-8fce-bcac5583c493" />
 
-<!-- TODO: screenshot -->
-
 ## What it does
 
 - **Live post feed** from Bluesky's Jetstream WebSocket, with sentiment-colored cards
