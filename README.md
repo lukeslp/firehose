@@ -4,7 +4,7 @@
 [![React](https://img.shields.io/badge/React-19-61dafb)](https://react.dev/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
-Real-time analytics dashboard for the Bluesky social network. Taps into the Jetstream WebSocket to show a live feed of posts with sentiment analysis, rate tracking, and a sentiment timeline — all updating in real time.
+Real-time analytics dashboard for the Bluesky social network. Taps into the Jetstream WebSocket to show a live feed of posts with sentiment analysis, rate tracking, and a sentiment timeline, all updating in real time.
 
 ### **Live**: [dr.eamer.dev/bluesky/firehose/](https://dr.eamer.dev/bluesky/firehose/)
 
@@ -13,13 +13,13 @@ Real-time analytics dashboard for the Bluesky social network. Taps into the Jets
 ## What it does
 
 - **Live post feed** from Bluesky's Jetstream WebSocket, with sentiment-colored cards
-- **Sentiment analysis** — classifies each post as positive, negative, or neutral
-- **Sampling control** — slow the stream to 100% / 50% / 25% / 10% without losing stats accuracy
-- **Sentiment timeline** — stacked area chart tracking mood over the last 60 minutes
-- **Keyword filters** — search the live feed by keyword, comma-separated
-- **Fullscreen mode** — just the feed, nothing else
-- **CSV export** — download the collected data with sentiment and language metadata
-- **SQLite persistence** — hourly/daily aggregations, hashtag trends, language distribution
+- **Sentiment analysis** - classifies each post as positive, negative, or neutral
+- **Sampling control** - slow the stream to 100% / 50% / 25% / 10% without losing stats accuracy
+- **Sentiment timeline** - stacked area chart tracking mood over the last 60 minutes
+- **Keyword filters** - search the live feed by keyword, comma-separated
+- **Fullscreen mode** - just the feed, nothing else
+- **CSV export** - download the collected data with sentiment and language metadata
+- **SQLite persistence** - hourly/daily aggregations, hashtag trends, language distribution
 
 ## Quick start
 
@@ -88,12 +88,12 @@ All at `/api/trpc`:
 
 Connect to `/socket.io`:
 
-- `post` — emitted per processed post (respects client sample rate)
-- `stats` — every 1 second, always full accuracy
+- `post` - emitted per processed post (respects client sample rate)
+- `stats` - every 1 second, always full accuracy
 
 ## License
 
-MIT — Luke Steuber
+MIT - Luke Steuber
 
 ## Author
 
