@@ -90,6 +90,9 @@ temp_*
 # Runtime state
 collection-state.json
 
+# Daily collection placeholders (empty days get touched then deleted)
+archives/daily/*.json
+
 # Script logs
 scripts/*.log
 
