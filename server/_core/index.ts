@@ -9,6 +9,7 @@ import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
 import { setupSocketIO } from "../socketio";
 import { getFirehoseService } from "../firehose";
+import { getProfileEnricher } from "../profileEnricher";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -57,7 +58,13 @@ async function startServer() {
   }
 
   const preferredPort = parseInt(process.env.PORT || "3000");
-  const port = await findAvailablePort(preferredPort);
+  const host = process.env.HOST || "127.0.0.1";
+  // Production binds a fixed loopback port (Caddy reverse_proxy). Dev may
+  // still search upward if the preferred port is taken.
+  const port =
+    process.env.NODE_ENV === "production"
+      ? preferredPort
+      : await findAvailablePort(preferredPort);
 
   if (port !== preferredPort) {
     console.log(`Port ${preferredPort} is busy, using port ${port} instead`);
@@ -66,8 +73,20 @@ async function startServer() {
   // Setup Socket.IO
   setupSocketIO(server);
 
-  server.listen(port, () => {
-    console.log(`Server running on http://localhost:${port}/`);
+  // Kick off profile enrichment — it batches author DIDs seen on broadcast
+  // and emits 'profile' events that Socket.IO forwards to every client.
+  const profileEnricher = getProfileEnricher();
+  profileEnricher.start();
+
+  const shutdown = () => {
+    profileEnricher.stop();
+    process.exit(0);
+  };
+  process.on('SIGTERM', shutdown);
+  process.on('SIGINT', shutdown);
+
+  server.listen(port, host, () => {
+    console.log(`Server running on http://${host}:${port}/`);
 
     // Firehose auto-starts in its constructor - no manual start needed
     console.log('[Server] Firehose will auto-start on service initialization');
