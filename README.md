@@ -4,22 +4,20 @@
 [![React](https://img.shields.io/badge/React-19-61dafb)](https://react.dev/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
-Real-time analytics dashboard for the Bluesky social network. Taps into the Jetstream WebSocket to show a live feed of posts with sentiment analysis, rate tracking, and a sentiment timeline, all updating in real time.
+A real-time Bluesky analytics dashboard. It reads the Jetstream WebSocket and shows a live post feed, sentiment analysis, rate tracking, and a rolling sentiment timeline.
 
-### **Live**: [dr.eamer.dev/bluesky/firehose/](https://dr.eamer.dev/bluesky/firehose/)
+**[Open the live dashboard.](https://dr.eamer.dev/bluesky/firehose/)**
 
-<img width="2250" height="1424" alt="CleanShot 2026-03-06 at 11 34 08@2x" src="https://github.com/user-attachments/assets/dfd16755-0a5c-45d7-8fce-bcac5583c493" />
+<img width="2250" height="1424" alt="Bluesky Firehose dashboard showing a live post feed, stream controls, and sentiment analytics." src="https://github.com/user-attachments/assets/dfd16755-0a5c-45d7-8fce-bcac5583c493" />
 
 ## What it does
 
 - **Live post feed** from Bluesky's Jetstream WebSocket, with sentiment-colored cards
-- **Sentiment analysis** - classifies each post as positive, negative, or neutral
-- **Sampling control** - slow the stream to 100% / 50% / 25% / 10% without losing stats accuracy
-- **Sentiment timeline** - stacked area chart tracking mood over the last 60 minutes
-- **Keyword filters** - search the live feed by keyword, comma-separated
-- **Fullscreen mode** - just the feed, nothing else
-- **CSV export** - download the collected data with sentiment and language metadata
-- **SQLite persistence** - hourly/daily aggregations, hashtag trends, language distribution
+- **Sentiment analysis** that classifies each post as positive, negative, or neutral
+- **Sampling control** for 100%, 50%, 25%, or 10% of the stream without changing aggregate statistics
+- **Sentiment timeline** with the last 60 minutes of activity
+- **Keyword filters**, fullscreen mode, and CSV export
+- **SQLite persistence** for hourly and daily aggregates, hashtag trends, and language distribution
 
 ## Quick start
 
@@ -30,8 +28,9 @@ pnpm install
 pnpm dev
 ```
 
-Opens at `http://localhost:3000/`. The firehose starts automatically.
-<img width="2616" height="1410" alt="CleanShot 2026-03-06 at 11 37 30@2x" src="https://github.com/user-attachments/assets/bb32286f-ce01-4066-ba8b-51408ece0d1e" />
+Open `http://localhost:3000/`. The firehose starts automatically.
+
+<img width="2616" height="1410" alt="Bluesky Firehose dashboard showing the sentiment timeline, post feed, and stream statistics." src="https://github.com/user-attachments/assets/bb32286f-ce01-4066-ba8b-51408ece0d1e" />
 
 ## Stack
 
@@ -52,7 +51,7 @@ Bluesky Jetstream WebSocket
          → React Dashboard
 ```
 
-The server connects to `wss://jetstream2.us-east.bsky.network` and processes every post through sentiment analysis. Stats broadcast every second. Posts broadcast in real time (or sampled, per client preference).
+The server connects to `wss://jetstream2.us-east.bsky.network` and analyzes each post for sentiment. It broadcasts statistics every second and streams posts live or at the sampling rate selected by each client.
 
 ## Environment
 
