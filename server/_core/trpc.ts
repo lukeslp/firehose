@@ -43,3 +43,25 @@ export const adminProcedure = t.procedure.use(
     });
   }),
 );
+
+/**
+ * Operational controls are available to an authenticated admin or a process
+ * calling the loopback service directly. Caddy supplies X-Forwarded-For, so a
+ * public request cannot become "local" merely because Caddy is the peer.
+ */
+export const operatorProcedure = t.procedure.use(
+  t.middleware(async opts => {
+    const { ctx, next } = opts;
+    const remoteAddress = ctx.req.socket.remoteAddress;
+    const loopback = remoteAddress === '127.0.0.1'
+      || remoteAddress === '::1'
+      || remoteAddress === '::ffff:127.0.0.1';
+    const directLocal = loopback && !ctx.req.headers['x-forwarded-for'];
+
+    if (ctx.user?.role !== 'admin' && !directLocal) {
+      throw new TRPCError({ code: "FORBIDDEN", message: NOT_ADMIN_ERR_MSG });
+    }
+
+    return next({ ctx });
+  }),
+);

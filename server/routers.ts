@@ -1,7 +1,7 @@
 import { COOKIE_NAME } from "@shared/const";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
-import { adminProcedure, publicProcedure, router } from "./_core/trpc";
+import { operatorProcedure, publicProcedure, router } from "./_core/trpc";
 import { z } from "zod";
 import { sql } from "drizzle-orm";
 import { posts } from "../drizzle/schema";
@@ -51,7 +51,7 @@ export const appRouter = router({
     }),
 
     // Export posts as CSV
-    exportCSV: adminProcedure
+    exportCSV: operatorProcedure
       .input(z.object({
         sentiment: z.enum(['positive', 'negative', 'neutral']).optional(),
         language: z.string().optional(),
@@ -117,7 +117,7 @@ export const appRouter = router({
       }),
 
     // Get timeline data for last 60 minutes (for chart initialization)
-    timelineData: adminProcedure.query(async () => {
+    timelineData: operatorProcedure.query(async () => {
       const now = new Date();
       const sixtyMinutesAgo = new Date(now.getTime() - 60 * 60 * 1000);
 
@@ -132,7 +132,7 @@ export const appRouter = router({
 
     // Enable collection for a specific window
     // Accepts predefined windows (02:00, 08:00, 13:00, 19:00) or custom names for special collection periods
-    enableCollection: adminProcedure
+    enableCollection: operatorProcedure
       .input(z.object({
         window: z.string().min(1).max(50),
       }))
@@ -146,7 +146,7 @@ export const appRouter = router({
       }),
 
     // Disable collection
-    disableCollection: adminProcedure.mutation(() => {
+    disableCollection: operatorProcedure.mutation(() => {
       const window = firehoseService.getCurrentWindow();
       firehoseService.disableCollection();
       return {
@@ -165,7 +165,7 @@ export const appRouter = router({
     }),
 
     // Start the firehose stream
-    startStream: adminProcedure.mutation(() => {
+    startStream: operatorProcedure.mutation(() => {
       firehoseService.start();
       return {
         success: true,
@@ -174,7 +174,7 @@ export const appRouter = router({
     }),
 
     // Stop the firehose stream
-    stopStream: adminProcedure.mutation(() => {
+    stopStream: operatorProcedure.mutation(() => {
       firehoseService.stop();
       return {
         success: true,
@@ -185,7 +185,7 @@ export const appRouter = router({
 
   posts: router({
     // Get posts from database
-    list: adminProcedure
+    list: operatorProcedure
       .input(z.object({
         limit: z.number().min(1).max(100).default(50),
         sentiment: z.enum(['positive', 'negative', 'neutral']).optional(),
