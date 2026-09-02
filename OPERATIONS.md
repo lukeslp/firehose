@@ -19,8 +19,10 @@ The service deliberately separates three different products:
 | Full raw post event log | Rotated NDJSON.zst segments | Explicit opt-in | 24 hours and 2 GiB by default |
 
 The public Socket.IO stream is never sampled. Filters affect only an individual
-browser view. Raw archive pressure or failure must not stop the public stream,
-sentiment analysis, or aggregate history.
+browser view. The browser keeps all posts received since page load and
+virtualizes the feed cards, so scrollback grows without growing the rendered
+DOM; a reload begins a new browser session. Raw archive pressure or failure
+must not stop the public stream, sentiment analysis, or aggregate history.
 
 ## Raw archive design
 
@@ -53,6 +55,11 @@ On 2026-09-02, an in-memory 29.61-second production sample measured:
 - 240 zstd bytes/event;
 - 0.292 compressed/raw ratio;
 - approximately 0.90 GiB/day at the observed event rate.
+
+The first 15-minute production segment then sealed 47,482 events: 41.1 MB raw
+became 11.5 MB zstd (0.279 ratio), or approximately 1.03 GiB/day if that rate
+were sustained. Its zstd integrity, manifest SHA-256, and durable checkpoint
+were verified while the next segment continued recording with zero drops.
 
 This is a point-in-time measurement, not a permanent forecast. The byte quota
 is the safety mechanism when traffic or payload sizes grow.
