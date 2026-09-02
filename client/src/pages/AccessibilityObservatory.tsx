@@ -134,23 +134,24 @@ export default function AccessibilityObservatory() {
     dailyQuery.isError ||
     languageQuery.isError ||
     statusQuery.isError;
-  const shortDaily = daily
-    .slice(-30)
-    .map(row => ({
-      ...row,
-      coverage:
-        row.coverage_state === "complete"
-          ? "Complete"
-          : row.coverage_state === "gapped"
-            ? "Gapped"
-            : "Partial",
-      imageAltPercent:
-        row.image_alt_rate == null ? null : row.image_alt_rate * 100,
-      completePercent:
-        row.fully_described_post_rate == null
-          ? null
-          : row.fully_described_post_rate * 100,
-    }));
+  const shortDaily = daily.slice(-30).map(row => ({
+    ...row,
+    coverage:
+      row.coverage_state === "complete"
+        ? "Complete"
+        : row.coverage_state === "gapped"
+          ? "Gapped"
+          : "Partial",
+    imageAltPercent:
+      row.image_alt_rate == null ? null : row.image_alt_rate * 100,
+    completePercent:
+      row.fully_described_post_rate == null
+        ? null
+        : row.fully_described_post_rate * 100,
+  }));
+  const observedMinuteBuckets = liveQuery.data?.length ?? 0;
+  const hasDailyTrend = shortDaily.length > 0;
+  const hasReleasedSample = bins.some(bin => bin.count > 0);
 
   useEffect(() => {
     const previous = document.title;
@@ -232,7 +233,7 @@ export default function AccessibilityObservatory() {
               value={percent(rate(current24.imagesWithAlt, current24.images))}
               detail={
                 current24.images
-                  ? `${whole(current24.imagesWithAlt)} of ${whole(current24.images)} observed images`
+                  ? `${whole(current24.imagesWithAlt)} of ${whole(current24.images)} images across ${whole(observedMinuteBuckets)} observed minute buckets`
                   : "No observed image posts yet"
               }
             />
@@ -243,7 +244,7 @@ export default function AccessibilityObservatory() {
               )}
               detail={
                 current24.imagePosts
-                  ? `${whole(current24.fullyDescribed)} of ${whole(current24.imagePosts)} image posts`
+                  ? `${whole(current24.fullyDescribed)} of ${whole(current24.imagePosts)} image posts across ${whole(observedMinuteBuckets)} observed minute buckets`
                   : "No observed image posts yet"
               }
             />
@@ -288,49 +289,63 @@ export default function AccessibilityObservatory() {
             Exact counts and written coverage states are shown below the chart.
             Partial and gapped days should not be compared as full days.
           </p>
-          <div
-            className="mt-4"
-            role="img"
-            aria-label="Line chart showing daily image alternative-text coverage and fully-described image-post rate for the last 30 days"
-          >
-            <ResponsiveContainer width="100%" height={280}>
-              <LineChart
-                data={shortDaily}
-                margin={{ top: 8, right: 16, bottom: 0, left: 0 }}
-              >
-                <CartesianGrid stroke="var(--border)" strokeOpacity={0.75} />
-                <XAxis dataKey="date" tick={{ fontSize: 11 }} minTickGap={36} />
-                <YAxis
-                  domain={[0, 100]}
-                  unit="%"
-                  tick={{ fontSize: 11 }}
-                  width={48}
-                />
-                <Tooltip
-                  formatter={(value: number) => `${value.toFixed(1)}%`}
-                />
-                <Line
-                  type="linear"
-                  dataKey="imageAltPercent"
-                  name="Images with alt"
-                  stroke="var(--bsky-blue)"
-                  strokeWidth={3}
-                  dot={{ r: 2 }}
-                  isAnimationActive={false}
-                />
-                <Line
-                  type="linear"
-                  dataKey="completePercent"
-                  name="Fully described posts"
-                  stroke="var(--sentiment-positive)"
-                  strokeWidth={2}
-                  strokeDasharray="6 4"
-                  dot={false}
-                  isAnimationActive={false}
-                />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
+          {hasDailyTrend ? (
+            <div
+              className="mt-4"
+              role="img"
+              aria-label="Line chart showing daily image alternative-text coverage and fully-described image-post rate for the last 30 days"
+            >
+              <ResponsiveContainer width="100%" height={280}>
+                <LineChart
+                  data={shortDaily}
+                  margin={{ top: 8, right: 16, bottom: 0, left: 0 }}
+                >
+                  <CartesianGrid stroke="var(--border)" strokeOpacity={0.75} />
+                  <XAxis
+                    dataKey="date"
+                    tick={{ fontSize: 11 }}
+                    minTickGap={36}
+                  />
+                  <YAxis
+                    domain={[0, 100]}
+                    unit="%"
+                    tick={{ fontSize: 11 }}
+                    width={48}
+                  />
+                  <Tooltip
+                    formatter={(value: number) => `${value.toFixed(1)}%`}
+                  />
+                  <Line
+                    type="linear"
+                    dataKey="imageAltPercent"
+                    name="Images with alt"
+                    stroke="var(--bsky-blue)"
+                    strokeWidth={3}
+                    dot={{ r: 2 }}
+                    isAnimationActive={false}
+                  />
+                  <Line
+                    type="linear"
+                    dataKey="completePercent"
+                    name="Fully described posts"
+                    stroke="var(--sentiment-positive)"
+                    strokeWidth={2}
+                    strokeDasharray="6 4"
+                    dot={false}
+                    isAnimationActive={false}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          ) : (
+            <p
+              role="status"
+              className="mt-4 rounded-md border border-border bg-muted p-4 text-sm"
+            >
+              The daily trend will appear after the first observed UTC day is
+              available.
+            </p>
+          )}
           <details className="mt-4 rounded-md border border-border p-3">
             <summary className="cursor-pointer font-semibold">
               Show exact daily coverage table
@@ -385,6 +400,13 @@ export default function AccessibilityObservatory() {
                       </td>
                     </tr>
                   ))}
+                  {!shortDaily.length && (
+                    <tr>
+                      <td colSpan={5} className="p-3 text-muted-foreground">
+                        No daily aggregate rows are available yet.
+                      </td>
+                    </tr>
+                  )}
                 </tbody>
               </table>
             </div>
@@ -402,35 +424,45 @@ export default function AccessibilityObservatory() {
             Coverage rates are only meaningful alongside the number of images
             observed.
           </p>
-          <div
-            className="mt-4"
-            role="img"
-            aria-label="Bar chart showing observed images and image posts per day"
-          >
-            <ResponsiveContainer width="100%" height={250}>
-              <BarChart
-                data={shortDaily}
-                margin={{ top: 8, right: 16, bottom: 0, left: 0 }}
-              >
-                <CartesianGrid stroke="var(--border)" strokeOpacity={0.75} />
-                <XAxis dataKey="date" tick={{ fontSize: 11 }} minTickGap={36} />
-                <YAxis tick={{ fontSize: 11 }} width={52} />
-                <Tooltip />
-                <Bar
-                  dataKey="images"
-                  name="Images"
-                  fill="var(--bsky-blue)"
-                  isAnimationActive={false}
-                />
-                <Bar
-                  dataKey="image_posts"
-                  name="Image posts"
-                  fill="var(--sentiment-neutral)"
-                  isAnimationActive={false}
-                />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
+          {hasDailyTrend ? (
+            <div
+              className="mt-4"
+              role="img"
+              aria-label="Bar chart showing observed images and image posts per day"
+            >
+              <ResponsiveContainer width="100%" height={250}>
+                <BarChart
+                  data={shortDaily}
+                  margin={{ top: 8, right: 16, bottom: 0, left: 0 }}
+                >
+                  <CartesianGrid stroke="var(--border)" strokeOpacity={0.75} />
+                  <XAxis
+                    dataKey="date"
+                    tick={{ fontSize: 11 }}
+                    minTickGap={36}
+                  />
+                  <YAxis tick={{ fontSize: 11 }} width={52} />
+                  <Tooltip />
+                  <Bar
+                    dataKey="images"
+                    name="Images"
+                    fill="var(--bsky-blue)"
+                    isAnimationActive={false}
+                  />
+                  <Bar
+                    dataKey="image_posts"
+                    name="Image posts"
+                    fill="var(--sentiment-neutral)"
+                    isAnimationActive={false}
+                  />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          ) : (
+            <p className="mt-4 rounded-md border border-border bg-muted p-4 text-sm">
+              Daily volume will appear with the first aggregate row.
+            </p>
+          )}
           <p className="mt-2 text-sm text-muted-foreground">
             Last 30 days: {whole(trailing.imagesWithAlt)} of{" "}
             {whole(trailing.images)} images had non-empty alt (
@@ -476,6 +508,13 @@ export default function AccessibilityObservatory() {
                       <td className="p-2">{row.coverage}</td>
                     </tr>
                   ))}
+                  {!shortDaily.length && (
+                    <tr>
+                      <td colSpan={4} className="p-3 text-muted-foreground">
+                        No daily volume rows are available yet.
+                      </td>
+                    </tr>
+                  )}
                 </tbody>
               </table>
             </div>
@@ -533,6 +572,13 @@ export default function AccessibilityObservatory() {
                     </td>
                   </tr>
                 ))}
+                {!languageQuery.data?.length && (
+                  <tr>
+                    <td colSpan={4} className="p-3 text-muted-foreground">
+                      No declared-language aggregate rows are available yet.
+                    </td>
+                  </tr>
+                )}
               </tbody>
             </table>
           </div>
@@ -550,26 +596,33 @@ export default function AccessibilityObservatory() {
             every description. Rows are released after a 48-hour correction
             window; it describes length, not quality.
           </p>
-          <div
-            className="mt-4"
-            role="img"
-            aria-label="Bar chart showing the number of sampled image descriptions in fixed character-length bins"
-          >
-            <ResponsiveContainer width="100%" height={230}>
-              <BarChart data={bins}>
-                <CartesianGrid stroke="var(--border)" strokeOpacity={0.75} />
-                <XAxis dataKey="label" />
-                <YAxis allowDecimals={false} width={45} />
-                <Tooltip />
-                <Bar
-                  dataKey="count"
-                  name="Sampled descriptions"
-                  fill="var(--sentiment-positive)"
-                  isAnimationActive={false}
-                />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
+          {hasReleasedSample ? (
+            <div
+              className="mt-4"
+              role="img"
+              aria-label="Bar chart showing the number of sampled image descriptions in fixed character-length bins"
+            >
+              <ResponsiveContainer width="100%" height={230}>
+                <BarChart data={bins}>
+                  <CartesianGrid stroke="var(--border)" strokeOpacity={0.75} />
+                  <XAxis dataKey="label" />
+                  <YAxis allowDecimals={false} width={45} />
+                  <Tooltip />
+                  <Bar
+                    dataKey="count"
+                    name="Sampled descriptions"
+                    fill="var(--sentiment-positive)"
+                    isAnimationActive={false}
+                  />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          ) : (
+            <p className="mt-4 rounded-md border border-border bg-muted p-4 text-sm">
+              No description sample has been released; the first eligible rows
+              require the full correction window.
+            </p>
+          )}
           <details className="mt-4 rounded-md border border-border p-3">
             <summary className="cursor-pointer font-semibold">
               Show sampled length table
