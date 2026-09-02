@@ -11,6 +11,7 @@ import {
   statsMinuteLanguage,
   statsMinuteContentType,
   statsMinuteLabel,
+  statsMinuteAccessibility,
   statsHourly,
   statsDaily,
   statsLanguage,
@@ -20,6 +21,7 @@ import {
   InsertSession
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
+import type { AccessibilityCounts, AccessibilityPoint } from '../shared/accessibility';
 
 let _db: ReturnType<typeof drizzle> | null = null;
 let _sqlite: Database.Database | null = null;
@@ -67,6 +69,15 @@ export async function getDb() {
           label TEXT NOT NULL,
           postsCount INTEGER DEFAULT 0 NOT NULL,
           PRIMARY KEY (minuteTimestamp, label)
+        );
+        CREATE TABLE IF NOT EXISTS statsMinuteAccessibility (
+          minuteTimestamp INTEGER PRIMARY KEY NOT NULL,
+          imagePosts INTEGER DEFAULT 0 NOT NULL,
+          images INTEGER DEFAULT 0 NOT NULL,
+          imagesWithAlt INTEGER DEFAULT 0 NOT NULL,
+          fullyDescribedImagePosts INTEGER DEFAULT 0 NOT NULL,
+          altCharacters INTEGER DEFAULT 0 NOT NULL,
+          altWords INTEGER DEFAULT 0 NOT NULL
         );
       `);
       console.log("[Database] WAL mode enabled for high-throughput writes");
@@ -387,6 +398,29 @@ export async function upsertMinuteBucketsByLabel(minuteTimestamp: Date, buckets:
   }
 }
 
+export async function upsertMinuteAccessibilityBucket(
+  minuteTimestamp: Date,
+  counts: AccessibilityCounts,
+) {
+  const db = await getDb();
+  if (!db) return;
+  await db.insert(statsMinuteAccessibility).values({ minuteTimestamp, ...counts })
+    .onConflictDoUpdate({
+      target: statsMinuteAccessibility.minuteTimestamp,
+      set: { ...counts },
+    });
+}
+
+/** The local, bounded live pulse. Longitudinal values come from the public snapshot. */
+export async function getMinuteAccessibilityTimeline(minutes: number = 60): Promise<AccessibilityPoint[]> {
+  const db = await getDb();
+  if (!db) return [];
+  const cutoff = new Date(Date.now() - minutes * 60_000);
+  return db.select().from(statsMinuteAccessibility)
+    .where(gte(statsMinuteAccessibility.minuteTimestamp, cutoff))
+    .orderBy(statsMinuteAccessibility.minuteTimestamp);
+}
+
 export async function getMinuteTimelineByLanguage(minutes: number = 60, top: number = 10) {
   const db = await getDb();
   if (!db) return [];
@@ -492,6 +526,7 @@ export async function purgeOldMinuteBuckets(retentionHours: number = 48) {
     db.delete(statsMinuteLanguage).where(lt(statsMinuteLanguage.minuteTimestamp, cutoff)),
     db.delete(statsMinuteContentType).where(lt(statsMinuteContentType.minuteTimestamp, cutoff)),
     db.delete(statsMinuteLabel).where(lt(statsMinuteLabel.minuteTimestamp, cutoff)),
+    db.delete(statsMinuteAccessibility).where(lt(statsMinuteAccessibility.minuteTimestamp, cutoff)),
   ]);
 }
 

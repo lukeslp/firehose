@@ -14,10 +14,12 @@ import {
   upsertMinuteBucketsByLanguage,
   upsertMinuteBucketsByContentType,
   upsertMinuteBucketsByLabel,
+  upsertMinuteAccessibilityBucket,
   purgeOldMinuteBuckets,
   type MinuteContentType,
   type MinuteSentimentCounts,
 } from './db';
+import { accessibilityCountsFromRecord, emptyAccessibilityCounts, type AccessibilityCounts } from '../shared/accessibility';
 import { InsertPost } from '../drizzle/schema';
 import { buildMediaBundle, type MediaBundle } from './media';
 import { getProfileEnricher } from './profileEnricher';
@@ -110,6 +112,7 @@ export class FirehoseService extends EventEmitter {
   private minuteByLanguage = new Map<string, MinuteSentimentCounts>();
   private minuteByContentType = new Map<MinuteContentType, number>();
   private minuteByLabel = new Map<string, number>();
+  private minuteAccessibility: AccessibilityCounts = emptyAccessibilityCounts();
   private minuteFlushTimer: NodeJS.Timeout | null = null;
   private globalFlushTimer: NodeJS.Timeout | null = null;
   private watchdogTimer: NodeJS.Timeout | null = null;
@@ -181,6 +184,7 @@ export class FirehoseService extends EventEmitter {
       upsertMinuteBucketsByLanguage(timestamp, new Map(this.minuteByLanguage)),
       upsertMinuteBucketsByContentType(timestamp, new Map(this.minuteByContentType)),
       upsertMinuteBucketsByLabel(timestamp, new Map(this.minuteByLabel)),
+      upsertMinuteAccessibilityBucket(timestamp, { ...this.minuteAccessibility }),
     ]);
   }
 
@@ -190,6 +194,7 @@ export class FirehoseService extends EventEmitter {
     language: string | undefined,
     contentTypes: MinuteContentType[],
     labels: string[],
+    accessibility: AccessibilityCounts,
   ) {
     const minuteTs = Math.floor(Date.now() / 60_000) * 60_000;
     if (minuteTs !== this.currentMinuteTs) {
@@ -206,6 +211,7 @@ export class FirehoseService extends EventEmitter {
       this.minuteByLanguage = new Map();
       this.minuteByContentType = new Map();
       this.minuteByLabel = new Map();
+      this.minuteAccessibility = emptyAccessibilityCounts();
       void purgeOldMinuteBuckets(FirehoseService.MINUTE_RETENTION_HOURS);
     }
 
@@ -220,6 +226,12 @@ export class FirehoseService extends EventEmitter {
     }
     contentTypes.forEach(type => this.minuteByContentType.set(type, (this.minuteByContentType.get(type) ?? 0) + 1));
     labels.forEach(label => this.minuteByLabel.set(label, (this.minuteByLabel.get(label) ?? 0) + 1));
+    this.minuteAccessibility.imagePosts += accessibility.imagePosts;
+    this.minuteAccessibility.images += accessibility.images;
+    this.minuteAccessibility.imagesWithAlt += accessibility.imagesWithAlt;
+    this.minuteAccessibility.fullyDescribedImagePosts += accessibility.fullyDescribedImagePosts;
+    this.minuteAccessibility.altCharacters += accessibility.altCharacters;
+    this.minuteAccessibility.altWords += accessibility.altWords;
   }
 
   private startWatchdog() {
@@ -511,7 +523,14 @@ export class FirehoseService extends EventEmitter {
       const labels = (cachedProfile?.labels ?? [])
         .filter(label => !label.neg)
         .map(label => label.val);
-      this.recordMinuteBucketPost(post.sentiment, post.sentimentAnalyzed, post.language, contentTypes, labels);
+      this.recordMinuteBucketPost(
+        post.sentiment,
+        post.sentimentAnalyzed,
+        post.language,
+        contentTypes,
+        labels,
+        accessibilityCountsFromRecord(record),
+      );
 
       // Keep recent posts in memory for UI
       this.recentPosts.unshift(post);

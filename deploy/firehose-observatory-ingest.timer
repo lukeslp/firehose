@@ -1,0 +1,10 @@
+[Unit]
+Description=Run Bluesky accessibility observatory ingest every 15 minutes
+
+[Timer]
+OnCalendar=*-*-* *:05/15:00
+Persistent=true
+Unit=firehose-observatory-ingest.service
+
+[Install]
+WantedBy=timers.target

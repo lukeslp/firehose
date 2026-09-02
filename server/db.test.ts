@@ -28,6 +28,14 @@ describe('minute history', () => {
       ['es', { total: 5, positive: 4, neutral: 1, negative: 0 }],
     ]));
     await db.upsertMinuteBucketsByContentType(minute, new Map([['text', 9], ['image', 3]]));
+    await db.upsertMinuteAccessibilityBucket(minute, {
+      imagePosts: 3,
+      images: 5,
+      imagesWithAlt: 4,
+      fullyDescribedImagePosts: 2,
+      altCharacters: 80,
+      altWords: 16,
+    });
 
     const timeline = await db.getMinuteTimeline(5);
     expect(timeline).toHaveLength(1);
@@ -40,6 +48,11 @@ describe('minute history', () => {
       negativeCount: 1,
     });
     expect(await db.getMinuteTimelineByContentType(5)).toHaveLength(2);
+    expect((await db.getMinuteAccessibilityTimeline(5))[0]).toMatchObject({
+      images: 5,
+      imagesWithAlt: 4,
+      fullyDescribedImagePosts: 2,
+    });
     expect((await db.getMinuteCoverage()).bucketCount).toBe(1);
   });
 });

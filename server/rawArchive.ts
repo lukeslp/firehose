@@ -47,11 +47,42 @@ interface ArchiveEntry {
 }
 
 interface Checkpoint {
-  formatVersion: 1;
+  formatVersion: 1 | 2;
   cursor: string;
   eventKey: string;
   sealedAt: string;
   segment: string;
+}
+
+/**
+ * The deployed Jetstream v1 endpoint has commit, account, and identity
+ * markers (but no sync marker). Keep only post commits plus those markers so
+ * the archive remains bounded enough for its existing raw-spool contract.
+ */
+export function archiveEventDetails(message: Record<string, any>): { cursor: string; eventKey: string } | null {
+  const cursor = String(message.seq ?? message.time_us ?? '');
+  if (!cursor) return null;
+  const kind = String(message.kind ?? '');
+  const did = String(message.did ?? message.identity?.did ?? message.account?.did ?? '');
+  if (!did) return null;
+  if (kind === 'commit') {
+    const commit = message.commit;
+    if (commit?.collection !== 'app.bsky.feed.post') return null;
+    return {
+      cursor,
+      eventKey: [kind, cursor, did, commit.operation ?? '', commit.rkey ?? '', commit.cid ?? ''].join('|'),
+    };
+  }
+  if (kind === 'account' || kind === 'identity') {
+    const marker = kind === 'account' ? message.account : message.identity;
+    return {
+      cursor,
+      // Cursor makes a marker idempotent across replay without conflating a
+      // later account-state transition for the same DID.
+      eventKey: [kind, cursor, did, marker?.active ?? '', marker?.handle ?? ''].join('|'),
+    };
+  }
+  return null;
 }
 
 interface Segment {
@@ -345,7 +376,7 @@ export class RawArchiveWriter extends EventEmitter {
     this.segmentSequence += 1;
     const partialPath = path.join(
       dir,
-      `posts-${stamp}-${process.pid}-${String(this.segmentSequence).padStart(4, '0')}.ndjson.zst.partial`,
+      `events-${stamp}-${process.pid}-${String(this.segmentSequence).padStart(4, '0')}.ndjson.zst.partial`,
     );
     const output = fs.createWriteStream(partialPath, { flags: 'wx', mode: 0o600 });
     const compressor = createZstdCompress({
@@ -412,8 +443,9 @@ export class RawArchiveWriter extends EventEmitter {
       const checksum = segment.hash.digest('hex');
       const sealedAt = new Date(this.now()).toISOString();
       const manifest = {
-        formatVersion: 1,
-        collection: 'app.bsky.feed.post',
+        formatVersion: 2,
+        collections: ['app.bsky.feed.post'],
+        eventKinds: ['commit', 'account', 'identity'],
         compression: 'zstd-3',
         firstCursor: segment.firstCursor,
         lastCursor: segment.lastCursor,
@@ -428,7 +460,7 @@ export class RawArchiveWriter extends EventEmitter {
       const manifestPath = sealedPath.replace(/\.ndjson\.zst$/, '.manifest.json');
       atomicJson(manifestPath, manifest);
       this.checkpoint = {
-        formatVersion: 1,
+        formatVersion: 2,
         cursor: segment.lastCursor,
         eventKey: segment.lastEventKey,
         sealedAt,
@@ -446,7 +478,7 @@ export class RawArchiveWriter extends EventEmitter {
     const file = path.join(this.rootDir, 'checkpoint.json');
     try {
       const value = JSON.parse(fs.readFileSync(file, 'utf8')) as Partial<Checkpoint>;
-      if (value.formatVersion === 1 && value.cursor && value.eventKey && value.segment && value.sealedAt) {
+      if ((value.formatVersion === 1 || value.formatVersion === 2) && value.cursor && value.eventKey && value.segment && value.sealedAt) {
         return value as Checkpoint;
       }
     } catch (error) {
@@ -523,10 +555,9 @@ export class RawArchiveRecorder {
     if (!this.running) return;
     try {
       const message = JSON.parse(data.toString()) as Record<string, any>;
-      if (message.kind !== 'commit' || message.commit?.collection !== 'app.bsky.feed.post') return;
-      const cursor = String(message.seq ?? message.time_us ?? '');
-      if (!cursor) return;
-      const eventKey = [cursor, message.did, message.commit.operation, message.commit.rkey, message.commit.cid ?? ''].join('|');
+      const details = archiveEventDetails(message);
+      if (!details) return;
+      const { cursor, eventKey } = details;
       if (cursor === this.writer.resumeCursor && eventKey === this.writer.resumeEventKey) return;
       if (this.recentKeys.has(eventKey)) return;
       this.recentKeys.add(eventKey);

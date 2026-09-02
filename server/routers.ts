@@ -20,9 +20,11 @@ import {
   getMinuteTimelineForLanguage,
   getMinuteTimelineByContentType,
   getMinuteTimelineByLabel,
+  getMinuteAccessibilityTimeline,
 } from "./db";
 import { getFirehoseService } from "./firehose";
 import { getRawArchiveRecorder } from "./rawArchive";
+import { observatoryDaily, observatoryLanguages, observatoryStatus } from './observatory';
 
 const firehoseService = getFirehoseService();
 
@@ -271,6 +273,23 @@ export const appRouter = router({
         top: z.number().min(1).max(30).default(10),
       }))
       .query(({ input }) => getMinuteTimelineByLabel(input.minutes, input.top)),
+
+    // The live pulse stays in the firehose's small 48-hour SQLite history.
+    accessibilityTimeline: publicProcedure
+      .input(z.object({ minutes: z.number().min(1).max(2880).default(60) }))
+      .query(({ input }) => getMinuteAccessibilityTimeline(input.minutes)),
+
+    // Longitudinal endpoints read only the publisher's atomically generated,
+    // public-safe JSON snapshot; they never open publisher state or samples.
+    accessibilityDaily: publicProcedure
+      .input(z.object({ days: z.number().min(1).max(1825).default(30) }))
+      .query(({ input }) => observatoryDaily(input.days)),
+
+    accessibilityLanguages: publicProcedure
+      .input(z.object({ days: z.number().min(1).max(1825).default(30), top: z.number().min(1).max(100).default(12) }))
+      .query(({ input }) => observatoryLanguages(input.days, input.top)),
+
+    observatoryStatus: publicProcedure.query(() => observatoryStatus()),
 
     // Get top languages
     languages: publicProcedure

@@ -92,6 +92,8 @@ temp_*
 # Runtime state
 collection-state.json
 raw-archive/
+observatory/.venv/
+observatory/__pycache__/
 
 # Daily collection placeholders (empty days get touched then deleted)
 archives/daily/*.json

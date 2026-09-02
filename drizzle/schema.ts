@@ -110,6 +110,20 @@ export const statsMinuteLabel = sqliteTable("statsMinuteLabel", {
 }));
 
 /**
+ * A separate accessibility pulse keeps the live dashboard's 48-hour history
+ * small and does not retain post text, identifiers, or image URLs.
+ */
+export const statsMinuteAccessibility = sqliteTable("statsMinuteAccessibility", {
+  minuteTimestamp: integer("minuteTimestamp", { mode: "timestamp" }).primaryKey(),
+  imagePosts: integer("imagePosts").default(0).notNull(),
+  images: integer("images").default(0).notNull(),
+  imagesWithAlt: integer("imagesWithAlt").default(0).notNull(),
+  fullyDescribedImagePosts: integer("fullyDescribedImagePosts").default(0).notNull(),
+  altCharacters: integer("altCharacters").default(0).notNull(),
+  altWords: integer("altWords").default(0).notNull(),
+});
+
+/**
  * Hourly aggregations for time-series analysis
  */
 export const statsHourly = sqliteTable("statsHourly", {

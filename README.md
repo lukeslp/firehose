@@ -19,6 +19,7 @@ A real-time Bluesky analytics dashboard. It reads the Jetstream WebSocket and sh
 - **Keyword and sentiment filters** that affect only the viewer's feed
 - **SQLite persistence** for 48 hours of lightweight minute aggregates
 - **Optional raw archive** as bounded, rotated NDJSON.zst segments with cursor recovery; separate from the filtered research corpus
+- **Accessibility pulse and observatory** with exact image-description coverage, declared-language aggregates, and a delayed deterministic description sample
 
 ## Quick start
 
@@ -54,9 +55,16 @@ Bluesky Jetstream WebSocket
 
 Separate resumable Jetstream connection (optional)
   → RawArchiveRecorder
-    → 15-minute NDJSON.zst segments
+    → post commits plus account/identity markers
+    → 15-minute archive-format-v2 NDJSON.zst segments
     → atomic manifests + durable cursor checkpoint
     → 24-hour / 2 GiB local safety envelope by default
+
+Sealed format-v2 segments (separate Python publisher)
+  → exact daily accessibility aggregates
+  → 48-hour correction window and bottom-k sample
+  → atomic public dashboard snapshot
+  → monthly Parquet shards on Hugging Face
 ```
 
 The server connects to `wss://jetstream2.us-east.bsky.network`, analyzes explicitly English-tagged posts with the bundled AFINN lexicon, persists aggregate minute buckets every 10 seconds, broadcasts statistics every second, and forwards every received post to connected clients. Posts in every language remain in the unsampled public stream; non-English and untagged posts are marked unscored rather than treated as neutral.
@@ -98,6 +106,10 @@ All at `/api/trpc`:
 | `stats.timelineForLanguage` | Persisted minute history for one base language, including regional tags |
 | `stats.timelineByContentType` | Persisted minute content-type trends |
 | `stats.timelineByLabel` | Persisted minute moderation-label trends |
+| `stats.accessibilityTimeline` | Exact image-description counts from the bounded 48-hour minute history |
+| `stats.accessibilityDaily` | Public-safe longitudinal daily aggregates from the atomic publisher snapshot |
+| `stats.accessibilityLanguages` | Public-safe declared-language aggregate coverage |
+| `stats.observatoryStatus` | Redacted freshness, coverage, and publication state |
 | `stats.hourly` | Hourly time-series |
 | `stats.languages` | Language distribution |
 | `stats.hashtags` | Hashtag trends |
@@ -108,6 +120,18 @@ Connect to `/socket.io`:
 
 - `post` - emitted for every processed post (not sampled)
 - `stats` - every 1 second, always full accuracy
+
+## Accessibility Observatory
+
+The same observatory page is designed to be served at
+`/bluesky/firehose/accessibility/` and `/downloads/bluesky-alt-text/`. The live
+dashboard process reads only `public-snapshot.json`; it never opens publisher
+SQLite state and never exposes sampled descriptions through tRPC.
+
+The publisher lives in `observatory/`, with pinned PyArrow and Hugging Face
+dependencies. Its local state defaults to
+`/home/coolhand/firehose-data/observatory`. See `OPERATIONS.md` before enabling
+its ingest or publish timers.
 
 ## License
 

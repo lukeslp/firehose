@@ -93,6 +93,10 @@ export default function Dashboard() {
     { minutes: TREND_MINUTES, top: 8 },
     { refetchInterval: 15_000 },
   );
+  const accessibilityQuery = trpc.stats.accessibilityTimeline.useQuery(
+    { minutes: 10 },
+    { refetchInterval: 10_000 },
+  );
 
   useEffect(() => {
     const interval = window.setInterval(() => setTick(value => value + 1), 1_000);
@@ -183,6 +187,23 @@ export default function Dashboard() {
     if (!baseline) return null;
     return Math.round((stats.postsPerMinute - baseline) / Math.max(1, baseline) * 100);
   }, [stats.postsPerMinute, timeline]);
+
+  const accessibilityPulse = useMemo(() => {
+    const now = Date.now();
+    const currentMinute = Math.floor(now / 60_000) * 60_000;
+    const currentStart = currentMinute - 4 * 60_000;
+    const previousStart = currentStart - 5 * 60_000;
+    const rows = accessibilityQuery.data ?? [];
+    const count = (from: number, until: number) => rows.filter(row => {
+      const timestamp = new Date(row.minuteTimestamp).getTime();
+      return timestamp >= from && timestamp < until;
+    }).reduce((value, row) => ({ images: value.images + row.images, withAlt: value.withAlt + row.imagesWithAlt }), { images: 0, withAlt: 0 });
+    const current = count(currentStart, currentMinute + 60_000);
+    const previous = count(previousStart, currentStart);
+    const currentRate = current.images ? current.withAlt / current.images : null;
+    const previousRate = previous.images ? previous.withAlt / previous.images : null;
+    return { ...current, currentRate, delta: currentRate != null && previousRate != null ? (currentRate - previousRate) * 100 : null };
+  }, [accessibilityQuery.data]);
 
   const languageTrends = useMemo(() => (languageQuery.data ?? []).map(item => ({
     key: item.language,
@@ -290,6 +311,17 @@ export default function Dashboard() {
             <strong className="text-2xl tabular-nums sm:text-3xl" style={{ color: 'var(--bsky-blue)' }}>{stats.postsPerMinute.toLocaleString()}</strong>
           </div>
           <MoodMeter {...recentEnglishPercentages} sampleSize={recentEnglishTotal} />
+          <a
+            href="/bluesky/firehose/accessibility/"
+            className="rounded-md border border-border px-3 py-2 text-xs font-medium hover:bg-muted"
+            aria-label={accessibilityPulse.currentRate == null
+              ? 'Open Accessibility Observatory; waiting for observed image posts'
+              : `Open Accessibility Observatory. Images with alt in the last five minutes: ${(accessibilityPulse.currentRate * 100).toFixed(1)} percent, ${accessibilityPulse.withAlt} of ${accessibilityPulse.images} images.`}
+          >
+            <span className="block text-muted-foreground">Images with alt · 5m</span>
+            <strong className="tabular-nums" style={{ color: 'var(--bsky-blue)' }}>{accessibilityPulse.currentRate == null ? 'Waiting for images' : `${(accessibilityPulse.currentRate * 100).toFixed(1)}% · n=${accessibilityPulse.images.toLocaleString()}`}</strong>
+            {accessibilityPulse.delta != null && <span className="ml-1 tabular-nums text-muted-foreground">{accessibilityPulse.delta >= 0 ? '▲' : '▼'} {Math.abs(accessibilityPulse.delta).toFixed(1)} pp</span>}
+          </a>
           <div className="ml-auto text-xs font-medium tabular-nums text-muted-foreground" aria-hidden="true">
             FULL STREAM · {connected ? 'LIVE' : 'RECONNECTING'} · {freshness == null ? 'WAITING FOR EVENT' : `${freshness}s AGO`}
             {fiveMinuteDelta != null && <> · {fiveMinuteDelta >= 0 ? '▲' : '▼'}{Math.abs(fiveMinuteDelta)}% VS 5M</>}

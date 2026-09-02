@@ -16,7 +16,8 @@ The service deliberately separates three different products:
 | --- | --- | --- | --- |
 | Dashboard history | SQLite minute counts only | Always on | 48 hours |
 | Filtered research corpus | SQLite `posts` rows | Off; operator collection windows | Operator-managed |
-| Full raw post event log | Rotated NDJSON.zst segments | Explicit opt-in | 24 hours and 2 GiB by default |
+| Raw observatory event log | Rotated NDJSON.zst segments | Explicit opt-in | 24 hours and 2 GiB by default |
+| Accessibility observatory state | SQLite + public-safe JSON snapshot | Separate timers | 5 GiB hard sampling envelope |
 
 The public Socket.IO stream is never sampled. Filters affect only an individual
 browser view. The browser keeps all posts received since page load and
@@ -35,15 +36,18 @@ remain visible in the full stream and are marked `not scored`.
 display. This separation is important: cursor replay after a recorder restart
 cannot flood the public UI with old events or double-count dashboard metrics.
 
-The recorder stores `app.bsky.feed.post` commit envelopes for create, update,
-and delete operations. It does not store unrelated identity/account events.
+Archive format v2 stores `app.bsky.feed.post` commit envelopes for create,
+update, and delete operations, plus Jetstream v1 `account` and `identity`
+markers. It ignores commits from unrelated collections. Deployed Jetstream v1
+does not emit `sync` markers, so downstream state is deletion-responsive rather
+than a perfect present-network mirror.
 Segments are:
 
 - NDJSON compressed by `zstd -3`;
 - written as mode-0600 `.partial` files;
 - sealed by atomic rename every 15 minutes or 128 MiB of raw input;
 - accompanied by a JSON manifest containing counts, first/last cursor, byte
-  sizes, timestamps, and SHA-256;
+  sizes, timestamps, archive version/event kinds, and SHA-256;
 - checkpointed only after a segment is sealed successfully;
 - deduplicated across same-process reconnects, while downstream consumers must
   still be idempotent because Jetstream delivery is at-least-once.
@@ -151,9 +155,58 @@ snapshots.
 
 Additional tiers should likewise ship **sealed files and their manifests only**.
 Immutable files make `rsync --ignore-existing` or object-storage upload simple.
-Delete local sealed segments only through the recorder's time/byte policy. A
-future warm tier should compact sealed NDJSON.zst into partitioned Parquet and
-query it with DuckDB; do not re-inflate the firehose into row-per-post SQLite.
+Delete local sealed segments only through the recorder's time/byte policy. The
+accessibility publisher is the only current Parquet projection; do not
+re-inflate the general firehose into row-per-post SQLite.
+
+## Accessibility observatory
+
+`observatory/publisher.py` is isolated from `firehose.service`. Ingest runs on
+sealed, checksum-verified archive-format-v2 segments every 15 minutes; publish
+runs daily at 03:15 UTC. A corrupt or missing segment aborts the run before any
+later segment is checkpointed. Archive-format-v1 segments are acknowledged but
+excluded so the longitudinal series begins as a clean deployment epoch.
+
+The publisher stores exact create-time aggregates, a seven-day 128-bit event
+fingerprint ledger, and up to 5,000 deterministic bottom-k candidates per UTC
+day. After two complete correction days have elapsed, it promotes at most 2,000
+descriptions per day and discards the rest. Post-deletion and inactive-account
+markers remove matching sample rows and trigger a monthly shard replacement;
+historical aggregate observations are not rewritten.
+
+Public export is allowlisted. It excludes post text, image bytes and URLs,
+CIDs, raw records, DIDs, and handles. Author IDs are keyed, month-scoped
+pseudonyms—not anonymous identifiers. A 5 GiB local cap pauses new row sampling
+while aggregates continue. A separate 2 GiB Hugging Face repository ceiling
+stops new sample shards while local sampling, aggregate uploads, and deletion
+rewrites continue.
+
+Install and verify without enabling timers:
+
+```bash
+bash observatory/install-venv.sh
+observatory/.venv/bin/python -m unittest -v observatory/test_publisher.py
+install -d -m 0700 /home/coolhand/firehose-data/observatory
+install -m 0600 deploy/firehose-observatory.env.example /etc/dreamer/firehose-observatory.env
+```
+
+The `/etc/dreamer` install and systemd unit install require operator privileges.
+Hugging Face authentication comes from the existing drummer login; never put a
+token in the example environment file or a unit. Before enabling publication,
+run an ingest and a dry-run publish, inspect only aggregate/schematic output,
+and confirm the dataset account with a non-secret identity check.
+
+Expected units:
+
+```text
+firehose-observatory-ingest.service
+firehose-observatory-ingest.timer
+firehose-observatory-publish.service
+firehose-observatory-publish.timer
+```
+
+Rollback is independent of the dashboard: disable those two timers and remove
+the Caddy alias. The live stream and raw archive continue unchanged.
 
 ## Routine checks
 

@@ -1,0 +1,10 @@
+[Unit]
+Description=Publish Bluesky accessibility observatory daily at 03:15 UTC
+
+[Timer]
+OnCalendar=*-*-* 03:15:00
+Persistent=true
+Unit=firehose-observatory-publish.service
+
+[Install]
+WantedBy=timers.target
