@@ -684,17 +684,24 @@ export default function AccessibilityObservatory() {
               Aggregate fields/schema may be reused under CC0; sampled
               descriptions retain their authors’ rights.
             </p>
-            <p>
-              <a
-                href="https://huggingface.co/datasets/lukeslp/bluesky-alt-text-observatory"
-                onClick={goatEvent}
-                className="font-semibold text-accent underline underline-offset-4"
-              >
-                Download Parquet data and read the full methodology on Hugging
-                Face
-              </a>
-              .
-            </p>
+            {status?.firstCompleteDate ? (
+              <p>
+                <a
+                  href="https://huggingface.co/datasets/lukeslp/bluesky-alt-text-observatory"
+                  onClick={goatEvent}
+                  className="font-semibold text-accent underline underline-offset-4"
+                >
+                  Download Parquet data and read the full methodology on
+                  Hugging Face
+                </a>
+                .
+              </p>
+            ) : (
+              <p role="status">
+                Parquet downloads and the full dataset documentation will be
+                linked here after the first complete UTC day is published.
+              </p>
+            )}
           </div>
         </section>
       </main>
