@@ -1,4 +1,4 @@
-import { integer, sqliteTable, text, real, index } from "drizzle-orm/sqlite-core";
+import { integer, sqliteTable, text, real, index, primaryKey } from "drizzle-orm/sqlite-core";
 
 /**
  * Core user table backing auth flow.
@@ -68,6 +68,46 @@ export const posts = sqliteTable("posts", {
 
 export type Post = typeof posts.$inferSelect;
 export type InsertPost = typeof posts.$inferInsert;
+
+/**
+ * Lightweight minute buckets power the public dashboard independently of
+ * optional raw-post collection. Keeping this aggregate small lets us retain
+ * a useful history without storing the firehose itself.
+ */
+export const statsMinute = sqliteTable("statsMinute", {
+  minuteTimestamp: integer("minuteTimestamp", { mode: "timestamp" }).primaryKey(),
+  postsCount: integer("postsCount").default(0).notNull(),
+  positiveCount: integer("positiveCount").default(0).notNull(),
+  negativeCount: integer("negativeCount").default(0).notNull(),
+  neutralCount: integer("neutralCount").default(0).notNull(),
+});
+
+export const statsMinuteLanguage = sqliteTable("statsMinuteLanguage", {
+  minuteTimestamp: integer("minuteTimestamp", { mode: "timestamp" }).notNull(),
+  language: text("language").notNull(),
+  postsCount: integer("postsCount").default(0).notNull(),
+  positiveCount: integer("positiveCount").default(0).notNull(),
+  negativeCount: integer("negativeCount").default(0).notNull(),
+  neutralCount: integer("neutralCount").default(0).notNull(),
+}, table => ({
+  pk: primaryKey({ columns: [table.minuteTimestamp, table.language] }),
+}));
+
+export const statsMinuteContentType = sqliteTable("statsMinuteContentType", {
+  minuteTimestamp: integer("minuteTimestamp", { mode: "timestamp" }).notNull(),
+  contentType: text("contentType", { enum: ["text", "image", "video", "link"] }).notNull(),
+  postsCount: integer("postsCount").default(0).notNull(),
+}, table => ({
+  pk: primaryKey({ columns: [table.minuteTimestamp, table.contentType] }),
+}));
+
+export const statsMinuteLabel = sqliteTable("statsMinuteLabel", {
+  minuteTimestamp: integer("minuteTimestamp", { mode: "timestamp" }).notNull(),
+  label: text("label").notNull(),
+  postsCount: integer("postsCount").default(0).notNull(),
+}, table => ({
+  pk: primaryKey({ columns: [table.minuteTimestamp, table.label] }),
+}));
 
 /**
  * Hourly aggregations for time-series analysis

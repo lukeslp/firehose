@@ -1,6 +1,7 @@
 import { Server as SocketIOServer } from 'socket.io';
 import { Server as HTTPServer } from 'http';
 import { getFirehoseService } from './firehose';
+import { getProfileEnricher } from './profileEnricher';
 
 export function setupSocketIO(httpServer: HTTPServer) {
   const io = new SocketIOServer(httpServer, {
@@ -12,29 +13,28 @@ export function setupSocketIO(httpServer: HTTPServer) {
   });
 
   const firehose = getFirehoseService();
+  const enricher = getProfileEnricher();
 
   io.on('connection', (socket) => {
-    // Read sample rate from handshake query (default: 1 = 100%)
-    const rawRate = socket.handshake.query.sampleRate;
-    const sampleRate = Math.min(1, Math.max(0.01, Number(rawRate) || 1));
-    console.log(`[Socket.IO] Client connected: ${socket.id} (sample: ${(sampleRate * 100).toFixed(0)}%)`);
+    console.log(`[Socket.IO] Client connected: ${socket.id} (full stream)`);
 
     // Send initial stats
     const stats = firehose.getStats();
     socket.emit('stats', stats);
+    const profiles = enricher.snapshot();
+    if (profiles.length > 0) socket.emit('profile', profiles);
 
-    // Forward posts with sampling — stats always go through at full accuracy
-    const handlePost = (post: any) => {
-      if (sampleRate >= 1 || Math.random() < sampleRate) {
-        socket.emit('post', post);
-      }
-    };
+    // The spectacle is the product: every received post is forwarded and the
+    // transport is never sampled by default.
+    const handlePost = (post: any) => socket.emit('post', post);
 
     const handleStats = () => {
       socket.emit('stats', firehose.getStats());
     };
+    const handleProfile = (batch: unknown) => socket.emit('profile', batch);
 
     firehose.on('post', handlePost);
+    enricher.on('profile', handleProfile);
 
     // Stats every second (always full accuracy, not sampled)
     const statsInterval = setInterval(handleStats, 1000);
@@ -42,6 +42,7 @@ export function setupSocketIO(httpServer: HTTPServer) {
     socket.on('disconnect', () => {
       console.log('[Socket.IO] Client disconnected:', socket.id);
       firehose.off('post', handlePost);
+      enricher.off('profile', handleProfile);
       clearInterval(statsInterval);
     });
   });

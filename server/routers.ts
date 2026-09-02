@@ -1,7 +1,7 @@
 import { COOKIE_NAME } from "@shared/const";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
-import { publicProcedure, router } from "./_core/trpc";
+import { adminProcedure, publicProcedure, router } from "./_core/trpc";
 import { z } from "zod";
 import { sql } from "drizzle-orm";
 import { posts } from "../drizzle/schema";
@@ -13,7 +13,12 @@ import {
   getTopHashtags,
   getRecentHourlyStats,
   getPostsInTimeRange,
-  getDb
+  getDb,
+  getMinuteTimeline,
+  getMinuteCoverage,
+  getMinuteTimelineByLanguage,
+  getMinuteTimelineByContentType,
+  getMinuteTimelineByLabel,
 } from "./db";
 import { getFirehoseService } from "./firehose";
 
@@ -46,11 +51,11 @@ export const appRouter = router({
     }),
 
     // Export posts as CSV
-    exportCSV: publicProcedure
+    exportCSV: adminProcedure
       .input(z.object({
         sentiment: z.enum(['positive', 'negative', 'neutral']).optional(),
         language: z.string().optional(),
-        limit: z.number().default(1000),
+        limit: z.number().min(1).max(1000).default(1000),
       }).optional())
       .query(async ({ input }) => {
         const filters = input || { limit: 1000 };
@@ -112,7 +117,7 @@ export const appRouter = router({
       }),
 
     // Get timeline data for last 60 minutes (for chart initialization)
-    timelineData: publicProcedure.query(async () => {
+    timelineData: adminProcedure.query(async () => {
       const now = new Date();
       const sixtyMinutesAgo = new Date(now.getTime() - 60 * 60 * 1000);
 
@@ -127,7 +132,7 @@ export const appRouter = router({
 
     // Enable collection for a specific window
     // Accepts predefined windows (02:00, 08:00, 13:00, 19:00) or custom names for special collection periods
-    enableCollection: publicProcedure
+    enableCollection: adminProcedure
       .input(z.object({
         window: z.string().min(1).max(50),
       }))
@@ -141,7 +146,7 @@ export const appRouter = router({
       }),
 
     // Disable collection
-    disableCollection: publicProcedure.mutation(() => {
+    disableCollection: adminProcedure.mutation(() => {
       const window = firehoseService.getCurrentWindow();
       firehoseService.disableCollection();
       return {
@@ -160,7 +165,7 @@ export const appRouter = router({
     }),
 
     // Start the firehose stream
-    startStream: publicProcedure.mutation(() => {
+    startStream: adminProcedure.mutation(() => {
       firehoseService.start();
       return {
         success: true,
@@ -169,7 +174,7 @@ export const appRouter = router({
     }),
 
     // Stop the firehose stream
-    stopStream: publicProcedure.mutation(() => {
+    stopStream: adminProcedure.mutation(() => {
       firehoseService.stop();
       return {
         success: true,
@@ -180,7 +185,7 @@ export const appRouter = router({
 
   posts: router({
     // Get posts from database
-    list: publicProcedure
+    list: adminProcedure
       .input(z.object({
         limit: z.number().min(1).max(100).default(50),
         sentiment: z.enum(['positive', 'negative', 'neutral']).optional(),
@@ -224,6 +229,32 @@ export const appRouter = router({
       .query(async ({ input }) => {
         return await getRecentHourlyStats(input.hours);
       }),
+
+    // Lightweight history is always collected, even when raw-post collection
+    // is disabled. These endpoints hydrate the public charts on first paint.
+    timeline: publicProcedure
+      .input(z.object({ minutes: z.number().min(1).max(2880).default(60) }))
+      .query(({ input }) => getMinuteTimeline(input.minutes)),
+
+    coverage: publicProcedure.query(() => getMinuteCoverage()),
+
+    timelineByLanguage: publicProcedure
+      .input(z.object({
+        minutes: z.number().min(1).max(2880).default(60),
+        top: z.number().min(1).max(30).default(10),
+      }))
+      .query(({ input }) => getMinuteTimelineByLanguage(input.minutes, input.top)),
+
+    timelineByContentType: publicProcedure
+      .input(z.object({ minutes: z.number().min(1).max(2880).default(60) }))
+      .query(({ input }) => getMinuteTimelineByContentType(input.minutes)),
+
+    timelineByLabel: publicProcedure
+      .input(z.object({
+        minutes: z.number().min(1).max(2880).default(60),
+        top: z.number().min(1).max(30).default(10),
+      }))
+      .query(({ input }) => getMinuteTimelineByLabel(input.minutes, input.top)),
 
     // Get top languages
     languages: publicProcedure

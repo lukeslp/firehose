@@ -8,13 +8,24 @@ import {
   updateGlobalStats,
   updateLanguageStats,
   updateHashtagStats,
-  getGlobalStats
+  getGlobalStats,
+  getMinuteTimeline,
+  upsertMinuteBucket,
+  upsertMinuteBucketsByLanguage,
+  upsertMinuteBucketsByContentType,
+  upsertMinuteBucketsByLabel,
+  purgeOldMinuteBuckets,
+  type MinuteContentType,
+  type MinuteSentimentCounts,
 } from './db';
 import { InsertPost } from '../drizzle/schema';
+import { buildMediaBundle, type MediaBundle } from './media';
+import { getProfileEnricher } from './profileEnricher';
 
-const FIREHOSE_URI = 'wss://jetstream2.us-east.bsky.network/subscribe?wantedCollections=app.bsky.feed.post&wantedEvents=identity';
+const FIREHOSE_URI = 'wss://jetstream2.us-east.bsky.network/subscribe?wantedCollections=app.bsky.feed.post';
 const MAX_TEXT_LENGTH = 10000;
 const RECONNECT_DELAY = 5000;
+const MAX_HANDLE_CACHE = 20_000;
 const COLLECTION_STATE_FILE = path.join(process.cwd(), 'collection-state.json');
 
 interface CollectionState {
@@ -40,6 +51,7 @@ export interface FirehosePost {
   hasLink?: boolean;
   isReply?: boolean;
   isQuote?: boolean;
+  media?: MediaBundle;
 }
 
 export interface FirehoseStats {
@@ -52,11 +64,14 @@ export interface FirehoseStats {
   };
   duration: number;
   running: boolean;
+  connected: boolean;
+  lastEventAt: string | null;
 }
 
 export class FirehoseService extends EventEmitter {
   private ws: WebSocket | null = null;
   private running = false;
+  private connected = false;
   private handleCache: Map<string, string> = new Map(); // DID → handle mapping
   private reconnectTimer: NodeJS.Timeout | null = null;
 
@@ -84,11 +99,32 @@ export class FirehoseService extends EventEmitter {
   private recentPosts: FirehosePost[] = [];
   private postsLastMinute: number[] = [];
   private lastMinuteCheck = Date.now();
+  private lastPostAt: Date | null = null;
+  private fallbackPostsPerMinute = 0;
+
+  private currentMinuteTs = Math.floor(Date.now() / 60_000) * 60_000;
+  private minuteCounts: MinuteSentimentCounts = { total: 0, positive: 0, neutral: 0, negative: 0 };
+  private minuteByLanguage = new Map<string, MinuteSentimentCounts>();
+  private minuteByContentType = new Map<MinuteContentType, number>();
+  private minuteByLabel = new Map<string, number>();
+  private minuteFlushTimer: NodeJS.Timeout | null = null;
+  private globalFlushTimer: NodeJS.Timeout | null = null;
+  private watchdogTimer: NodeJS.Timeout | null = null;
+  private readonly startedAtMs = Date.now();
+
+  private static readonly MINUTE_FLUSH_INTERVAL_MS = 10_000;
+  private static readonly GLOBAL_FLUSH_INTERVAL_MS = 30_000;
+  private static readonly WATCHDOG_INTERVAL_MS = 30_000;
+  private static readonly MINUTE_RETENTION_HOURS = 48;
 
   constructor() {
     super();
     this.loadGlobalStats();
+    this.loadRecentRate();
     this.loadCollectionState(); // Restore collection state from disk
+    this.startMinuteFlushLoop();
+    this.startGlobalFlushLoop();
+    this.startWatchdog();
 
     // Auto-start the firehose - it should always run
     // Small delay to ensure stats are loaded first
@@ -98,6 +134,97 @@ export class FirehoseService extends EventEmitter {
         this.start();
       }
     }, 1000);
+  }
+
+  private async loadRecentRate() {
+    const rows = await getMinuteTimeline(10);
+    const currentMinute = Math.floor(Date.now() / 60_000) * 60_000;
+    const recentCounts = rows
+      .filter(row => row.minuteTimestamp.getTime() < currentMinute && row.postsCount > 0)
+      .slice(-5)
+      .map(row => row.postsCount)
+      .sort((a, b) => a - b);
+    this.fallbackPostsPerMinute = recentCounts.length > 0
+      ? recentCounts[Math.floor(recentCounts.length / 2)]
+      : 0;
+  }
+
+  private startGlobalFlushLoop() {
+    this.globalFlushTimer = setInterval(() => void this.flushGlobalStats(), FirehoseService.GLOBAL_FLUSH_INTERVAL_MS);
+  }
+
+  private async flushGlobalStats() {
+    if (this.totalProcessed === 0) return;
+    await updateGlobalStats({
+      totalPosts: this.totalProcessed,
+      totalPositive: this.sentimentCounts.positive,
+      totalNegative: this.sentimentCounts.negative,
+      totalNeutral: this.sentimentCounts.neutral,
+      lastPostTimestamp: this.lastPostAt ?? undefined,
+    });
+  }
+
+  private startMinuteFlushLoop() {
+    void purgeOldMinuteBuckets(FirehoseService.MINUTE_RETENTION_HOURS);
+    this.minuteFlushTimer = setInterval(
+      () => void this.flushMinuteBucket(),
+      FirehoseService.MINUTE_FLUSH_INTERVAL_MS,
+    );
+  }
+
+  private async flushMinuteBucket() {
+    if (this.minuteCounts.total === 0) return;
+    const timestamp = new Date(this.currentMinuteTs);
+    await Promise.all([
+      upsertMinuteBucket(timestamp, { ...this.minuteCounts }),
+      upsertMinuteBucketsByLanguage(timestamp, new Map(this.minuteByLanguage)),
+      upsertMinuteBucketsByContentType(timestamp, new Map(this.minuteByContentType)),
+      upsertMinuteBucketsByLabel(timestamp, new Map(this.minuteByLabel)),
+    ]);
+  }
+
+  private recordMinuteBucketPost(
+    sentiment: FirehosePost['sentiment'],
+    language: string | undefined,
+    contentTypes: MinuteContentType[],
+    labels: string[],
+  ) {
+    const minuteTs = Math.floor(Date.now() / 60_000) * 60_000;
+    if (minuteTs !== this.currentMinuteTs) {
+      void this.flushMinuteBucket();
+      this.fallbackPostsPerMinute = this.minuteCounts.total;
+      this.currentMinuteTs = minuteTs;
+      this.minuteCounts = { total: 0, positive: 0, neutral: 0, negative: 0 };
+      this.minuteByLanguage = new Map();
+      this.minuteByContentType = new Map();
+      this.minuteByLabel = new Map();
+      void purgeOldMinuteBuckets(FirehoseService.MINUTE_RETENTION_HOURS);
+    }
+
+    this.minuteCounts.total += 1;
+    this.minuteCounts[sentiment] += 1;
+    if (language) {
+      const key = language.toLowerCase();
+      const counts = this.minuteByLanguage.get(key) ?? { total: 0, positive: 0, neutral: 0, negative: 0 };
+      counts.total += 1;
+      counts[sentiment] += 1;
+      this.minuteByLanguage.set(key, counts);
+    }
+    contentTypes.forEach(type => this.minuteByContentType.set(type, (this.minuteByContentType.get(type) ?? 0) + 1));
+    labels.forEach(label => this.minuteByLabel.set(label, (this.minuteByLabel.get(label) ?? 0) + 1));
+  }
+
+  private startWatchdog() {
+    this.watchdogTimer = setInterval(() => {
+      const socketOpen = this.ws?.readyState === WebSocket.OPEN;
+      if ((this.running && socketOpen) || this.reconnectTimer) return;
+      console.warn('[Firehose] Watchdog restarting an unhealthy stream');
+      this.running = false;
+      this.connected = false;
+      this.ws?.close();
+      this.ws = null;
+      this.start();
+    }, FirehoseService.WATCHDOG_INTERVAL_MS);
   }
 
   private loadCollectionState() {
@@ -162,6 +289,7 @@ export class FirehoseService extends EventEmitter {
   public stop() {
     console.log('[Firehose] Stopping firehose connection...');
     this.running = false;
+    this.connected = false;
     this.collectionEnabled = false;
     this.currentWindow = null;
     
@@ -217,17 +345,12 @@ export class FirehoseService extends EventEmitter {
     // Calculate posts per minute - filter timestamps within last 60 seconds
     this.postsLastMinute = this.postsLastMinute.filter(timestamp => now - timestamp < 60000);
 
-    // Calculate rolling window estimate based on available data
-    let postsPerMinute = 0;
-    if (this.postsLastMinute.length > 0) {
-      const oldestTimestamp = Math.min(...this.postsLastMinute);
-      const timeWindowSeconds = (now - oldestTimestamp) / 1000;
-
-      if (timeWindowSeconds > 0) {
-        // Normalize to per-minute rate: (posts / seconds) * 60
-        postsPerMinute = Math.round((this.postsLastMinute.length / timeWindowSeconds) * 60);
-      }
-    }
+    // Report an actual rolling count. During the first minute after a restart,
+    // blend the last completed persisted bucket with the live partial minute so
+    // a page load never presents a misleading zero-to-the-moon ramp.
+    const liveSeconds = Math.min(60, Math.max(0, (now - this.startedAtMs) / 1000));
+    const priorWeight = Math.max(0, 1 - liveSeconds / 60);
+    const postsPerMinute = Math.round(this.postsLastMinute.length + this.fallbackPostsPerMinute * priorWeight);
 
     const duration = this.startTime
       ? Math.floor((now - this.startTime.getTime()) / 1000)
@@ -239,6 +362,8 @@ export class FirehoseService extends EventEmitter {
       sentimentCounts: { ...this.sentimentCounts },
       duration,
       running: this.running,
+      connected: this.connected,
+      lastEventAt: this.lastPostAt?.toISOString() ?? null,
     };
   }
 
@@ -259,6 +384,7 @@ export class FirehoseService extends EventEmitter {
 
       this.ws.on('open', () => {
         console.log('[Firehose] Connected to Bluesky firehose');
+        this.connected = true;
         this.emit('connected');
       });
 
@@ -273,6 +399,7 @@ export class FirehoseService extends EventEmitter {
 
       this.ws.on('close', () => {
         console.log('[Firehose] Connection closed');
+        this.connected = false;
         this.ws = null;
         
         if (this.running) {
@@ -298,8 +425,11 @@ export class FirehoseService extends EventEmitter {
       
       // Handle identity events to build handle cache
       if (message.kind === 'identity' && message.identity?.handle) {
+        if (this.handleCache.size >= MAX_HANDLE_CACHE) {
+          const oldest = this.handleCache.keys().next().value;
+          if (oldest) this.handleCache.delete(oldest);
+        }
         this.handleCache.set(message.identity.did, message.identity.handle);
-        console.log(`[Firehose] Cached handle: ${message.identity.handle} for DID: ${message.identity.did}`);
         return;
       }
       
@@ -326,6 +456,7 @@ export class FirehoseService extends EventEmitter {
       // Create post object for UI (always emit to Socket.IO for real-time display)
       const authorDid = message.did || '';
       const authorHandle = this.handleCache.get(authorDid) || authorDid;
+      const media = process.env.ENRICH_MEDIA === '0' ? undefined : buildMediaBundle(record.embed, authorDid);
 
       // Construct AT URI from message components if not provided
       // Format: at://did/collection/rkey
@@ -344,17 +475,30 @@ export class FirehoseService extends EventEmitter {
         sentiment: sentimentResult.classification,
         sentimentScore: sentimentResult.comparative,
         language: features.language,
-        hasImages: features.hasImages,
-        hasVideo: features.hasVideo,
-        hasLink: features.hasLink,
+        hasImages: !!media?.images?.length || features.hasImages,
+        hasVideo: !!media?.video || features.hasVideo,
+        hasLink: !!media?.linkCard || features.hasLink,
         isReply: !!record.reply,
         isQuote: features.isQuote,
+        media,
       };
 
       // ALWAYS update statistics and emit for UI (even if not saving to database)
       this.totalProcessed++;
       this.sentimentCounts[sentimentResult.classification]++;
       this.postsLastMinute.push(Date.now());
+      this.lastPostAt = new Date();
+
+      const contentTypes: MinuteContentType[] = [];
+      if (post.hasImages) contentTypes.push('image');
+      if (post.hasVideo) contentTypes.push('video');
+      if (post.hasLink) contentTypes.push('link');
+      if (contentTypes.length === 0) contentTypes.push('text');
+      const cachedProfile = getProfileEnricher().peek(authorDid);
+      const labels = (cachedProfile?.labels ?? [])
+        .filter(label => !label.neg)
+        .map(label => label.val);
+      this.recordMinuteBucketPost(post.sentiment, post.language, contentTypes, labels);
 
       // Keep recent posts in memory for UI
       this.recentPosts.unshift(post);
@@ -364,6 +508,7 @@ export class FirehoseService extends EventEmitter {
 
       // ALWAYS emit post event for real-time UI updates
       this.emit('post', post);
+      getProfileEnricher().seen(authorDid);
 
       // DATABASE FILTERING: Only save posts during collection windows
       // This creates stratified hourly samples for corpus research

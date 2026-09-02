@@ -23,23 +23,15 @@ interface Post {
   isQuote?: boolean;
 }
 
-const SAMPLE_RATES = [
-  { label: '100%', value: 1 },
-  { label: '50%', value: 0.5 },
-  { label: '25%', value: 0.25 },
-  { label: '10%', value: 0.1 },
-] as const;
-
 export default function Dashboard() {
   const [filters, setFilters] = useState("");
   const [appliedFilters, setAppliedFilters] = useState<string[]>([]);
   const [posts, setPosts] = useState<Post[]>([]);
-  const [sampleRate, setSampleRate] = useState(1);
   const [feedFullScreen, setFeedFullScreen] = useState(false);
   const [isFullScreenMode, setIsFullScreenMode] = useState(false);
   const [chartCollapsed, setChartCollapsed] = useState(false);
 
-  const { connected: socketConnected, stats: socketStats, latestPost } = useSocket(sampleRate);
+  const { connected: socketConnected, stats: socketStats, latestPost } = useSocket();
 
   // Fullscreen API listener
   useEffect(() => {
@@ -142,34 +134,6 @@ export default function Dashboard() {
     if (latestPost) setPosts(prev => [latestPost, ...prev].slice(0, 50));
   }, [latestPost]);
 
-  const utils = trpc.useUtils();
-  const startMutation = trpc.firehose.startStream.useMutation();
-  const stopMutation = trpc.firehose.stopStream.useMutation();
-
-  const handleToggleFirehose = () => {
-    if (stats.running) stopMutation.mutate();
-    else startMutation.mutate();
-  };
-
-  const handleExportCSV = async () => {
-    try {
-      const result = await utils.firehose.exportCSV.fetch();
-      if (result?.csv) {
-        const blob = new Blob([result.csv], { type: 'text/csv' });
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `bluesky-firehose-${new Date().toISOString().split('T')[0]}.csv`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        window.URL.revokeObjectURL(url);
-      }
-    } catch (error) {
-      console.error('Export failed:', error);
-    }
-  };
-
   const handleApplyFilters = () => {
     setAppliedFilters(filters.split(',').map(f => f.toLowerCase().trim()).filter(f => f.length > 0));
   };
@@ -247,18 +211,6 @@ export default function Dashboard() {
             </p>
           </div>
           <div className="flex gap-2 sm:gap-3 items-center self-start sm:self-auto flex-wrap">
-            {/* Sample Rate */}
-            <select
-              value={sampleRate}
-              onChange={(e) => setSampleRate(Number(e.target.value))}
-              className="px-3 py-2 font-bold uppercase text-xs tracking-wider border-2 border-foreground bg-background text-foreground min-h-[44px]"
-              style={{ borderRadius: 0 }}
-              title="Stream sample rate — lower values show fewer posts"
-            >
-              {SAMPLE_RATES.map(r => (
-                <option key={r.value} value={r.value}>STREAM {r.label}</option>
-              ))}
-            </select>
             {/* Fullscreen */}
             <button
               onClick={toggleFullScreen}
@@ -268,20 +220,9 @@ export default function Dashboard() {
             >
               FULLSCREEN
             </button>
-            {/* Play/Pause */}
-            <button
-              onClick={handleToggleFirehose}
-              disabled={startMutation.isPending || stopMutation.isPending}
-              className={`px-4 py-2 border-2 cursor-pointer transition-all hover:opacity-80 active:scale-95 min-h-[44px] ${stats.running ? 'bg-[#01AAFF]/10' : 'bg-red-500/10'}`}
-              style={{ borderColor: stats.running ? '#01AAFF' : '#ef4444' }}
-              title={stats.running ? 'Click to pause firehose' : 'Click to resume firehose'}
-            >
-              <span className="text-xs font-bold uppercase tracking-widest">
-                {startMutation.isPending || stopMutation.isPending
-                  ? '... UPDATING'
-                  : stats.running ? '▶ RUNNING' : '⏸ PAUSED'}
-              </span>
-            </button>
+            <span className="px-3 py-2 text-xs font-bold uppercase tracking-wider border-2 border-foreground min-h-[44px] flex items-center" role="status">
+              FULL STREAM · {socketConnected ? 'LIVE' : 'RECONNECTING'}
+            </span>
           </div>
         </div>
       </header>
@@ -401,12 +342,10 @@ export default function Dashboard() {
       </div>
 
       {/* Footer */}
-      <div className="border-t-2 border-foreground px-4 py-3 sm:px-6 md:px-8 flex items-center justify-between shrink-0">
-        <Button onClick={handleExportCSV} variant="outline" className="px-6 py-3 text-xs font-bold uppercase tracking-widest min-h-[44px]" style={{ borderRadius: 0, borderWidth: '2px' }}>
-          EXPORT CSV
-        </Button>
-        <span className="text-xs uppercase tracking-wider opacity-40">dr.eamer.dev</span>
-      </div>
+      <footer className="border-t-2 border-foreground px-4 py-3 sm:px-6 md:px-8 flex items-center justify-end gap-5 shrink-0 text-xs font-bold uppercase tracking-wider">
+        <a href="https://lukesteuber.com" className="underline underline-offset-4 hover:no-underline">lukesteuber.com</a>
+        <a href="https://datapoems.io" className="underline underline-offset-4 hover:no-underline">datapoems.io</a>
+      </footer>
     </div>
   );
 }

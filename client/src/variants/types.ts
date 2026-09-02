@@ -89,6 +89,12 @@ export interface FirehoseStats {
   /** True if firehose WebSocket is connected and receiving posts */
   running: boolean;
 
+  /** True when the upstream Jetstream WebSocket is open */
+  connected?: boolean;
+
+  /** ISO timestamp of the most recently processed event */
+  lastEventAt?: string | null;
+
   /** Optional: number of posts in database (if collection window active) */
   inDatabase?: number;
 }
