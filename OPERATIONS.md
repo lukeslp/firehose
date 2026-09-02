@@ -104,21 +104,51 @@ find /home/coolhand/firehose-data/raw -type f -name '*.manifest.json' -print
 
 ## Off-host retention
 
-No effective general application/database backup schedule was present when this
-runbook was updated. Beast is not currently a safe archive target: its data
-volume had about 12 GiB free at 98% capacity on 2026-09-02.
+The recorder's local spool is copied hourly to Beast's mounted Galactus backup
+volume by `firehose-archive-backup.timer` on drummer. Beast's internal data
+volume is not used: the remote script fails closed unless Galactus is mounted.
+Galactus had about 6.3 TiB free when this job was installed on 2026-09-02.
+
+Destination:
+
+```text
+/Volumes/Galactus/Data/Backups/Firehose/raw
+```
+
+Only sealed `.ndjson.zst` segments and their manifests are transferred. The
+job never copies `.partial` files or the mutable recorder checkpoint. Each new
+segment is checked against the manifest byte count and SHA-256 before a local
+`.verified` marker is written. Transfer is additive/idempotent; Galactus keeps
+30 days under this dedicated root.
+
+The Beast-side script is source-controlled at
+`deploy/beast/firehose-archive-backup.sh` and installed at
+`/Users/luke/bin/firehose-archive-backup.sh`. The scheduler deliberately runs
+on always-on drummer because a newly-created Beast LaunchAgent was denied
+background access to the external volume by macOS. Inspect with:
+
+```bash
+systemctl status firehose-archive-backup.timer
+systemctl status firehose-archive-backup.service
+journalctl -u firehose-archive-backup.service
+```
+
+Beast's existing GitHub collector is separate. It runs nightly to Galactus and
+verifies its own promoted run. Galactus's later additive mirror to `geepers` is
+not currently a second durable copy: geepers was full on 2026-09-02. The mirror
+script was corrected to exit nonzero when any selected path fails; its tracked
+copy is `~/admin/bin/beast-mirror-to-geepers.sh`. No geepers data was removed
+in this change.
 
 Do not put the spool under a broad backup root unless that backup explicitly
 excludes or budgets it; otherwise each local day can be multiplied across
 snapshots.
 
-When off-host capacity exists, ship **sealed files and their manifests only**.
+Additional tiers should likewise ship **sealed files and their manifests only**.
 Immutable files make `rsync --ignore-existing` or object-storage upload simple.
-Delete local sealed segments only through the recorder's time/byte policy, and
-only treat an off-host copy as durable after checksum verification and a restore
-test. A future warm tier should compact sealed NDJSON.zst into partitioned
-Parquet and query it with DuckDB; do not re-inflate the firehose into row-per-post
-SQLite.
+Delete local sealed segments only through the recorder's time/byte policy. A
+future warm tier should compact sealed NDJSON.zst into partitioned Parquet and
+query it with DuckDB; do not re-inflate the firehose into row-per-post SQLite.
 
 ## Routine checks
 

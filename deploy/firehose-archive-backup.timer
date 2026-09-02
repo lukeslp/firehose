@@ -1,0 +1,11 @@
+[Unit]
+Description=Hourly Bluesky firehose archive backup to Beast Galactus
+
+[Timer]
+OnCalendar=hourly
+Persistent=true
+RandomizedDelaySec=5min
+Unit=firehose-archive-backup.service
+
+[Install]
+WantedBy=timers.target
