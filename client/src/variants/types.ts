@@ -61,6 +61,31 @@ export interface FirehosePost {
 
   /** True if post quotes another post */
   isQuote?: boolean;
+
+  /** Render-ready media references derived from the post record. */
+  media?: MediaBundle;
+}
+
+export interface MediaBundle {
+  images?: Array<{
+    thumb: string;
+    fullsize: string;
+    alt: string;
+    aspectRatio?: { width: number; height: number };
+  }>;
+  linkCard?: { uri: string; title: string; description: string; thumb?: string };
+  video?: { thumb: string; playlist: string };
+}
+
+export interface BskyProfile {
+  did: string;
+  handle: string;
+  displayName?: string;
+  avatar?: string;
+  followersCount?: number;
+  labels?: Array<{ val: string; src: string; neg?: boolean }>;
+  fetchedAt: number;
+  notFound?: boolean;
 }
 
 /**

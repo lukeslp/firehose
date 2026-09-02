@@ -17,7 +17,8 @@ A real-time Bluesky analytics dashboard. It reads the Jetstream WebSocket and sh
 - **Full-rate public stream** with no default sampling
 - **Historical timelines** for event rate, sentiment, languages, content types, and moderation labels
 - **Keyword and sentiment filters** that affect only the viewer's feed
-- **SQLite persistence** for 48 hours of lightweight minute aggregates; raw-post collection is separate and off by default
+- **SQLite persistence** for 48 hours of lightweight minute aggregates
+- **Optional raw archive** as bounded, rotated NDJSON.zst segments with cursor recovery; separate from the filtered research corpus
 
 ## Quick start
 
@@ -50,6 +51,12 @@ Bluesky Jetstream WebSocket
     ├→ Filtered raw-post corpus (operator-controlled, off by default)
     └→ Socket.IO broadcast
          → React Dashboard
+
+Separate resumable Jetstream connection (optional)
+  → RawArchiveRecorder
+    → 15-minute NDJSON.zst segments
+    → atomic manifests + durable cursor checkpoint
+    → 24-hour / 2 GiB local safety envelope by default
 ```
 
 The server connects to `wss://jetstream2.us-east.bsky.network`, analyzes each post for sentiment, persists aggregate minute buckets every 10 seconds, broadcasts statistics every second, and forwards every received post to connected clients.
@@ -59,6 +66,11 @@ The server connects to `wss://jetstream2.us-east.bsky.network`, analyzes each po
 ```bash
 PORT=5052               # Server port (default: 3000)
 DATABASE_URL=./firehose.db
+RAW_ARCHIVE_ENABLED=0   # Explicit opt-in
+RAW_ARCHIVE_DIR=./raw-archive
+RAW_ARCHIVE_RETENTION_HOURS=24
+RAW_ARCHIVE_MAX_BYTES=2147483648
+RAW_ARCHIVE_MIN_FREE_BYTES=10737418240
 ```
 
 ## Production
@@ -79,6 +91,7 @@ All at `/api/trpc`:
 | `firehose.stopStream` | Stop Jetstream connection (admin or direct loopback only) |
 | `firehose.stats` | Current statistics |
 | `firehose.recentPosts` | Last 100 posts |
+| `firehose.archiveStatus` | Raw archive health and byte counts; never returns content or filesystem paths |
 | `firehose.exportCSV` | Raw corpus CSV (admin or direct loopback only) |
 | `stats.timeline` | Persisted minute event-rate and sentiment history |
 | `stats.timelineByLanguage` | Persisted minute language trends |

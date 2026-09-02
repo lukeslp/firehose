@@ -10,6 +10,7 @@ import { serveStatic, setupVite } from "./vite";
 import { setupSocketIO } from "../socketio";
 import { getFirehoseService } from "../firehose";
 import { getProfileEnricher } from "../profileEnricher";
+import { getRawArchiveRecorder } from "../rawArchive";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -77,16 +78,19 @@ async function startServer() {
   // and emits 'profile' events that Socket.IO forwards to every client.
   const profileEnricher = getProfileEnricher();
   profileEnricher.start();
+  const rawArchive = getRawArchiveRecorder();
 
-  const shutdown = () => {
+  const shutdown = async () => {
     profileEnricher.stop();
+    await rawArchive.stop();
     process.exit(0);
   };
-  process.on('SIGTERM', shutdown);
-  process.on('SIGINT', shutdown);
+  process.on('SIGTERM', () => void shutdown());
+  process.on('SIGINT', () => void shutdown());
 
   server.listen(port, host, () => {
     console.log(`Server running on http://${host}:${port}/`);
+    rawArchive.start();
 
     // Firehose auto-starts in its constructor - no manual start needed
     console.log('[Server] Firehose will auto-start on service initialization');

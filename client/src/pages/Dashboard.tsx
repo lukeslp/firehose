@@ -1,449 +1,464 @@
-import { useState, useEffect, useCallback } from "react";
-import { trpc } from "@/lib/trpc";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, ResponsiveContainer } from 'recharts';
-import { useSocket } from "@/hooks/useSocket";
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import {
+  Area,
+  AreaChart,
+  CartesianGrid,
+  Line,
+  LineChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from 'recharts';
+import { Input } from '@/components/ui/input';
+import { trpc } from '@/lib/trpc';
+import { useSocket } from '@/hooks/useSocket';
+import type { BskyProfile, FirehosePost, FirehoseStats, MediaBundle } from '@/variants/types';
 
-interface Post {
-  text: string;
-  sentiment: 'positive' | 'negative' | 'neutral';
-  sentimentScore: number;
-  createdAt: string;
-  language?: string;
-  uri?: string;
-  hasImages?: boolean;
-  hasVideo?: boolean;
-  hasLink?: boolean;
-  author?: {
-    did: string;
-    handle: string;
-  };
-  isReply?: boolean;
-  isQuote?: boolean;
+const SESSION_POST_LIMIT = 600;
+const TREND_MINUTES = 60;
+const TIMEFRAMES = [
+  { label: '15m', minutes: 15 },
+  { label: '1h', minutes: 60 },
+  { label: '6h', minutes: 360 },
+  { label: '24h', minutes: 1440 },
+  { label: '48h', minutes: 2880 },
+];
+
+type Sentiment = FirehosePost['sentiment'];
+type SentimentFilter = Sentiment | 'all';
+
+const languageNames: Record<string, string> = {
+  ar: 'Arabic', de: 'German', en: 'English', es: 'Spanish', fr: 'French',
+  hi: 'Hindi', id: 'Indonesian', it: 'Italian', ja: 'Japanese', ko: 'Korean',
+  nl: 'Dutch', pl: 'Polish', pt: 'Portuguese', ru: 'Russian', tr: 'Turkish',
+  uk: 'Ukrainian', vi: 'Vietnamese', zh: 'Chinese', unknown: 'Unknown',
+};
+
+const sensitiveLabels = new Set(['porn', 'sexual', 'nudity', 'graphic-media', 'self-harm']);
+
+function languageName(code: string) {
+  const normalized = (code || 'unknown').toLowerCase().split('-')[0];
+  return languageNames[normalized] ?? code.toUpperCase();
+}
+
+function sum<T>(values: T[], read: (value: T) => number) {
+  return values.reduce((total, value) => total + read(value), 0);
+}
+
+function bskyUrl(uri: string) {
+  const match = uri.match(/^at:\/\/([^/]+)\/app\.bsky\.feed\.post\/([^/]+)$/);
+  return match ? `https://bsky.app/profile/${match[1]}/post/${match[2]}` : 'https://bsky.app';
+}
+
+function compactTime(value: Date | string | number) {
+  return new Date(value).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
 }
 
 export default function Dashboard() {
-  const [filters, setFilters] = useState("");
-  const [appliedFilters, setAppliedFilters] = useState<string[]>([]);
-  const [posts, setPosts] = useState<Post[]>([]);
-  const [feedFullScreen, setFeedFullScreen] = useState(false);
-  const [isFullScreenMode, setIsFullScreenMode] = useState(false);
-  const [chartCollapsed, setChartCollapsed] = useState(false);
+  const { connected, stats: socketStats, postBatch, profiles } = useSocket();
+  const [posts, setPosts] = useState<FirehosePost[]>([]);
+  const [query, setQuery] = useState('');
+  const [keywords, setKeywords] = useState<string[]>([]);
+  const [sentimentFilter, setSentimentFilter] = useState<SentimentFilter>('all');
+  const [languageFilter, setLanguageFilter] = useState('all');
+  const [timeframe, setTimeframe] = useState(60);
+  const [viewPaused, setViewPaused] = useState(false);
+  const [, setTick] = useState(0);
 
-  const { connected: socketConnected, stats: socketStats, latestPost } = useSocket();
+  const statsQuery = trpc.firehose.stats.useQuery(undefined, { enabled: !connected, refetchInterval: 5_000 });
+  const recentPostsQuery = trpc.firehose.recentPosts.useQuery({ limit: 100 }, { refetchOnWindowFocus: false });
+  const coverageQuery = trpc.stats.coverage.useQuery(undefined, { refetchInterval: 60_000 });
+  const timelineQuery = trpc.stats.timeline.useQuery({ minutes: timeframe }, { refetchInterval: 10_000 });
+  const languageQuery = trpc.stats.timelineByLanguage.useQuery(
+    { minutes: TREND_MINUTES, top: 8 },
+    { refetchInterval: 15_000 },
+  );
+  const contentQuery = trpc.stats.timelineByContentType.useQuery(
+    { minutes: TREND_MINUTES },
+    { refetchInterval: 15_000 },
+  );
+  const labelQuery = trpc.stats.timelineByLabel.useQuery(
+    { minutes: TREND_MINUTES, top: 8 },
+    { refetchInterval: 15_000 },
+  );
 
-  // Fullscreen API listener
   useEffect(() => {
-    const handler = () => setIsFullScreenMode(!!document.fullscreenElement);
-    document.addEventListener('fullscreenchange', handler);
-    return () => document.removeEventListener('fullscreenchange', handler);
+    const interval = window.setInterval(() => setTick(value => value + 1), 1_000);
+    return () => window.clearInterval(interval);
   }, []);
 
-  const toggleFullScreen = useCallback(async () => {
-    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-    try {
-      if (isMobile) {
-        setFeedFullScreen(prev => !prev);
-      } else if (!document.fullscreenElement) {
-        await document.documentElement.requestFullscreen();
-        setFeedFullScreen(true);
-      } else {
-        await document.exitFullscreen();
-        setFeedFullScreen(false);
-      }
-    } catch {
-      setFeedFullScreen(prev => !prev);
-    }
-  }, []);
-
-  // Exit fullscreen on ESC (CSS-only mode)
   useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && feedFullScreen && !document.fullscreenElement) {
-        setFeedFullScreen(false);
-      }
-    };
-    document.addEventListener('keydown', handler);
-    return () => document.removeEventListener('keydown', handler);
-  }, [feedFullScreen]);
+    if (!recentPostsQuery.data || posts.length > 0) return;
+    setPosts(recentPostsQuery.data as FirehosePost[]);
+  }, [posts.length, recentPostsQuery.data]);
 
-  // Sentiment timeline tracking
-  const [postTimestamps, setPostTimestamps] = useState<Array<{
-    timestamp: number;
-    sentiment: 'positive' | 'negative' | 'neutral';
-  }>>([]);
-  const [sentimentTimeline, setSentimentTimeline] = useState<Array<{
-    timestamp: number;
-    positivePercent: number;
-    neutralPercent: number;
-    negativePercent: number;
-  }>>([]);
-
-  // Track post timestamps for sentiment timeline
   useEffect(() => {
-    if (!latestPost) return;
-    const now = Date.now();
-    setPostTimestamps(prev => {
-      const twoMinutesAgo = now - 2 * 60 * 1000;
-      return [...prev.filter(d => d.timestamp >= twoMinutesAgo), { timestamp: now, sentiment: latestPost.sentiment }];
+    if (viewPaused || postBatch.length === 0) return;
+    setPosts(previous => {
+      const seen = new Set<string>();
+      return [...postBatch].reverse().concat(previous).filter(post => {
+        const key = post.uri || `${post.author?.did}:${post.createdAt}:${post.text}`;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      }).slice(0, SESSION_POST_LIMIT);
     });
-  }, [latestPost]);
+  }, [postBatch, viewPaused]);
 
-  // Calculate sentiment rates every second
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setPostTimestamps(current => {
-        const now = Date.now();
-        const recent = current.filter(p => p.timestamp >= now - 60_000);
-        if (recent.length > 0) {
-          const total = recent.length;
-          const positive = recent.filter(p => p.sentiment === 'positive').length;
-          const neutral = recent.filter(p => p.sentiment === 'neutral').length;
-          const negative = recent.filter(p => p.sentiment === 'negative').length;
-          setSentimentTimeline(prev => {
-            const oneHourAgo = now - 60 * 60 * 1000;
-            return [...prev.filter(d => d.timestamp >= oneHourAgo), {
-              timestamp: now,
-              positivePercent: (positive / total) * 100,
-              neutralPercent: (neutral / total) * 100,
-              negativePercent: (negative / total) * 100,
-            }];
-          });
-        }
-        return current;
-      });
-    }, 1000);
-    return () => clearInterval(interval);
-  }, []);
-
-  const statsQuery = trpc.firehose.stats.useQuery(undefined, {
-    refetchInterval: false,
-    enabled: !socketConnected,
-  });
-
-  const recentPostsQuery = trpc.firehose.recentPosts.useQuery({ limit: 50 }, {
-    refetchInterval: 2000,
-  });
-
-  useEffect(() => {
-    if (recentPostsQuery.data) setPosts(recentPostsQuery.data as Post[]);
-  }, [recentPostsQuery.data]);
-
-  useEffect(() => {
-    if (latestPost) setPosts(prev => [latestPost, ...prev].slice(0, 50));
-  }, [latestPost]);
-
-  const handleApplyFilters = () => {
-    setAppliedFilters(filters.split(',').map(f => f.toLowerCase().trim()).filter(f => f.length > 0));
-  };
-
-  const handleResetFilters = () => {
-    setFilters('');
-    setAppliedFilters([]);
-  };
-
-  const stats = socketConnected && socketStats ? socketStats : (statsQuery.data || {
+  const stats: FirehoseStats = socketStats ?? statsQuery.data ?? {
     totalPosts: 0,
-    inDatabase: 0,
     postsPerMinute: 0,
-    sentimentCounts: { positive: 0, negative: 0, neutral: 0 },
+    sentimentCounts: { positive: 0, neutral: 0, negative: 0 },
     duration: 0,
     running: false,
-  });
-
-  const total = (stats.sentimentCounts?.positive || 0) + (stats.sentimentCounts?.neutral || 0) + (stats.sentimentCounts?.negative || 0);
-  const posPercent = total > 0 ? ((stats.sentimentCounts?.positive || 0) / total) * 100 : 0;
-  const neuPercent = total > 0 ? ((stats.sentimentCounts?.neutral || 0) / total) * 100 : 0;
-  const negPercent = total > 0 ? ((stats.sentimentCounts?.negative || 0) / total) * 100 : 0;
-
-  const sentimentTimelineData = sentimentTimeline.map(d => ({
-    time: new Date(d.timestamp).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
-    positive: d.positivePercent,
-    neutral: d.neutralPercent,
-    negative: d.negativePercent,
-  }));
-
-  const hasActiveFilters = appliedFilters.length > 0;
-  const canResetFilters = filters.trim().length > 0 || hasActiveFilters;
-  const postMatchesFilters = (post: Post) => {
-    if (!hasActiveFilters) return true;
-    const haystack = `${post.text || ''} ${post.author?.handle || ''}`.toLowerCase();
-    return appliedFilters.some(filter => haystack.includes(filter));
+    connected: false,
+    lastEventAt: null,
   };
 
-  const isFullscreen = feedFullScreen || isFullScreenMode;
+  const totalSentiment = Object.values(stats.sentimentCounts).reduce((total, count) => total + count, 0);
+  const percentages = {
+    positive: totalSentiment ? stats.sentimentCounts.positive / totalSentiment * 100 : 0,
+    neutral: totalSentiment ? stats.sentimentCounts.neutral / totalSentiment * 100 : 0,
+    negative: totalSentiment ? stats.sentimentCounts.negative / totalSentiment * 100 : 0,
+  };
 
-  // Fullscreen: only show header + feed
-  if (isFullscreen) {
-    return (
-      <div className="fixed inset-0 z-50 bg-background text-foreground flex flex-col" style={{ fontFamily: "'Helvetica Neue', Helvetica, Arial, sans-serif" }}>
-        {/* Minimal header */}
-        <div className="flex items-center justify-between px-4 py-3 border-b-2 border-foreground shrink-0">
-          <h1 className="text-lg font-bold tracking-tight uppercase">BLUESKY FIREHOSE</h1>
-          <button
-            onClick={toggleFullScreen}
-            className="px-3 py-1.5 text-xs font-bold uppercase tracking-wider border-2 border-foreground bg-background hover:bg-foreground hover:text-background transition-colors"
-            style={{ borderRadius: 0 }}
-          >
-            EXIT FULLSCREEN
-          </button>
-        </div>
-        {/* Full-height feed */}
-        <div className="flex-1 overflow-y-auto px-4 py-4 sm:px-6 md:px-8 space-y-3">
-          {posts.filter(postMatchesFilters).slice(0, 20).map((post, idx) => (
-            <PostCard key={post.uri || `post-${idx}-${post.createdAt}`} post={post} />
-          ))}
-        </div>
-      </div>
-    );
-  }
+  const timeline = useMemo(() => (timelineQuery.data ?? []).map(row => {
+    const total = row.postsCount || 1;
+    return {
+      timestamp: new Date(row.minuteTimestamp).getTime(),
+      time: compactTime(row.minuteTimestamp),
+      rate: row.postsCount,
+      positive: row.positiveCount / total * 100,
+      neutral: row.neutralCount / total * 100,
+      negative: row.negativeCount / total * 100,
+    };
+  }), [timelineQuery.data]);
+
+  const fiveMinuteDelta = useMemo(() => {
+    const target = Date.now() - 5 * 60_000;
+    const baseline = [...timeline].reverse().find(point => point.timestamp <= target)?.rate;
+    if (!baseline) return null;
+    return Math.round((stats.postsPerMinute - baseline) / Math.max(1, baseline) * 100);
+  }, [stats.postsPerMinute, timeline]);
+
+  const languageTrends = useMemo(() => (languageQuery.data ?? []).map(item => ({
+    key: item.language,
+    label: languageName(item.language),
+    count: sum(item.series, point => point.postsCount),
+    series: item.series.map(point => ({
+      value: point.postsCount,
+      positive: point.positiveCount,
+      neutral: point.neutralCount,
+      negative: point.negativeCount,
+    })),
+  })).sort((a, b) => b.count - a.count).slice(0, 6), [languageQuery.data]);
+
+  const contentTrends = useMemo(() => {
+    const labels: Record<string, string> = { text: 'Text only', image: 'With images', video: 'With video', link: 'With links' };
+    return (contentQuery.data ?? []).map(item => ({
+      key: item.contentType,
+      label: labels[item.contentType] ?? item.contentType,
+      count: sum(item.series, point => point.postsCount),
+      series: item.series.map(point => point.postsCount),
+    })).sort((a, b) => b.count - a.count);
+  }, [contentQuery.data]);
+
+  const labelTrends = useMemo(() => (labelQuery.data ?? []).map(item => ({
+    key: item.label,
+    label: item.label,
+    count: sum(item.series, point => point.postsCount),
+    series: item.series.map(point => point.postsCount),
+  })).sort((a, b) => b.count - a.count).slice(0, 6), [labelQuery.data]);
+
+  const availableLanguages = useMemo(() => {
+    const values = new Set(posts.map(post => post.language).filter(Boolean) as string[]);
+    return Array.from(values).sort((a, b) => languageName(a).localeCompare(languageName(b)));
+  }, [posts]);
+
+  const visiblePosts = useMemo(() => posts.filter(post => {
+    if (sentimentFilter !== 'all' && post.sentiment !== sentimentFilter) return false;
+    if (languageFilter !== 'all' && post.language !== languageFilter) return false;
+    if (keywords.length === 0) return true;
+    const haystack = `${post.text} ${post.author?.handle ?? ''}`.toLowerCase();
+    return keywords.some(keyword => haystack.includes(keyword));
+  }), [keywords, languageFilter, posts, sentimentFilter]);
+
+  const applySearch = () => setKeywords(query.split(',').map(value => value.trim().toLowerCase()).filter(Boolean));
+  const resetFilters = () => {
+    setQuery('');
+    setKeywords([]);
+    setSentimentFilter('all');
+    setLanguageFilter('all');
+  };
+  const filtersActive = keywords.length > 0 || sentimentFilter !== 'all' || languageFilter !== 'all';
+  const freshness = stats.lastEventAt
+    ? Math.max(0, Math.floor((Date.now() - new Date(stats.lastEventAt).getTime()) / 1_000))
+    : null;
+  const minutesAvailable = coverageQuery.data?.minutesAvailable ?? 0;
 
   return (
-    <div className="min-h-screen bg-background text-foreground flex flex-col" style={{ fontFamily: "'Helvetica Neue', Helvetica, Arial, sans-serif" }}>
-      {/* Header */}
-      <header className="border-b-2 border-foreground px-4 py-4 sm:px-6 sm:py-5 md:px-8 md:py-6 shrink-0">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-baseline sm:justify-between">
-          <div>
-            <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold tracking-tight uppercase">BLUESKY FIREHOSE</h1>
-            <p className="text-xs sm:text-sm uppercase tracking-widest mt-1" style={{ color: '#01AAFF' }}>
-              REAL-TIME SENTIMENT ANALYSIS
-            </p>
-          </div>
-          <div className="flex gap-2 sm:gap-3 items-center self-start sm:self-auto flex-wrap">
-            {/* Fullscreen */}
-            <button
-              onClick={toggleFullScreen}
-              className="px-3 py-2 font-bold uppercase text-xs tracking-wider border-2 border-foreground bg-background text-foreground hover:bg-foreground hover:text-background transition-colors min-h-[44px]"
-              style={{ borderRadius: 0 }}
-              title="Enter fullscreen mode"
-            >
-              FULLSCREEN
-            </button>
-            <span className="px-3 py-2 text-xs font-bold uppercase tracking-wider border-2 border-foreground min-h-[44px] flex items-center" role="status">
-              FULL STREAM · {socketConnected ? 'LIVE' : 'RECONNECTING'}
-            </span>
-          </div>
-        </div>
+    <div className="min-h-screen bg-background text-foreground">
+      <header className="sticky top-0 z-20 border-b border-border bg-background px-3 py-2 sm:px-4 md:px-6">
+        <h1 className="text-xl font-semibold tracking-tight sm:text-2xl md:text-3xl">Bluesky Firehose</h1>
+        <p className="mt-1 text-xs sm:text-sm" style={{ color: 'var(--bsky-blue)' }}>
+          Real-time sentiment analysis · AT Protocol network
+        </p>
       </header>
 
-      {/* Stats Bar — compact horizontal */}
-      <div className="border-b-2 border-foreground px-4 py-3 sm:px-6 md:px-8 shrink-0">
-        <div className="flex flex-wrap gap-x-6 gap-y-2 items-baseline">
-          <div className="flex items-baseline gap-2">
-            <span className="text-xs font-bold uppercase tracking-widest opacity-60">POSTS/MIN</span>
-            <span className="text-lg font-bold tabular-nums">{(stats.postsPerMinute || 0).toLocaleString()}</span>
+      <section aria-labelledby="filters-title" className="border-b border-border px-3 py-2 sm:px-4 sm:py-3 md:px-6">
+        <h2 id="filters-title" className="sr-only">Filter the live feed</h2>
+        <p className="mb-2 text-xs text-muted-foreground">Stream is live · filters only affect your view</p>
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
+          <div className="inline-flex self-start overflow-hidden rounded-md border border-border text-xs" aria-label="Filter by sentiment">
+            {(['all', 'positive', 'neutral', 'negative'] as SentimentFilter[]).map((value, index) => (
+              <button
+                key={value}
+                type="button"
+                aria-pressed={sentimentFilter === value}
+                onClick={() => setSentimentFilter(value)}
+                className={`min-h-10 px-3 py-2 font-medium capitalize transition-colors ${index ? 'border-l border-border' : ''}`}
+                style={{
+                  backgroundColor: sentimentFilter === value ? 'var(--muted)' : 'transparent',
+                  color: value === 'all' ? 'var(--foreground)' : `var(--sentiment-${value})`,
+                }}
+              >
+                {value}
+              </button>
+            ))}
           </div>
-          <div className="flex items-baseline gap-2">
-            <div className="w-2.5 h-2.5" style={{ background: 'oklch(0.75 0.22 145)' }} />
-            <span className="text-xs font-bold uppercase tracking-wider">+{posPercent.toFixed(0)}%</span>
-          </div>
-          <div className="flex items-baseline gap-2">
-            <div className="w-2.5 h-2.5" style={{ background: 'oklch(0.65 0.06 90)' }} />
-            <span className="text-xs font-bold uppercase tracking-wider">{neuPercent.toFixed(0)}%</span>
-          </div>
-          <div className="flex items-baseline gap-2">
-            <div className="w-2.5 h-2.5" style={{ background: 'oklch(0.6 0.23 25)' }} />
-            <span className="text-xs font-bold uppercase tracking-wider">-{negPercent.toFixed(0)}%</span>
-          </div>
-          <div className="flex items-baseline gap-2 ml-auto">
-            <span className="text-xs uppercase tracking-wider opacity-60">TOTAL</span>
-            <span className="text-sm font-bold tabular-nums">{(stats.totalPosts || 0).toLocaleString()}</span>
-          </div>
-        </div>
-      </div>
-
-      {/* Filters */}
-      <div className="border-b-2 border-foreground px-4 py-3 sm:px-6 md:px-8 shrink-0">
-        <div className="flex flex-col gap-2 sm:flex-row sm:gap-3">
           <Input
-            placeholder="KEYWORD FILTERS (COMMA SEPARATED)"
-            value={filters}
-            onChange={(e) => setFilters(e.target.value)}
-            onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleApplyFilters(); } }}
-            className="flex-1 uppercase text-xs border-2 min-h-[44px]"
-            style={{ borderRadius: 0 }}
+            value={query}
+            onChange={event => setQuery(event.target.value)}
+            onKeyDown={event => { if (event.key === 'Enter') { event.preventDefault(); applySearch(); } }}
+            placeholder="Filter by keyword (comma-separated)"
+            aria-label="Filter posts by keyword"
+            className="min-h-10 flex-1 text-sm"
           />
-          <Button onClick={handleApplyFilters} variant="outline" className="px-4 py-3 sm:px-6 font-bold uppercase text-xs tracking-wider min-h-[44px]" style={{ borderRadius: 0, borderWidth: '2px' }}>
-            SEARCH
-          </Button>
-          <Button onClick={handleResetFilters} variant="outline" disabled={!canResetFilters} className="px-4 py-3 sm:px-6 text-xs font-bold uppercase tracking-widest min-h-[44px]" style={{ borderRadius: 0, borderWidth: '2px' }}>
-            RESET
-          </Button>
+          <button type="button" onClick={applySearch} className="min-h-10 rounded-md border border-border px-5 text-sm font-medium hover:bg-muted">Search</button>
+          <button type="button" onClick={resetFilters} disabled={!filtersActive && !query} className="min-h-10 rounded-md border border-border px-5 text-sm font-medium hover:bg-muted disabled:opacity-40">Reset</button>
         </div>
-        {hasActiveFilters && (
-          <div className="text-xs uppercase tracking-wider opacity-70 mt-2">
-            ACTIVE FILTERS: {appliedFilters.join(', ')}
-          </div>
-        )}
-      </div>
+        {filtersActive && <p className="mt-2 text-xs text-muted-foreground">Showing {visiblePosts.length.toLocaleString()} matching posts in this session window.</p>}
+      </section>
 
-      {/* Live Feed — fills remaining viewport */}
-      <div className="flex-1 min-h-0 overflow-y-auto border-b-2 border-foreground">
-        <div className="px-4 py-4 sm:px-6 sm:py-5 md:px-8 md:py-6 space-y-3 sm:space-y-4">
-          {posts.length === 0 ? (
-            <div className="py-12 sm:py-16 text-center text-xs uppercase tracking-wider opacity-40">
-              NO POSTS YET. DATA WILL APPEAR AUTOMATICALLY.
+      <section aria-label="Live network summary" className="border-b border-border px-3 py-2 sm:px-4 sm:py-3 md:px-6">
+        <div className="flex flex-wrap items-center gap-4">
+          <div className="flex items-center gap-3">
+            <span className="text-xs font-medium text-muted-foreground">Posts/min</span>
+            <strong className="text-2xl tabular-nums sm:text-3xl" style={{ color: 'var(--bsky-blue)' }}>{stats.postsPerMinute.toLocaleString()}</strong>
+          </div>
+          <MoodMeter {...percentages} />
+          <div className="ml-auto text-xs font-medium tabular-nums text-muted-foreground" aria-hidden="true">
+            FULL STREAM · {connected ? 'LIVE' : 'RECONNECTING'} · {freshness == null ? 'WAITING FOR EVENT' : `${freshness}s AGO`}
+            {fiveMinuteDelta != null && <> · {fiveMinuteDelta >= 0 ? '▲' : '▼'}{Math.abs(fiveMinuteDelta)}% VS 5M</>}
+          </div>
+          <span className="sr-only" aria-live="polite">{connected ? 'Live stream connected' : 'Live stream reconnecting'}</span>
+        </div>
+      </section>
+
+      <div className="flex flex-col lg:flex-row">
+        <aside aria-labelledby="sentiment-title" className="order-2 w-full border-b border-border lg:order-1 lg:w-64 lg:flex-shrink-0 lg:border-b-0 lg:border-r xl:w-72">
+          <div className="p-4 lg:p-5">
+            <h2 id="sentiment-title" className="mb-5 text-xs font-bold">Sentiment</h2>
+            <SentimentColumn counts={stats.sentimentCounts} percentages={percentages} />
+          </div>
+        </aside>
+
+        <main className="order-1 min-w-0 flex-1 lg:order-2">
+          <section aria-labelledby="feed-title" className="border-b border-border">
+            <div className="flex flex-wrap items-center gap-3 border-b border-border px-3 py-2 sm:px-4">
+              <button
+                type="button"
+                onClick={() => setViewPaused(value => !value)}
+                className="inline-flex h-11 w-11 items-center justify-center rounded-full border"
+                style={{ borderColor: 'var(--bsky-blue)', color: 'var(--bsky-blue)', background: 'color-mix(in oklab, var(--bsky-blue) 10%, transparent)' }}
+                aria-label={viewPaused ? 'Resume live feed view' : 'Pause live feed view'}
+                title={viewPaused ? 'Resume live feed view' : 'Pause live feed view'}
+              >
+                {viewPaused ? <PlayIcon /> : <PauseIcon />}
+              </button>
+              <h2 id="feed-title" className="text-sm font-semibold">Live feed</h2>
+              <select
+                value={languageFilter}
+                onChange={event => setLanguageFilter(event.target.value)}
+                aria-label="Filter live feed by language"
+                className="ml-auto min-h-10 rounded-md border border-border bg-background px-3 text-xs"
+              >
+                <option value="all">All languages</option>
+                {availableLanguages.map(language => <option key={language} value={language}>{languageName(language)}</option>)}
+              </select>
+              <button type="button" onClick={() => document.getElementById('feed-stream')?.scrollIntoView({ behavior: 'smooth', block: 'start' })} className="min-h-10 rounded-md border border-border px-3 text-xs font-medium hover:bg-muted">Focus feed</button>
             </div>
-          ) : (
-            posts.filter(postMatchesFilters).slice(0, 20).map((post, idx) => (
-              <PostCard key={post.uri || `post-${idx}-${post.createdAt}`} post={post} />
-            ))
-          )}
-        </div>
-      </div>
+            <div id="feed-stream" className="max-h-[58rem] min-h-[34rem] space-y-3 overflow-y-auto p-3 sm:p-4" tabIndex={0} aria-label="Live Bluesky posts">
+              {visiblePosts.length === 0 ? (
+                <p className="py-20 text-center text-sm text-muted-foreground">Waiting for matching posts…</p>
+              ) : visiblePosts.map(post => (
+                <PostCard key={post.uri || `${post.author.did}-${post.createdAt}-${post.text}`} post={post} profile={profiles[post.author.did]} />
+              ))}
+            </div>
+          </section>
 
-      {/* Sentiment Timeline — collapsible */}
-      <div className="border-b-2 border-foreground shrink-0">
-        <button
-          onClick={() => setChartCollapsed(prev => !prev)}
-          className="w-full px-4 py-3 sm:px-6 md:px-8 flex items-center justify-between hover:bg-foreground/5 transition-colors"
-        >
-          <div className="text-xs font-bold uppercase tracking-widest">
-            SENTIMENT TIMELINE (LAST 60 MIN)
-            <span className="ml-2 sm:ml-4 text-xs font-normal opacity-60">● LIVE</span>
-          </div>
-          <span className="text-xs opacity-60">{chartCollapsed ? '▼ SHOW' : '▲ HIDE'}</span>
-        </button>
-        {!chartCollapsed && (
-          <div className="px-4 pb-4 sm:px-6 md:px-8 sm:pb-6">
-            {sentimentTimeline.length === 0 ? (
-              <div className="py-8 text-center text-xs uppercase tracking-wider opacity-40">
-                WAITING FOR DATA
-              </div>
-            ) : (
-              <ResponsiveContainer width="100%" height={200}>
-                <AreaChart data={sentimentTimelineData}>
-                  <defs>
-                    <linearGradient id="colorPositive" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="oklch(0.7 0.2 145)" stopOpacity={0.8}/>
-                      <stop offset="95%" stopColor="oklch(0.7 0.2 145)" stopOpacity={0.1}/>
-                    </linearGradient>
-                    <linearGradient id="colorNeutral" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="oklch(0.6 0.05 90)" stopOpacity={0.8}/>
-                      <stop offset="95%" stopColor="oklch(0.6 0.05 90)" stopOpacity={0.1}/>
-                    </linearGradient>
-                    <linearGradient id="colorNegative" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="oklch(0.55 0.22 25)" stopOpacity={0.8}/>
-                      <stop offset="95%" stopColor="oklch(0.55 0.22 25)" stopOpacity={0.1}/>
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="0" stroke="currentColor" strokeOpacity={0.1} />
-                  <XAxis dataKey="time" tick={{ fontSize: 8 }} stroke="currentColor" interval="preserveStartEnd" />
-                  <YAxis tick={{ fontSize: 8 }} stroke="currentColor" />
-                  <Area type="monotone" dataKey="positive" stackId="1" stroke="oklch(0.7 0.2 145)" strokeWidth={2} fill="url(#colorPositive)" animationDuration={800} />
-                  <Area type="monotone" dataKey="neutral" stackId="1" stroke="oklch(0.6 0.05 90)" strokeWidth={2} fill="url(#colorNeutral)" animationDuration={800} />
-                  <Area type="monotone" dataKey="negative" stackId="1" stroke="oklch(0.55 0.22 25)" strokeWidth={2} fill="url(#colorNegative)" animationDuration={800} />
+          <section aria-label="One-hour trends" className="grid border-b border-border md:grid-cols-3 md:divide-x md:divide-border">
+            <LanguageTrends rows={languageTrends} />
+            <TrendList title="Content types" rows={contentTrends} color="var(--bsky-blue)" />
+            <TrendList title="Moderation labels" rows={labelTrends} labelColors />
+          </section>
+
+          <ChartSection title={`Sentiment timeline · last ${TIMEFRAMES.find(item => item.minutes === timeframe)?.label ?? `${timeframe}m`}`} timeframe={timeframe} onTimeframe={setTimeframe} minutesAvailable={minutesAvailable}>
+            <div role="img" aria-label="Stacked area chart of positive, neutral, and negative sentiment over time">
+              <ResponsiveContainer width="100%" height={210}>
+                <AreaChart data={timeline} margin={{ top: 8, right: 8, bottom: 0, left: 0 }}>
+                  <CartesianGrid stroke="var(--border)" strokeOpacity={0.65} />
+                  <XAxis dataKey="time" tick={{ fontSize: 10 }} minTickGap={24} />
+                  <YAxis width={36} domain={[0, 100]} tick={{ fontSize: 10 }} tickFormatter={value => String(Math.round(Number(value)))} />
+                  <Tooltip />
+                  <Area type="monotone" dataKey="positive" stackId="sentiment" stroke="var(--sentiment-positive)" fill="var(--sentiment-positive)" fillOpacity={0.24} isAnimationActive={false} />
+                  <Area type="monotone" dataKey="neutral" stackId="sentiment" stroke="var(--sentiment-neutral)" fill="var(--sentiment-neutral)" fillOpacity={0.28} isAnimationActive={false} />
+                  <Area type="monotone" dataKey="negative" stackId="sentiment" stroke="var(--sentiment-negative)" fill="var(--sentiment-negative)" fillOpacity={0.2} isAnimationActive={false} />
                 </AreaChart>
               </ResponsiveContainer>
-            )}
-          </div>
-        )}
+            </div>
+          </ChartSection>
+
+          <ChartSection title={`Posts per minute · last ${TIMEFRAMES.find(item => item.minutes === timeframe)?.label ?? `${timeframe}m`}`} timeframe={timeframe} onTimeframe={setTimeframe} minutesAvailable={minutesAvailable}>
+            <div role="img" aria-label="Line chart of posts per minute over time">
+              <ResponsiveContainer width="100%" height={210}>
+                <LineChart data={timeline} margin={{ top: 8, right: 8, bottom: 0, left: 0 }}>
+                  <CartesianGrid stroke="var(--border)" strokeOpacity={0.65} />
+                  <XAxis dataKey="time" tick={{ fontSize: 10 }} minTickGap={24} />
+                  <YAxis width={44} tick={{ fontSize: 10 }} />
+                  <Tooltip />
+                  <Line type="monotone" dataKey="rate" stroke="var(--bsky-blue)" strokeWidth={3} dot={false} isAnimationActive={false} />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          </ChartSection>
+        </main>
       </div>
 
-      {/* Footer */}
-      <footer className="border-t-2 border-foreground px-4 py-3 sm:px-6 md:px-8 flex items-center justify-end gap-5 shrink-0 text-xs font-bold uppercase tracking-wider">
-        <a href="https://lukesteuber.com" className="underline underline-offset-4 hover:no-underline">lukesteuber.com</a>
-        <a href="https://datapoems.io" className="underline underline-offset-4 hover:no-underline">datapoems.io</a>
+      <footer className="flex justify-end gap-3 border-t-2 border-foreground px-4 py-4 text-xs font-semibold sm:px-6">
+        <a className="min-h-11 border border-border px-7 py-3 hover:bg-muted" href="https://lukesteuber.com">lukesteuber.com</a>
+        <a className="min-h-11 border border-border px-7 py-3 hover:bg-muted" href="https://datapoems.io">datapoems.io</a>
       </footer>
     </div>
   );
 }
 
-function PostCard({ post }: { post: Post }) {
+function SentimentColumn({ counts, percentages }: { counts: FirehoseStats['sentimentCounts']; percentages: Record<Sentiment, number> }) {
   return (
-    <div
-      className="border border-border rounded-xl p-3 sm:p-4 md:p-5 hover:shadow-lg transition-all duration-200"
-      style={{
-        backgroundColor: post.sentiment === 'positive'
-          ? 'oklch(0.7 0.2 145 / 0.12)'
-          : post.sentiment === 'negative'
-          ? 'oklch(0.55 0.22 25 / 0.12)'
-          : 'oklch(0.6 0.05 90 / 0.08)',
-        boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
-      }}
-    >
-      <div className="flex items-start gap-2 sm:gap-3 mb-2 sm:mb-3">
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
-            {post.author?.handle ? (
-              <>
-                <span className="font-semibold text-xs sm:text-sm">@{post.author.handle}</span>
-                <span className="text-xs px-1.5 py-0.5 rounded" style={{
-                  backgroundColor: post.sentiment === 'positive'
-                    ? 'oklch(0.7 0.2 145 / 0.3)'
-                    : post.sentiment === 'negative'
-                    ? 'oklch(0.55 0.22 25 / 0.3)'
-                    : 'oklch(0.6 0.05 90 / 0.2)',
-                }}>
-                  {post.sentiment}
-                </span>
-              </>
-            ) : (
-              <span className="font-semibold text-sm">
-                {post.sentiment === 'positive' ? 'Positive' : post.sentiment === 'negative' ? 'Negative' : 'Neutral'}
-              </span>
-            )}
-            {post.language && <span className="text-xs text-muted-foreground">{post.language}</span>}
-            <span className="text-xs text-muted-foreground">·</span>
-            <span className="text-xs text-muted-foreground">
-              {new Date(post.createdAt).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
-            </span>
-          </div>
-        </div>
+    <div className="flex flex-col items-center gap-6">
+      <div className="flex h-64 w-14 flex-col overflow-hidden rounded-md border border-border" role="img" aria-label={`Positive ${percentages.positive.toFixed(1)} percent, neutral ${percentages.neutral.toFixed(1)} percent, negative ${percentages.negative.toFixed(1)} percent`}>
+        <div style={{ height: `${percentages.positive}%`, background: 'var(--sentiment-positive)' }} />
+        <div style={{ height: `${percentages.neutral}%`, background: 'var(--sentiment-neutral)' }} />
+        <div style={{ height: `${percentages.negative}%`, background: 'var(--sentiment-negative)' }} />
       </div>
-
-      <div className="text-sm sm:text-base leading-relaxed mb-2 sm:mb-3">{post.text}</div>
-
-      <div className="flex items-center gap-2 sm:gap-3 text-xs text-muted-foreground flex-wrap">
-        {post.isReply && <span className="flex items-center gap-1"><ReplyIcon /> Reply</span>}
-        {post.isQuote && <span className="flex items-center gap-1"><QuoteIcon /> Quote</span>}
-        {post.hasImages && <span className="flex items-center gap-1"><ImageIcon /> Image</span>}
-        {post.hasVideo && <span className="flex items-center gap-1"><VideoIcon /> Video</span>}
-        {post.hasLink && <span className="flex items-center gap-1"><LinkIcon /> Link</span>}
-        {post.uri && (
-          <a
-            href={`https://bsky.app/profile/${post.uri.split('/')[2]}/post/${post.uri.split('/')[4]}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="ml-auto text-xs hover:text-primary transition-colors flex items-center gap-1"
-          >
-            <ExternalLinkIcon /> View on Bluesky
-          </a>
-        )}
+      <div className="w-full space-y-4">
+        {(['positive', 'neutral', 'negative'] as Sentiment[]).map(value => (
+          <div key={value} className="grid grid-cols-[1fr_auto] gap-x-3">
+            <span className="flex items-center gap-2 text-xs font-semibold capitalize"><i className="h-3 w-3" style={{ background: `var(--sentiment-${value})` }} />{value}</span>
+            <strong className="text-lg tabular-nums">{counts[value].toLocaleString()}</strong>
+            <span />
+            <span className="text-xs tabular-nums text-muted-foreground">{percentages[value].toFixed(1)}%</span>
+          </div>
+        ))}
       </div>
     </div>
   );
 }
 
-// Inline SVG icons (small, no external deps)
-const ReplyIcon = () => (
-  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
-  </svg>
-);
-const QuoteIcon = () => (
-  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-  </svg>
-);
-const ImageIcon = () => (
-  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-  </svg>
-);
-const VideoIcon = () => (
-  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
-  </svg>
-);
-const LinkIcon = () => (
-  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
-  </svg>
-);
-const ExternalLinkIcon = () => (
-  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-  </svg>
-);
+function MoodMeter({ positive, neutral, negative }: Record<Sentiment, number>) {
+  const net = positive - negative;
+  const position = Math.min(100, Math.max(0, (net + 100) / 2));
+  const color = net > 2 ? 'var(--sentiment-positive)' : net < -2 ? 'var(--sentiment-negative)' : 'var(--muted-foreground)';
+  return (
+    <div className="flex items-center gap-3" role="img" aria-label={`Net mood ${net >= 0 ? 'plus ' : 'minus '}${Math.abs(net).toFixed(0)}; neutral ${neutral.toFixed(0)} percent`}>
+      <span className="hidden text-xs font-medium text-muted-foreground sm:block">Mood</span>
+      <div className="relative h-2 w-28 rounded-full sm:w-40" style={{ background: 'linear-gradient(90deg, var(--sentiment-negative), var(--sentiment-neutral), var(--sentiment-positive))' }}>
+        <i className="absolute top-1/2 h-4 w-[3px] -translate-y-1/2 rounded-full shadow-[0_0_0_2px_var(--background)]" style={{ left: `calc(${position}% - 1.5px)`, background: color }} />
+      </div>
+      <strong className="min-w-[3ch] text-sm tabular-nums" style={{ color }}>{net >= 0 ? '+' : ''}{net.toFixed(0)}</strong>
+    </div>
+  );
+}
+
+function PostCard({ post, profile }: { post: FirehosePost; profile?: BskyProfile }) {
+  const handle = profile?.handle || post.author.handle;
+  const resolving = !profile && handle.startsWith('did:');
+  const labels = profile?.labels?.filter(label => !label.neg).map(label => label.val) ?? [];
+  return (
+    <article className="feed-card border-l-2 py-2 pl-3" style={{ borderColor: `var(--sentiment-${post.sentiment})` }}>
+      <div className="flex items-start gap-2">
+        <Avatar profile={profile} seed={post.author.did} />
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
+            <span className={`max-w-52 truncate ${resolving ? 'italic' : 'font-semibold text-foreground'}`}>{resolving ? 'resolving…' : (profile?.displayName || `@${handle}`)}</span>
+            <span className="rounded-sm px-1.5 py-0.5 text-foreground" style={{ background: `color-mix(in oklab, var(--sentiment-${post.sentiment}) 18%, transparent)` }}>{post.sentiment}</span>
+            <span>{post.language || '—'}</span><span>·</span><time dateTime={post.createdAt}>{compactTime(post.createdAt)}</time>
+          </div>
+          <p className="mt-1 whitespace-pre-wrap text-sm leading-snug sm:text-[15px]">{post.text}</p>
+          <PostMedia media={post.media} />
+          <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+            {post.isReply && <span>↩ Reply</span>}
+            {post.isQuote && <span>▢ Quote</span>}
+            {labels.slice(0, 3).map(label => <span key={label} className="rounded-sm bg-muted px-1">{label}</span>)}
+            <a className="hover:text-foreground" href={bskyUrl(post.uri)} target="_blank" rel="noreferrer">↗ View on Bluesky</a>
+          </div>
+        </div>
+      </div>
+    </article>
+  );
+}
+
+function Avatar({ profile, seed }: { profile?: BskyProfile; seed: string }) {
+  const initials = (profile?.displayName || profile?.handle || seed).split(/[.\s:_-]+/).filter(Boolean).slice(0, 2).map(value => value[0]).join('').toUpperCase();
+  return profile?.avatar ? (
+    <img className="h-8 w-8 flex-none rounded-full object-cover" src={profile.avatar} alt="" loading="lazy" />
+  ) : (
+    <span className="inline-flex h-8 w-8 flex-none items-center justify-center rounded-full text-[11px] font-bold text-white" style={{ background: 'var(--bsky-blue)' }} aria-hidden="true">{initials || 'BS'}</span>
+  );
+}
+
+function PostMedia({ media }: { media?: MediaBundle }) {
+  if (!media) return null;
+  return (
+    <div className="mt-2 max-w-2xl">
+      {media.images && <div className={`grid gap-1 overflow-hidden rounded-md ${media.images.length > 1 ? 'grid-cols-2' : 'grid-cols-1'}`}>
+        {media.images.map((image, index) => <a key={image.fullsize} href={image.fullsize} target="_blank" rel="noreferrer"><img className="max-h-72 w-full object-cover" src={image.thumb} alt={image.alt || `Attached image ${index + 1}`} loading="lazy" /></a>)}
+      </div>}
+      {media.linkCard && <a href={media.linkCard.uri} target="_blank" rel="noreferrer" className="grid grid-cols-[5rem_1fr] overflow-hidden rounded-md border border-border hover:bg-muted">
+        {media.linkCard.thumb ? <img className="h-full min-h-20 w-20 object-cover" src={media.linkCard.thumb} alt="" loading="lazy" /> : <span className="min-h-20 bg-muted" />}
+        <span className="min-w-0 p-2"><strong className="block truncate text-xs">{media.linkCard.title || media.linkCard.uri}</strong><span className="mt-1 line-clamp-2 block text-xs text-muted-foreground">{media.linkCard.description}</span></span>
+      </a>}
+      {media.video && <a href={media.video.playlist} target="_blank" rel="noreferrer" className="relative block overflow-hidden rounded-md"><img className="max-h-72 w-full object-cover" src={media.video.thumb} alt="Video thumbnail" loading="lazy" /><span className="absolute inset-0 grid place-items-center text-3xl text-white drop-shadow">▶</span></a>}
+    </div>
+  );
+}
+
+function LanguageTrends({ rows }: { rows: Array<{ key: string; label: string; count: number; series: Array<{ value: number; positive: number; neutral: number; negative: number }> }> }) {
+  const total = sum(rows, row => row.count);
+  return <div className="p-3 sm:p-4"><h2 className="mb-3 text-xs font-semibold">Top languages</h2><div className="space-y-2">{rows.map(row => <div key={row.key} className="flex items-center gap-2"><span className="flex-1 truncate text-xs">{row.label}</span><SentimentSpark data={row.series} label={`Sentiment trend for ${row.label}`} /><strong className="w-16 text-right text-sm tabular-nums">{row.count.toLocaleString()}</strong><span className="w-10 text-right text-[11px] tabular-nums text-muted-foreground">{total ? (row.count / total * 100).toFixed(1) : '0.0'}%</span></div>)}</div></div>;
+}
+
+function TrendList({ title, rows, color = 'var(--muted-foreground)', labelColors = false }: { title: string; rows: Array<{ key: string; label: string; count: number; series: number[] }>; color?: string; labelColors?: boolean }) {
+  const total = sum(rows, row => row.count);
+  return <div className="p-3 sm:p-4"><h2 className="mb-3 text-xs font-semibold">{title}</h2>{rows.length === 0 ? <p className="py-4 text-xs text-muted-foreground">No labels attributed yet</p> : <div className="space-y-2">{rows.map(row => { const rowColor = labelColors && sensitiveLabels.has(row.key) ? 'var(--destructive)' : color; return <div key={row.key} className="flex items-center gap-2"><span className="flex-1 truncate text-xs" style={{ color: labelColors && sensitiveLabels.has(row.key) ? rowColor : undefined }} title={row.label}>{row.label}</span><Sparkline data={row.series} color={rowColor} label={`${title} trend for ${row.label}`} /><strong className="w-16 text-right text-sm tabular-nums">{row.count.toLocaleString()}</strong>{!labelColors && <span className="w-10 text-right text-[11px] tabular-nums text-muted-foreground">{total ? (row.count / total * 100).toFixed(1) : '0.0'}%</span>}</div>; })}</div>}</div>;
+}
+
+function Sparkline({ data, color, label }: { data: number[]; color: string; label: string }) {
+  const max = Math.max(1, ...data);
+  const points = data.map((value, index) => `${data.length === 1 ? 28 : index / (data.length - 1) * 56},${16 - value / max * 14}`).join(' ');
+  return <svg viewBox="0 0 56 16" className="h-4 w-14" role="img" aria-label={label}><polyline points={points} fill="none" stroke={color} strokeWidth="1.5" vectorEffect="non-scaling-stroke" /></svg>;
+}
+
+function SentimentSpark({ data, label }: { data: Array<{ value: number; positive: number; neutral: number; negative: number }>; label: string }) {
+  const max = Math.max(1, ...data.map(point => point.value));
+  const points = (key: 'positive' | 'neutral' | 'negative') => data.map((point, index) => `${data.length === 1 ? 28 : index / (data.length - 1) * 56},${16 - point[key] / max * 14}`).join(' ');
+  return <svg viewBox="0 0 56 16" className="h-4 w-14" role="img" aria-label={label}>{(['negative', 'neutral', 'positive'] as const).map(key => <polyline key={key} points={points(key)} fill="none" stroke={`var(--sentiment-${key})`} strokeWidth="1.2" vectorEffect="non-scaling-stroke" />)}</svg>;
+}
+
+function ChartSection({ title, timeframe, onTimeframe, minutesAvailable, children }: { title: string; timeframe: number; onTimeframe: (minutes: number) => void; minutesAvailable: number; children: ReactNode }) {
+  return <section className="border-b border-border p-3 sm:p-4"><div className="mb-3 flex flex-wrap items-center justify-between gap-3"><h2 className="text-xs font-semibold">{title} <span className="ml-2 font-normal text-muted-foreground">● Live</span></h2><div className="inline-flex overflow-hidden rounded-md border border-border text-xs" role="tablist" aria-label="Select chart timeframe">{TIMEFRAMES.map((item, index) => { const unavailable = minutesAvailable > 0 && item.minutes > minutesAvailable + 2; return <button key={item.minutes} type="button" role="tab" aria-selected={timeframe === item.minutes} disabled={unavailable} onClick={() => onTimeframe(item.minutes)} className={`min-h-10 px-3 font-medium ${index ? 'border-l border-border' : ''} disabled:cursor-not-allowed disabled:opacity-35`} style={{ color: timeframe === item.minutes ? 'var(--bsky-blue)' : 'var(--muted-foreground)', background: timeframe === item.minutes ? 'var(--muted)' : 'transparent' }} title={unavailable ? `Only ${minutesAvailable} minutes of history available` : `Show ${item.label}`}>{item.label}</button>; })}</div></div>{children}</section>;
+}
+
+function PauseIcon() { return <svg viewBox="0 0 24 24" className="h-4 w-4" fill="currentColor" aria-hidden="true"><path d="M7 5h4v14H7zm6 0h4v14h-4z" /></svg>; }
+function PlayIcon() { return <svg viewBox="0 0 24 24" className="h-4 w-4" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z" /></svg>; }

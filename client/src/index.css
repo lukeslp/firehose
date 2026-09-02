@@ -4,10 +4,10 @@
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
-  --radius-sm: 0;
-  --radius-md: 0;
-  --radius-lg: 0;
-  --radius-xl: 0;
+  --radius-sm: calc(var(--radius) - 2px);
+  --radius-md: var(--radius);
+  --radius-lg: calc(var(--radius) + 2px);
+  --radius-xl: calc(var(--radius) + 4px);
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -50,42 +50,35 @@
 }
 
 :root {
-  /* Swiss Design - Stark Minimalism */
-  --radius: 0;
-  --background: oklch(1 0 0); /* Pure white */
-  --foreground: oklch(0 0 0); /* Pure black */
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0 0 0);
-  --primary: oklch(0 0 0); /* Black */
-  --primary-foreground: oklch(1 0 0); /* White */
-  --secondary: oklch(0.93 0 0); /* Light gray #EEEEEE */
-  --secondary-foreground: oklch(0 0 0);
-  --muted: oklch(0.93 0 0);
-  --muted-foreground: oklch(0.2 0 0); /* Dark gray #333333 */
-  --accent: oklch(0.55 0.22 27); /* Swiss red #E30613 */
-  --accent-foreground: oklch(1 0 0);
-  --destructive: oklch(0.55 0.22 27);
-  --destructive-foreground: oklch(1 0 0);
-  --border: oklch(0 0 0); /* Black borders */
-  --input: oklch(0.93 0 0);
-  --ring: oklch(0 0 0);
-  
-  /* Bluesky brand */
-  --bsky-blue: oklch(0.6 0.2 250); /* #1185FE */
-  
-  /* Sentiment colors */
-  --sentiment-positive: oklch(0.6 0.2 250); /* Bluesky blue */
-  --sentiment-negative: oklch(0.55 0.22 27); /* Swiss red */
-  --sentiment-neutral: oklch(0.6 0 0); /* Mid gray #999999 */
-  
-  /* Chart colors */
-  --chart-1: oklch(0.6 0.2 250);
-  --chart-2: oklch(0.55 0.22 27);
-  --chart-3: oklch(0.6 0 0);
-  --chart-4: oklch(0.2 0 0);
-  --chart-5: oklch(0.93 0 0);
+  --radius: 6px;
+  --background: #f8fafc;
+  --foreground: #17212b;
+  --card: #ffffff;
+  --card-foreground: #17212b;
+  --popover: #ffffff;
+  --popover-foreground: #17212b;
+  --primary: #17212b;
+  --primary-foreground: #ffffff;
+  --secondary: #eef2f6;
+  --secondary-foreground: #17212b;
+  --muted: #edf1f5;
+  --muted-foreground: #59616b;
+  --accent: #006bb6;
+  --accent-foreground: #ffffff;
+  --destructive: #c9363e;
+  --destructive-foreground: #ffffff;
+  --border: #d9dee4;
+  --input: #d9dee4;
+  --ring: #006bb6;
+  --bsky-blue: #006bb6;
+  --sentiment-positive: #06633f;
+  --sentiment-negative: #b62f37;
+  --sentiment-neutral: #59616b;
+  --chart-1: #006bb6;
+  --chart-2: #08784d;
+  --chart-3: #89929c;
+  --chart-4: #d94747;
+  --chart-5: #59616b;
 }
 
 .dark {
@@ -246,6 +239,11 @@
   .feed-item-neutral {
     border-left-color: oklch(0.6 0 0);
   }
+
+  .feed-card {
+    content-visibility: auto;
+    contain-intrinsic-size: auto 110px;
+  }
 }
 
 @layer utilities {
@@ -261,15 +259,20 @@
 }
 
 ::-webkit-scrollbar-track {
-  background: oklch(var(--background));
+  background: var(--background);
 }
 
 ::-webkit-scrollbar-thumb {
-  background: oklch(var(--muted-foreground));
+  background: var(--muted-foreground);
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: oklch(var(--foreground));
+  background: var(--foreground);
+}
+
+:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
 }
 
 /* Animation for pulse dot */

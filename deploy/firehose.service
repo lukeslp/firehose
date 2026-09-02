@@ -1,0 +1,37 @@
+# Bluesky firehose analytics dashboard — loopback :5052
+# Caddy publishes /bluesky/firehose on dr.eamer.dev
+[Unit]
+Description=Bluesky Firehose Analytics Dashboard
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=coolhand
+Group=coolhand
+WorkingDirectory=/home/coolhand/servers/firehose
+EnvironmentFile=/etc/dreamer/firehose.env
+Environment=NODE_ENV=production
+Environment=HOST=127.0.0.1
+Environment=PORT=5052
+Environment=DATABASE_URL=/home/coolhand/servers/firehose/firehose.db
+Environment=ENRICH_MEDIA=1
+Environment=ENRICH_PROFILES=1
+Environment=PROFILE_CACHE_MAX=20000
+Environment=PROFILE_CACHE_TTL_MS=3600000
+Environment=BSKY_APPVIEW_URL=https://public.api.bsky.app
+ExecStart=/home/coolhand/servers/firehose/start.sh
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=30
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ProtectHome=read-only
+ReadWritePaths=/home/coolhand/servers/firehose /home/coolhand/firehose-data
+UMask=0077
+MemoryMax=1536M
+TasksMax=256
+
+[Install]
+WantedBy=multi-user.target

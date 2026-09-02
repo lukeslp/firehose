@@ -21,6 +21,7 @@ import {
   getMinuteTimelineByLabel,
 } from "./db";
 import { getFirehoseService } from "./firehose";
+import { getRawArchiveRecorder } from "./rawArchive";
 
 const firehoseService = getFirehoseService();
 
@@ -162,6 +163,13 @@ export const appRouter = router({
         enabled: firehoseService.isCollecting(),
         currentWindow: firehoseService.getCurrentWindow(),
       };
+    }),
+
+    // Safe operational metadata only; raw post content and archive paths are
+    // never exposed through the public dashboard API.
+    archiveStatus: publicProcedure.query(() => {
+      const { rootDir: _rootDir, ...status } = getRawArchiveRecorder().status();
+      return status;
     }),
 
     // Start the firehose stream
