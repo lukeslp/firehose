@@ -18,7 +18,7 @@ function replaceOnce(label, from, to) {
 replaceOnce(
   'freshness indicator',
   'k.jsx(Kae,{"data-loc":"client/src/pages/Dashboard.tsx:752",posPercent:Ot,neuPercent:En,negPercent:rn})]})',
-  'k.jsx(Kae,{"data-loc":"client/src/pages/Dashboard.tsx:752",posPercent:Ot,neuPercent:En,negPercent:rn}),k.jsxs("div",{className:"ml-auto text-xs font-medium text-muted-foreground tabular-nums",role:"status",children:["FULL STREAM · ",Ge.connected?"LIVE":"RECONNECTING"," · ",Ge.lastEventAt?Math.max(0,Math.floor((Date.now()-new Date(Ge.lastEventAt).getTime())/1e3))+"s AGO":"WAITING FOR EVENT"]})]})',
+  'k.jsx(Kae,{"data-loc":"client/src/pages/Dashboard.tsx:752",posPercent:Ot,neuPercent:En,negPercent:rn}),k.jsxs("div",{className:"ml-auto text-xs font-medium text-muted-foreground tabular-nums",role:"status",children:["FULL STREAM · ",Ge.connected?"LIVE":"RECONNECTING"," · ",Ge.lastEventAt?Math.max(0,Math.floor((Date.now()-new Date(Ge.lastEventAt).getTime())/1e3))+"s AGO":"WAITING FOR EVENT",(()=>{const de=H.find(Me=>Me.timestamp>=Date.now()-3e5);if(!de||Date.now()-de.timestamp<24e4)return null;const Me=(Ge.postsPerMinute||0)-de.rate;return[" · ",Me>=0?"▲":"▼",Math.abs(Math.round(Me/Math.max(1,de.rate)*100)),"% VS 5M"]})()]})]})',
 );
 
 replaceOnce(
