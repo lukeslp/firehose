@@ -2,7 +2,7 @@ import WebSocket from 'ws';
 import { EventEmitter } from 'events';
 import fs from 'fs';
 import path from 'path';
-import { analyzeSentiment, extractFeatures } from './sentiment';
+import { analyzeSentiment, extractFeatures, isEnglishLanguage } from './sentiment';
 import {
   insertPost,
   updateGlobalStats,
@@ -46,6 +46,7 @@ export interface FirehosePost {
   createdAt: string;
   sentiment: 'positive' | 'negative' | 'neutral';
   sentimentScore: number;
+  sentimentAnalyzed: boolean;
   language?: string;
   hasImages?: boolean;
   hasVideo?: boolean;
@@ -185,6 +186,7 @@ export class FirehoseService extends EventEmitter {
 
   private recordMinuteBucketPost(
     sentiment: FirehosePost['sentiment'],
+    sentimentAnalyzed: boolean,
     language: string | undefined,
     contentTypes: MinuteContentType[],
     labels: string[],
@@ -208,12 +210,12 @@ export class FirehoseService extends EventEmitter {
     }
 
     this.minuteCounts.total += 1;
-    this.minuteCounts[sentiment] += 1;
+    if (sentimentAnalyzed) this.minuteCounts[sentiment] += 1;
     if (language) {
       const key = language.toLowerCase();
       const counts = this.minuteByLanguage.get(key) ?? { total: 0, positive: 0, neutral: 0, negative: 0 };
       counts.total += 1;
-      counts[sentiment] += 1;
+      if (sentimentAnalyzed) counts[sentiment] += 1;
       this.minuteByLanguage.set(key, counts);
     }
     contentTypes.forEach(type => this.minuteByContentType.set(type, (this.minuteByContentType.get(type) ?? 0) + 1));
@@ -455,9 +457,13 @@ export class FirehoseService extends EventEmitter {
         text = text.substring(0, MAX_TEXT_LENGTH);
       }
 
-      // Analyze sentiment and features for all posts
-      const sentimentResult = analyzeSentiment(text);
       const features = extractFeatures(text, record);
+      // The bundled AFINN lexicon is English. Do not manufacture sentiment
+      // labels for other languages; they still pass through the full stream.
+      const sentimentAnalyzed = isEnglishLanguage(features.language);
+      const sentimentResult = sentimentAnalyzed
+        ? analyzeSentiment(text)
+        : { score: 0, comparative: 0, classification: 'neutral' as const, positive: [], negative: [] };
 
       // Create post object for UI (always emit to Socket.IO for real-time display)
       const authorDid = message.did || '';
@@ -480,6 +486,7 @@ export class FirehoseService extends EventEmitter {
         createdAt: record.createdAt || new Date().toISOString(),
         sentiment: sentimentResult.classification,
         sentimentScore: sentimentResult.comparative,
+        sentimentAnalyzed,
         language: features.language,
         hasImages: !!media?.images?.length || features.hasImages,
         hasVideo: !!media?.video || features.hasVideo,
@@ -491,7 +498,7 @@ export class FirehoseService extends EventEmitter {
 
       // ALWAYS update statistics and emit for UI (even if not saving to database)
       this.totalProcessed++;
-      this.sentimentCounts[sentimentResult.classification]++;
+      if (sentimentAnalyzed) this.sentimentCounts[sentimentResult.classification]++;
       this.postsLastMinute.push(Date.now());
       this.lastPostAt = new Date();
 
@@ -504,7 +511,7 @@ export class FirehoseService extends EventEmitter {
       const labels = (cachedProfile?.labels ?? [])
         .filter(label => !label.neg)
         .map(label => label.val);
-      this.recordMinuteBucketPost(post.sentiment, post.language, contentTypes, labels);
+      this.recordMinuteBucketPost(post.sentiment, post.sentimentAnalyzed, post.language, contentTypes, labels);
 
       // Keep recent posts in memory for UI
       this.recentPosts.unshift(post);

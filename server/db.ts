@@ -1,4 +1,4 @@
-import { eq, desc, and, gte, lt, sql } from "drizzle-orm";
+import { eq, desc, and, gte, like, lt, or, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/better-sqlite3";
 import Database from "better-sqlite3";
 import {
@@ -415,6 +415,29 @@ export async function getMinuteTimelineByLanguage(minutes: number = 60, top: num
       negativeCount: row.negativeCount,
     })),
   }));
+}
+
+export async function getMinuteTimelineForLanguage(minutes: number = 60, language: string = 'en') {
+  const db = await getDb();
+  if (!db) return [];
+  const normalized = language.toLowerCase().split('-')[0];
+  const cutoff = new Date(Date.now() - minutes * 60_000);
+  return db.select({
+    minuteTimestamp: statsMinuteLanguage.minuteTimestamp,
+    postsCount: sql<number>`SUM(${statsMinuteLanguage.postsCount})`,
+    positiveCount: sql<number>`SUM(${statsMinuteLanguage.positiveCount})`,
+    neutralCount: sql<number>`SUM(${statsMinuteLanguage.neutralCount})`,
+    negativeCount: sql<number>`SUM(${statsMinuteLanguage.negativeCount})`,
+  }).from(statsMinuteLanguage)
+    .where(and(
+      gte(statsMinuteLanguage.minuteTimestamp, cutoff),
+      or(
+        eq(statsMinuteLanguage.language, normalized),
+        like(statsMinuteLanguage.language, `${normalized}-%`),
+      ),
+    ))
+    .groupBy(statsMinuteLanguage.minuteTimestamp)
+    .orderBy(statsMinuteLanguage.minuteTimestamp);
 }
 
 export async function getMinuteTimelineByContentType(minutes: number = 60) {

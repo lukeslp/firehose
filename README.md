@@ -12,8 +12,8 @@ A real-time Bluesky analytics dashboard. It reads the Jetstream WebSocket and sh
 
 ## What it does
 
-- **Live post feed** from Bluesky's Jetstream WebSocket, with sentiment-colored cards
-- **Sentiment analysis** that classifies each post as positive, negative, or neutral
+- **Live post feed** from Bluesky's Jetstream WebSocket; English-tagged posts carry sentiment and other languages remain unscored
+- **Rolling English sentiment** using the AFINN lexicon, with a five-minute mood signal and up to 48 hours of history
 - **Full-rate public stream** with no default sampling
 - **Historical timelines** for event rate, sentiment, languages, content types, and moderation labels
 - **Keyword and sentiment filters** that affect only the viewer's feed
@@ -45,7 +45,7 @@ Open `http://localhost:3000/`. The firehose starts automatically.
 
 ```
 Bluesky Jetstream WebSocket
-  → FirehoseService (sentiment analysis + feature extraction)
+  → FirehoseService (English AFINN sentiment + feature extraction)
     ├→ In-memory stats (real-time)
     ├→ SQLite minute aggregates (always on, 48-hour retention)
     ├→ Filtered raw-post corpus (operator-controlled, off by default)
@@ -59,7 +59,7 @@ Separate resumable Jetstream connection (optional)
     → 24-hour / 2 GiB local safety envelope by default
 ```
 
-The server connects to `wss://jetstream2.us-east.bsky.network`, analyzes each post for sentiment, persists aggregate minute buckets every 10 seconds, broadcasts statistics every second, and forwards every received post to connected clients.
+The server connects to `wss://jetstream2.us-east.bsky.network`, analyzes explicitly English-tagged posts with the bundled AFINN lexicon, persists aggregate minute buckets every 10 seconds, broadcasts statistics every second, and forwards every received post to connected clients. Posts in every language remain in the unsampled public stream; non-English and untagged posts are marked unscored rather than treated as neutral.
 
 ## Environment
 
@@ -95,6 +95,7 @@ All at `/api/trpc`:
 | `firehose.exportCSV` | Raw corpus CSV (admin or direct loopback only) |
 | `stats.timeline` | Persisted minute event-rate and sentiment history |
 | `stats.timelineByLanguage` | Persisted minute language trends |
+| `stats.timelineForLanguage` | Persisted minute history for one base language, including regional tags |
 | `stats.timelineByContentType` | Persisted minute content-type trends |
 | `stats.timelineByLabel` | Persisted minute moderation-label trends |
 | `stats.hourly` | Hourly time-series |

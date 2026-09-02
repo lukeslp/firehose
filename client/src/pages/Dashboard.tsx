@@ -77,6 +77,10 @@ export default function Dashboard() {
   const recentPostsQuery = trpc.firehose.recentPosts.useQuery({ limit: 100 }, { refetchOnWindowFocus: false });
   const coverageQuery = trpc.stats.coverage.useQuery(undefined, { refetchInterval: 60_000 });
   const timelineQuery = trpc.stats.timeline.useQuery({ minutes: timeframe }, { refetchInterval: 10_000 });
+  const englishSentimentQuery = trpc.stats.timelineForLanguage.useQuery(
+    { minutes: timeframe, language: 'en' },
+    { refetchInterval: 10_000 },
+  );
   const languageQuery = trpc.stats.timelineByLanguage.useQuery(
     { minutes: TREND_MINUTES, top: 8 },
     { refetchInterval: 15_000 },
@@ -134,24 +138,44 @@ export default function Dashboard() {
     lastEventAt: null,
   };
 
-  const totalSentiment = Object.values(stats.sentimentCounts).reduce((total, count) => total + count, 0);
-  const percentages = {
-    positive: totalSentiment ? stats.sentimentCounts.positive / totalSentiment * 100 : 0,
-    neutral: totalSentiment ? stats.sentimentCounts.neutral / totalSentiment * 100 : 0,
-    negative: totalSentiment ? stats.sentimentCounts.negative / totalSentiment * 100 : 0,
-  };
-
   const timeline = useMemo(() => (timelineQuery.data ?? []).map(row => {
-    const total = row.postsCount || 1;
     return {
       timestamp: new Date(row.minuteTimestamp).getTime(),
       time: compactTime(row.minuteTimestamp),
       rate: row.postsCount,
-      positive: row.positiveCount / total * 100,
-      neutral: row.neutralCount / total * 100,
-      negative: row.negativeCount / total * 100,
     };
   }), [timelineQuery.data]);
+
+  const englishSentimentTimeline = useMemo(() => (englishSentimentQuery.data ?? []).map(row => {
+    const analyzed = row.positiveCount + row.neutralCount + row.negativeCount;
+    return {
+      timestamp: new Date(row.minuteTimestamp).getTime(),
+      time: compactTime(row.minuteTimestamp),
+      count: analyzed,
+      positive: analyzed ? row.positiveCount / analyzed * 100 : 0,
+      neutral: analyzed ? row.neutralCount / analyzed * 100 : 0,
+      negative: analyzed ? row.negativeCount / analyzed * 100 : 0,
+      positiveCount: row.positiveCount,
+      neutralCount: row.neutralCount,
+      negativeCount: row.negativeCount,
+    };
+  }), [englishSentimentQuery.data]);
+
+  const recentEnglishCounts = useMemo(() => {
+    const cutoff = Date.now() - 5 * 60_000;
+    const recent = englishSentimentTimeline.filter(point => point.timestamp >= cutoff);
+    return {
+      positive: sum(recent, point => point.positiveCount),
+      neutral: sum(recent, point => point.neutralCount),
+      negative: sum(recent, point => point.negativeCount),
+    };
+  }, [englishSentimentTimeline]);
+  const recentEnglishTotal = Object.values(recentEnglishCounts).reduce((total, count) => total + count, 0);
+  const recentEnglishPercentages = {
+    positive: recentEnglishTotal ? recentEnglishCounts.positive / recentEnglishTotal * 100 : 0,
+    neutral: recentEnglishTotal ? recentEnglishCounts.neutral / recentEnglishTotal * 100 : 0,
+    negative: recentEnglishTotal ? recentEnglishCounts.negative / recentEnglishTotal * 100 : 0,
+  };
 
   const fiveMinuteDelta = useMemo(() => {
     const target = Date.now() - 5 * 60_000;
@@ -164,12 +188,7 @@ export default function Dashboard() {
     key: item.language,
     label: languageName(item.language),
     count: sum(item.series, point => point.postsCount),
-    series: item.series.map(point => ({
-      value: point.postsCount,
-      positive: point.positiveCount,
-      neutral: point.neutralCount,
-      negative: point.negativeCount,
-    })),
+    series: item.series.map(point => point.postsCount),
   })).sort((a, b) => b.count - a.count).slice(0, 6), [languageQuery.data]);
 
   const contentTrends = useMemo(() => {
@@ -195,7 +214,7 @@ export default function Dashboard() {
   }, [posts]);
 
   const visiblePosts = useMemo(() => posts.filter(post => {
-    if (sentimentFilter !== 'all' && post.sentiment !== sentimentFilter) return false;
+    if (sentimentFilter !== 'all' && (post.sentimentAnalyzed === false || post.sentiment !== sentimentFilter)) return false;
     if (languageFilter !== 'all' && post.language !== languageFilter) return false;
     if (keywords.length === 0) return true;
     const haystack = `${post.text} ${post.author?.handle ?? ''}`.toLowerCase();
@@ -225,7 +244,7 @@ export default function Dashboard() {
       <header className="sticky top-0 z-20 border-b border-border bg-background px-3 py-2 sm:px-4 md:px-6">
         <h1 className="text-xl font-semibold tracking-tight sm:text-2xl md:text-3xl">Bluesky Firehose</h1>
         <p className="mt-1 text-xs sm:text-sm" style={{ color: 'var(--bsky-blue)' }}>
-          Real-time sentiment analysis · AT Protocol network
+          Full AT Protocol stream · English-tagged sentiment analysis
         </p>
       </header>
 
@@ -270,7 +289,7 @@ export default function Dashboard() {
             <span className="text-xs font-medium text-muted-foreground">Posts/min</span>
             <strong className="text-2xl tabular-nums sm:text-3xl" style={{ color: 'var(--bsky-blue)' }}>{stats.postsPerMinute.toLocaleString()}</strong>
           </div>
-          <MoodMeter {...percentages} />
+          <MoodMeter {...recentEnglishPercentages} sampleSize={recentEnglishTotal} />
           <div className="ml-auto text-xs font-medium tabular-nums text-muted-foreground" aria-hidden="true">
             FULL STREAM · {connected ? 'LIVE' : 'RECONNECTING'} · {freshness == null ? 'WAITING FOR EVENT' : `${freshness}s AGO`}
             {fiveMinuteDelta != null && <> · {fiveMinuteDelta >= 0 ? '▲' : '▼'}{Math.abs(fiveMinuteDelta)}% VS 5M</>}
@@ -282,8 +301,9 @@ export default function Dashboard() {
       <div className="flex flex-col lg:flex-row">
         <aside aria-labelledby="sentiment-title" className="order-2 w-full border-b border-border lg:order-1 lg:w-64 lg:flex-shrink-0 lg:border-b-0 lg:border-r xl:w-72">
           <div className="p-4 lg:p-5">
-            <h2 id="sentiment-title" className="mb-5 text-xs font-bold">Sentiment</h2>
-            <SentimentColumn counts={stats.sentimentCounts} percentages={percentages} />
+            <h2 id="sentiment-title" className="mb-1 text-xs font-bold">English sentiment</h2>
+            <p className="mb-5 text-[11px] text-muted-foreground">Rolling 5 minutes · AFINN lexicon</p>
+            <SentimentColumn counts={recentEnglishCounts} percentages={recentEnglishPercentages} />
           </div>
         </aside>
 
@@ -338,10 +358,10 @@ export default function Dashboard() {
             <TrendList title="Moderation labels" rows={labelTrends} labelColors />
           </section>
 
-          <ChartSection title={`Sentiment timeline · last ${TIMEFRAMES.find(item => item.minutes === timeframe)?.label ?? `${timeframe}m`}`} timeframe={timeframe} onTimeframe={setTimeframe} minutesAvailable={minutesAvailable}>
-            <div role="img" aria-label="Stacked area chart of positive, neutral, and negative sentiment over time">
+          <ChartSection title={`English sentiment · last ${TIMEFRAMES.find(item => item.minutes === timeframe)?.label ?? `${timeframe}m`}`} timeframe={timeframe} onTimeframe={setTimeframe} minutesAvailable={minutesAvailable}>
+            <div role="img" aria-label="Stacked area chart of positive, neutral, and negative sentiment for English-tagged posts over time">
               <ResponsiveContainer width="100%" height={210}>
-                <AreaChart data={timeline} margin={{ top: 8, right: 8, bottom: 0, left: 0 }}>
+                <AreaChart data={englishSentimentTimeline} margin={{ top: 8, right: 8, bottom: 0, left: 0 }}>
                   <CartesianGrid stroke="var(--border)" strokeOpacity={0.65} />
                   <XAxis dataKey="time" tick={{ fontSize: 10 }} minTickGap={24} />
                   <YAxis width={36} domain={[0, 100]} tick={{ fontSize: 10 }} tickFormatter={value => String(Math.round(Number(value)))} />
@@ -400,17 +420,17 @@ function SentimentColumn({ counts, percentages }: { counts: FirehoseStats['senti
   );
 }
 
-function MoodMeter({ positive, neutral, negative }: Record<Sentiment, number>) {
+function MoodMeter({ positive, neutral, negative, sampleSize }: Record<Sentiment, number> & { sampleSize: number }) {
   const net = positive - negative;
   const position = Math.min(100, Math.max(0, (net + 100) / 2));
   const color = net > 2 ? 'var(--sentiment-positive)' : net < -2 ? 'var(--sentiment-negative)' : 'var(--muted-foreground)';
   return (
-    <div className="flex items-center gap-3" role="img" aria-label={`Net mood ${net >= 0 ? 'plus ' : 'minus '}${Math.abs(net).toFixed(0)}; neutral ${neutral.toFixed(0)} percent`}>
-      <span className="hidden text-xs font-medium text-muted-foreground sm:block">Mood</span>
+    <div className="flex items-center gap-3" role="img" aria-label={sampleSize ? `English mood over the last 5 minutes: ${net >= 0 ? 'plus ' : 'minus '}${Math.abs(net).toFixed(0)}; neutral ${neutral.toFixed(0)} percent; ${sampleSize} posts analyzed` : 'Waiting for English sentiment samples'}>
+      <span className="hidden text-xs font-medium text-muted-foreground sm:block">English mood · 5m</span>
       <div className="relative h-2 w-28 rounded-full sm:w-40" style={{ background: 'linear-gradient(90deg, var(--sentiment-negative), var(--sentiment-neutral), var(--sentiment-positive))' }}>
         <i className="absolute top-1/2 h-4 w-[3px] -translate-y-1/2 rounded-full shadow-[0_0_0_2px_var(--background)]" style={{ left: `calc(${position}% - 1.5px)`, background: color }} />
       </div>
-      <strong className="min-w-[3ch] text-sm tabular-nums" style={{ color }}>{net >= 0 ? '+' : ''}{net.toFixed(0)}</strong>
+      <strong className="min-w-[3ch] text-sm tabular-nums" style={{ color }}>{sampleSize ? `${net >= 0 ? '+' : ''}${net.toFixed(0)}` : '—'}</strong>
     </div>
   );
 }
@@ -419,14 +439,16 @@ function PostCard({ post, profile }: { post: FirehosePost; profile?: BskyProfile
   const handle = profile?.handle || post.author.handle;
   const resolving = !profile && handle.startsWith('did:');
   const labels = profile?.labels?.filter(label => !label.neg).map(label => label.val) ?? [];
+  const sentimentColor = post.sentimentAnalyzed === false ? 'var(--muted-foreground)' : `var(--sentiment-${post.sentiment})`;
+  const sentimentLabel = post.sentimentAnalyzed === false ? 'not scored' : post.sentiment;
   return (
-    <article className="feed-card border-l-2 py-2 pl-3" style={{ borderColor: `var(--sentiment-${post.sentiment})` }}>
+    <article className="feed-card border-l-2 py-2 pl-3" style={{ borderColor: sentimentColor }}>
       <div className="flex items-start gap-2">
         <Avatar profile={profile} seed={post.author.did} />
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
             <span className={`max-w-52 truncate ${resolving ? 'italic' : 'font-semibold text-foreground'}`}>{resolving ? 'resolving…' : (profile?.displayName || `@${handle}`)}</span>
-            <span className="rounded-sm px-1.5 py-0.5 text-foreground" style={{ background: `color-mix(in oklab, var(--sentiment-${post.sentiment}) 18%, transparent)` }}>{post.sentiment}</span>
+            <span className="rounded-sm px-1.5 py-0.5 text-foreground" style={{ background: `color-mix(in oklab, ${sentimentColor} 18%, transparent)` }}>{sentimentLabel}</span>
             <span>{post.language || '—'}</span><span>·</span><time dateTime={post.createdAt}>{compactTime(post.createdAt)}</time>
           </div>
           <p className="mt-1 whitespace-pre-wrap text-sm leading-snug sm:text-[15px]">{post.text}</p>
@@ -468,9 +490,9 @@ function PostMedia({ media }: { media?: MediaBundle }) {
   );
 }
 
-function LanguageTrends({ rows }: { rows: Array<{ key: string; label: string; count: number; series: Array<{ value: number; positive: number; neutral: number; negative: number }> }> }) {
+function LanguageTrends({ rows }: { rows: Array<{ key: string; label: string; count: number; series: number[] }> }) {
   const total = sum(rows, row => row.count);
-  return <div className="p-3 sm:p-4"><h2 className="mb-3 text-xs font-semibold">Top languages</h2><div className="space-y-2">{rows.map(row => <div key={row.key} className="flex items-center gap-2"><span className="flex-1 truncate text-xs">{row.label}</span><SentimentSpark data={row.series} label={`Sentiment trend for ${row.label}`} /><strong className="w-16 text-right text-sm tabular-nums">{row.count.toLocaleString()}</strong><span className="w-10 text-right text-[11px] tabular-nums text-muted-foreground">{total ? (row.count / total * 100).toFixed(1) : '0.0'}%</span></div>)}</div></div>;
+  return <div className="p-3 sm:p-4"><h2 className="mb-3 text-xs font-semibold">Top languages</h2><div className="space-y-2">{rows.map(row => <div key={row.key} className="flex items-center gap-2"><span className="flex-1 truncate text-xs">{row.label}</span><Sparkline data={row.series} color="var(--bsky-blue)" label={`Post volume trend for ${row.label}`} /><strong className="w-16 text-right text-sm tabular-nums">{row.count.toLocaleString()}</strong><span className="w-10 text-right text-[11px] tabular-nums text-muted-foreground">{total ? (row.count / total * 100).toFixed(1) : '0.0'}%</span></div>)}</div></div>;
 }
 
 function TrendList({ title, rows, color = 'var(--muted-foreground)', labelColors = false }: { title: string; rows: Array<{ key: string; label: string; count: number; series: number[] }>; color?: string; labelColors?: boolean }) {
@@ -482,12 +504,6 @@ function Sparkline({ data, color, label }: { data: number[]; color: string; labe
   const max = Math.max(1, ...data);
   const points = data.map((value, index) => `${data.length === 1 ? 28 : index / (data.length - 1) * 56},${16 - value / max * 14}`).join(' ');
   return <svg viewBox="0 0 56 16" className="h-4 w-14" role="img" aria-label={label}><polyline points={points} fill="none" stroke={color} strokeWidth="1.5" vectorEffect="non-scaling-stroke" /></svg>;
-}
-
-function SentimentSpark({ data, label }: { data: Array<{ value: number; positive: number; neutral: number; negative: number }>; label: string }) {
-  const max = Math.max(1, ...data.map(point => point.value));
-  const points = (key: 'positive' | 'neutral' | 'negative') => data.map((point, index) => `${data.length === 1 ? 28 : index / (data.length - 1) * 56},${16 - point[key] / max * 14}`).join(' ');
-  return <svg viewBox="0 0 56 16" className="h-4 w-14" role="img" aria-label={label}>{(['negative', 'neutral', 'positive'] as const).map(key => <polyline key={key} points={points(key)} fill="none" stroke={`var(--sentiment-${key})`} strokeWidth="1.2" vectorEffect="non-scaling-stroke" />)}</svg>;
 }
 
 function ChartSection({ title, timeframe, onTimeframe, minutesAvailable, children }: { title: string; timeframe: number; onTimeframe: (minutes: number) => void; minutesAvailable: number; children: ReactNode }) {

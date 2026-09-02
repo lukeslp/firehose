@@ -38,11 +38,14 @@ export interface FirehosePost {
   /** ISO 8601 timestamp when post was created */
   createdAt: string;
 
-  /** Sentiment classification from VADER analysis */
+  /** Sentiment classification from the English AFINN analysis */
   sentiment: 'positive' | 'negative' | 'neutral';
 
-  /** Sentiment score (-1 to +1, where -1 is most negative, +1 is most positive) */
+  /** Sentiment score emitted by AFINN (comparative word score) */
   sentimentScore: number;
+
+  /** False when the post is not explicitly tagged as English and was not scored */
+  sentimentAnalyzed?: boolean;
 
   /** ISO 639-1 language code (e.g., 'en', 'ja', 'es') */
   language?: string;
@@ -133,10 +136,10 @@ export interface SentimentData {
   /** Sentiment classification */
   classification: 'positive' | 'negative' | 'neutral';
 
-  /** Normalized sentiment score (-1 to +1) */
+  /** Comparative AFINN score (raw token score divided by token count) */
   comparative: number;
 
-  /** Raw VADER sentiment score */
+  /** Raw AFINN token score */
   score: number;
 
   /** Optional: individual token contributions */

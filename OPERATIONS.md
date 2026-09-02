@@ -22,7 +22,12 @@ The public Socket.IO stream is never sampled. Filters affect only an individual
 browser view. The browser keeps all posts received since page load and
 virtualizes the feed cards, so scrollback grows without growing the rendered
 DOM; a reload begins a new browser session. Raw archive pressure or failure
-must not stop the public stream, sentiment analysis, or aggregate history.
+must not stop the public stream, English-tagged sentiment analysis, or aggregate history.
+
+The dashboard's mood and sentiment panel use a rolling five-minute window of
+posts explicitly tagged with an English BCP 47 language code. The analyzer is
+the English AFINN lexicon bundled by `sentiment`; posts in all other languages
+remain visible in the full stream and are marked `not scored`.
 
 ## Raw archive design
 

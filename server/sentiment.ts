@@ -2,6 +2,10 @@ import Sentiment from 'sentiment';
 
 const sentiment = new Sentiment();
 
+export function isEnglishLanguage(language: string | null | undefined): boolean {
+  return language?.toLowerCase().split('-')[0] === 'en';
+}
+
 export interface SentimentResult {
   score: number;
   comparative: number;
@@ -11,9 +15,9 @@ export interface SentimentResult {
 }
 
 /**
- * Analyze sentiment of text using VADER-like algorithm
- * Score ranges from -5 to +5 (normalized to -1 to +1)
- * Comparative score is normalized by word count
+ * Analyze English text using the AFINN-165 word list.
+ * The raw score sums recognized token values; comparative divides that sum
+ * by the package's token count.
  */
 export function analyzeSentiment(text: string): SentimentResult {
   if (!text || text.trim().length === 0) {

@@ -24,6 +24,8 @@ describe('minute history', () => {
     await db.upsertMinuteBucket(minute, { total: 12, positive: 4, neutral: 6, negative: 2 });
     await db.upsertMinuteBucketsByLanguage(minute, new Map([
       ['en', { total: 8, positive: 3, neutral: 4, negative: 1 }],
+      ['en-us', { total: 2, positive: 1, neutral: 1, negative: 0 }],
+      ['es', { total: 5, positive: 4, neutral: 1, negative: 0 }],
     ]));
     await db.upsertMinuteBucketsByContentType(minute, new Map([['text', 9], ['image', 3]]));
 
@@ -31,6 +33,12 @@ describe('minute history', () => {
     expect(timeline).toHaveLength(1);
     expect(timeline[0]).toMatchObject({ postsCount: 12, positiveCount: 4 });
     expect((await db.getMinuteTimelineByLanguage(5, 5))[0]).toMatchObject({ language: 'en' });
+    expect((await db.getMinuteTimelineForLanguage(5, 'en'))[0]).toMatchObject({
+      postsCount: 10,
+      positiveCount: 4,
+      neutralCount: 5,
+      negativeCount: 1,
+    });
     expect(await db.getMinuteTimelineByContentType(5)).toHaveLength(2);
     expect((await db.getMinuteCoverage()).bucketCount).toBe(1);
   });

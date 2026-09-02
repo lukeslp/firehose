@@ -17,6 +17,7 @@ import {
   getMinuteTimeline,
   getMinuteCoverage,
   getMinuteTimelineByLanguage,
+  getMinuteTimelineForLanguage,
   getMinuteTimelineByContentType,
   getMinuteTimelineByLabel,
 } from "./db";
@@ -252,6 +253,13 @@ export const appRouter = router({
         top: z.number().min(1).max(30).default(10),
       }))
       .query(({ input }) => getMinuteTimelineByLanguage(input.minutes, input.top)),
+
+    timelineForLanguage: publicProcedure
+      .input(z.object({
+        minutes: z.number().min(1).max(2880).default(60),
+        language: z.string().trim().min(2).max(16).default('en'),
+      }))
+      .query(({ input }) => getMinuteTimelineForLanguage(input.minutes, input.language)),
 
     timelineByContentType: publicProcedure
       .input(z.object({ minutes: z.number().min(1).max(2880).default(60) }))
