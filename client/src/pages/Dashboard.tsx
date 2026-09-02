@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { Virtuoso } from 'react-virtuoso';
+import { Virtuoso, type VirtuosoHandle } from 'react-virtuoso';
 import {
   Area,
   AreaChart,
@@ -70,6 +70,7 @@ export default function Dashboard() {
   const [viewPaused, setViewPaused] = useState(false);
   const [, setTick] = useState(0);
   const seenPostKeys = useRef(new Set<string>());
+  const feedRef = useRef<VirtuosoHandle>(null);
 
   const statsQuery = trpc.firehose.stats.useQuery(undefined, { enabled: !connected, refetchInterval: 5_000 });
   const recentPostsQuery = trpc.firehose.recentPosts.useQuery({ limit: 100 }, { refetchOnWindowFocus: false });
@@ -189,6 +190,11 @@ export default function Dashboard() {
     return keywords.some(keyword => haystack.includes(keyword));
   }), [keywords, languageFilter, posts, sentimentFilter]);
 
+  useEffect(() => {
+    if (viewPaused || visiblePosts.length === 0) return;
+    feedRef.current?.scrollToIndex({ index: visiblePosts.length - 1, align: 'end', behavior: 'auto' });
+  }, [viewPaused, visiblePosts.length]);
+
   const applySearch = () => setKeywords(query.split(',').map(value => value.trim().toLowerCase()).filter(Boolean));
   const resetFilters = () => {
     setQuery('');
@@ -299,9 +305,10 @@ export default function Dashboard() {
                 <p className="py-20 text-center text-sm text-muted-foreground">Waiting for matching posts…</p>
               ) : (
                 <Virtuoso
+                  ref={feedRef}
                   data={visiblePosts}
                   alignToBottom
-                  followOutput="smooth"
+                  initialTopMostItemIndex={visiblePosts.length - 1}
                   computeItemKey={(_index, post) => postKey(post)}
                   aria-label="Unsampled live Bluesky post stream"
                   itemContent={(_index, post) => (
