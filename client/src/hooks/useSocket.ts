@@ -1,8 +1,6 @@
-import { useEffect, useState, useRef } from 'react';
+import { useCallback, useEffect, useState, useRef } from 'react';
 import { io, Socket } from 'socket.io-client';
 import type { BskyProfile, FirehoseStats, FirehosePost } from '@/variants/types';
-
-const POST_RENDER_INTERVAL_MS = 500;
 
 export function useSocket() {
   const [connected, setConnected] = useState(false);
@@ -11,6 +9,7 @@ export function useSocket() {
   const [profiles, setProfiles] = useState<Record<string, BskyProfile>>({});
   const socketRef = useRef<Socket | null>(null);
   const pendingPosts = useRef<FirehosePost[]>([]);
+  const pendingFrame = useRef<number | null>(null);
 
   useEffect(() => {
     if (socketRef.current) {
@@ -38,12 +37,15 @@ export function useSocket() {
       setStats(data);
     });
 
-    const flush = window.setInterval(() => {
-      if (pendingPosts.current.length === 0) return;
-      setPostBatch(pendingPosts.current.splice(0));
-    }, POST_RENDER_INTERVAL_MS);
-
-    socketInstance.on('post', (data: FirehosePost) => pendingPosts.current.push(data));
+    socketInstance.on('post', (data: FirehosePost) => {
+      pendingPosts.current.push(data);
+      if (pendingFrame.current !== null) return;
+      pendingFrame.current = window.requestAnimationFrame(() => {
+        pendingFrame.current = null;
+        const framePosts = pendingPosts.current.splice(0);
+        setPostBatch(previous => previous.concat(framePosts));
+      });
+    });
     socketInstance.on('profile', (batch: BskyProfile[]) => {
       setProfiles(previous => {
         const next = { ...previous };
@@ -54,11 +56,16 @@ export function useSocket() {
 
     return () => {
       socketInstance.disconnect();
-      window.clearInterval(flush);
+      if (pendingFrame.current !== null) window.cancelAnimationFrame(pendingFrame.current);
       pendingPosts.current = [];
+      pendingFrame.current = null;
       socketRef.current = null;
     };
   }, []);
 
-  return { connected, stats, postBatch, profiles };
+  const acknowledgePostBatch = useCallback((count: number) => {
+    setPostBatch(previous => previous.slice(count));
+  }, []);
+
+  return { connected, stats, postBatch, acknowledgePostBatch, profiles };
 }

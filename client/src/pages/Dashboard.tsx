@@ -60,7 +60,7 @@ function postKey(post: FirehosePost) {
 }
 
 export default function Dashboard() {
-  const { connected, stats: socketStats, postBatch, profiles } = useSocket();
+  const { connected, stats: socketStats, postBatch, acknowledgePostBatch, profiles } = useSocket();
   const [posts, setPosts] = useState<FirehosePost[]>([]);
   const [query, setQuery] = useState('');
   const [keywords, setKeywords] = useState<string[]>([]);
@@ -71,6 +71,7 @@ export default function Dashboard() {
   const [, setTick] = useState(0);
   const seenPostKeys = useRef(new Set<string>());
   const feedRef = useRef<VirtuosoHandle>(null);
+  const historySeeded = useRef(false);
 
   const statsQuery = trpc.firehose.stats.useQuery(undefined, { enabled: !connected, refetchInterval: 5_000 });
   const recentPostsQuery = trpc.firehose.recentPosts.useQuery({ limit: 100 }, { refetchOnWindowFocus: false });
@@ -95,22 +96,33 @@ export default function Dashboard() {
   }, []);
 
   useEffect(() => {
-    if (!recentPostsQuery.data || posts.length > 0) return;
-    const initialPosts = [...recentPostsQuery.data].reverse() as FirehosePost[];
-    initialPosts.forEach(post => seenPostKeys.current.add(postKey(post)));
-    setPosts(initialPosts);
-  }, [posts.length, recentPostsQuery.data]);
-
-  useEffect(() => {
-    if (viewPaused || postBatch.length === 0) return;
-    const freshPosts = postBatch.filter(post => {
+    if (!recentPostsQuery.data || historySeeded.current) return;
+    historySeeded.current = true;
+    const historicalPosts = (recentPostsQuery.data as FirehosePost[]).filter(post => {
       const key = postKey(post);
       if (seenPostKeys.current.has(key)) return false;
       seenPostKeys.current.add(key);
       return true;
     });
-    if (freshPosts.length > 0) setPosts(previous => previous.concat(freshPosts));
-  }, [postBatch, viewPaused]);
+    if (historicalPosts.length > 0) setPosts(previous => previous.concat(historicalPosts));
+  }, [recentPostsQuery.data]);
+
+  useEffect(() => {
+    if (postBatch.length === 0) return;
+    const batchSize = postBatch.length;
+    if (viewPaused) {
+      acknowledgePostBatch(batchSize);
+      return;
+    }
+    const freshPosts = [...postBatch].reverse().filter(post => {
+      const key = postKey(post);
+      if (seenPostKeys.current.has(key)) return false;
+      seenPostKeys.current.add(key);
+      return true;
+    });
+    if (freshPosts.length > 0) setPosts(previous => freshPosts.concat(previous));
+    acknowledgePostBatch(batchSize);
+  }, [acknowledgePostBatch, postBatch, viewPaused]);
 
   const stats: FirehoseStats = socketStats ?? statsQuery.data ?? {
     totalPosts: 0,
@@ -192,7 +204,7 @@ export default function Dashboard() {
 
   useEffect(() => {
     if (viewPaused || visiblePosts.length === 0) return;
-    feedRef.current?.scrollToIndex({ index: visiblePosts.length - 1, align: 'end', behavior: 'auto' });
+    feedRef.current?.scrollToIndex({ index: 0, align: 'start', behavior: 'auto' });
   }, [viewPaused, visiblePosts.length]);
 
   const applySearch = () => setKeywords(query.split(',').map(value => value.trim().toLowerCase()).filter(Boolean));
@@ -307,8 +319,7 @@ export default function Dashboard() {
                 <Virtuoso
                   ref={feedRef}
                   data={visiblePosts}
-                  alignToBottom
-                  initialTopMostItemIndex={visiblePosts.length - 1}
+                  initialTopMostItemIndex={0}
                   computeItemKey={(_index, post) => postKey(post)}
                   aria-label="Unsampled live Bluesky post stream"
                   itemContent={(_index, post) => (
