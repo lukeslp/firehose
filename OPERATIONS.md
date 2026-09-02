@@ -34,7 +34,7 @@ curl -sS https://dr.eamer.dev/bluesky/firehose/ | head
 
 **Use case**: Stop saving posts to database while keeping real-time dashboard active.
 
-**tRPC API** (recommended):
+**tRPC API** (direct loopback or authenticated admin only):
 ```typescript
 // Disable collection
 POST /api/trpc/firehose.disableCollection
@@ -57,19 +57,21 @@ Response: { enabled: boolean, currentWindow: string | null }
 ./scripts/stop-collection.sh
 ```
 
-**Effect**: Firehose continues ingesting and displaying posts in real-time, but posts are not saved to database.
+**Effect**: Firehose continues ingesting and displaying posts in real-time. The
+48-hour aggregate minute history continues to be saved; only filtered raw rows
+in `posts` are paused.
 
 ### 1.2 Full Service Stop
 
-**Service Manager** (recommended):
+**Native systemd** (authoritative on drummer):
 ```bash
-sm stop firehose      # Graceful shutdown
-sm restart firehose   # Full restart
+sudo systemctl stop firehose      # Graceful shutdown
+sudo systemctl restart firehose   # Full restart
 ```
 
 **tRPC API**:
 ```typescript
-POST /api/trpc/firehose.stop
+POST /api/trpc/firehose.stopStream
 // Closes WebSocket connection, clears reconnect timer, emits 'stopped' event
 ```
 
@@ -86,8 +88,8 @@ lsof -i :5052
 # Kill process
 kill -9 <PID>
 
-# Restart via service manager
-sm start firehose
+# Restart via systemd
+sudo systemctl start firehose
 ```
 
 ### 1.4 Database Truncation (Extreme)
@@ -96,7 +98,7 @@ sm start firehose
 
 ```bash
 # Stop service first
-sm stop firehose
+sudo systemctl stop firehose
 
 # Backup database
 cp firehose.db firehose.db.backup
@@ -109,29 +111,19 @@ rm firehose.db
 pnpm db:push  # Recreate schema
 
 # Restart service
-sm start firehose
+sudo systemctl start firehose
 ```
 
 ---
 
 ## 2. Collection Limits & Safety Parameters
 
-### 2.1 Sampling Rate
+### 2.1 Full-stream policy
 
-Control what percentage of firehose posts to save.
-
-**Configuration**:
-```bash
-# In start.sh or environment
-FIREHOSE_SAMPLE_RATE=1.0  # 100% (all posts)
-FIREHOSE_SAMPLE_RATE=0.5  # 50% (probabilistic sampling)
-FIREHOSE_SAMPLE_RATE=0.1  # 10% (aggressive sampling)
-FIREHOSE_SAMPLE_RATE=0.0  # 0% (disable database writes)
-```
-
-**Behavior**: Random sampling using `random.random() > SAMPLE_RATE`. Each post independently evaluated.
-
-**Restart required**: Yes (changes take effect on service restart)
+The public Socket.IO feed forwards every Jetstream post received by the
+service. There is no sampling parameter or percentage selector. Raw corpus
+storage remains independently controlled by collection windows and the content
+filters below.
 
 ### 2.2 Content Filtering
 
@@ -187,14 +179,15 @@ Body: {
 
 | Buffer | Size | Purpose | Location |
 |--------|------|---------|----------|
-| Recent posts | 100 posts | Real-time feed display | `firehose.ts:358` |
-| Sentiment history | 120 entries | 2-hour trending chart | `firehose.ts:176` |
-| Posts/minute tracking | 60-second rolling window | Throughput metrics | `firehose.ts:176` |
+| Recent posts | 100 posts | Reconnect/feed warm-up | `FirehoseService.recentPosts` |
+| Minute aggregates | 48 hours | Historical dashboard hydration | `statsMinute*` tables |
+| Posts/minute timestamps | 60-second rolling window | Exact live throughput | `postsLastMinute` |
 
 **Text truncation**:
 - `MAX_TEXT_LENGTH = 10000` characters (prevents memory bloat from extremely long posts)
 
-**Handle cache**: Unbounded DID→handle map (potential issue for long-running collection)
+**Handle cache**: capped at 20,000 DIDs. Enriched profiles use a separate
+20,000-entry TTL/LRU cache and a 10,000-DID queue cap.
 
 ### 2.5 Performance Limits
 
@@ -205,6 +198,7 @@ Body: {
 | WebSocket timeout | 30 seconds | (default) | Hang detection |
 | Recent posts query | 1-100 | `routers.ts:108` | API limit |
 | CSV export limit | 1-1000 | `routers.ts:53` | Query bound |
+| Minute history retention | 48 hours | `FirehoseService.MINUTE_RETENTION_HOURS` | Dashboard history |
 | Hourly stats query | 1-168 hours | `routers.ts:203` | Query performance |
 | Language/hashtag stats | 1-50 | `routers.ts:212,221` | Response size |
 
@@ -212,7 +206,13 @@ Body: {
 
 ## 3. Retention Policies
 
-### 3.1 Current Retention: 7-Day Rolling Window
+### 3.1 Dashboard aggregates
+
+`statsMinute`, `statsMinuteLanguage`, `statsMinuteContentType`, and
+`statsMinuteLabel` are always written every 10 seconds and kept for 48 hours.
+They contain counts only, not post text or author identifiers.
+
+### 3.2 Raw corpus: 7-Day Rolling Window
 
 **Strategy**: Keep last 7 days in live database, archive older data.
 

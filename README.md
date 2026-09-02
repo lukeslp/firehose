@@ -14,10 +14,10 @@ A real-time Bluesky analytics dashboard. It reads the Jetstream WebSocket and sh
 
 - **Live post feed** from Bluesky's Jetstream WebSocket, with sentiment-colored cards
 - **Sentiment analysis** that classifies each post as positive, negative, or neutral
-- **Sampling control** for 100%, 50%, 25%, or 10% of the stream without changing aggregate statistics
-- **Sentiment timeline** with the last 60 minutes of activity
-- **Keyword filters**, fullscreen mode, and CSV export
-- **SQLite persistence** for hourly and daily aggregates, hashtag trends, and language distribution
+- **Full-rate public stream** with no default sampling
+- **Historical timelines** for event rate, sentiment, languages, content types, and moderation labels
+- **Keyword and sentiment filters** that affect only the viewer's feed
+- **SQLite persistence** for 48 hours of lightweight minute aggregates; raw-post collection is separate and off by default
 
 ## Quick start
 
@@ -46,12 +46,13 @@ Open `http://localhost:3000/`. The firehose starts automatically.
 Bluesky Jetstream WebSocket
   → FirehoseService (sentiment analysis + feature extraction)
     ├→ In-memory stats (real-time)
-    ├→ SQLite (persistence, batched every 100 posts)
+    ├→ SQLite minute aggregates (always on, 48-hour retention)
+    ├→ Filtered raw-post corpus (operator-controlled, off by default)
     └→ Socket.IO broadcast
          → React Dashboard
 ```
 
-The server connects to `wss://jetstream2.us-east.bsky.network` and analyzes each post for sentiment. It broadcasts statistics every second and streams posts live or at the sampling rate selected by each client.
+The server connects to `wss://jetstream2.us-east.bsky.network`, analyzes each post for sentiment, persists aggregate minute buckets every 10 seconds, broadcasts statistics every second, and forwards every received post to connected clients.
 
 ## Environment
 
@@ -74,11 +75,15 @@ All at `/api/trpc`:
 
 | Endpoint | Description |
 |----------|-------------|
-| `firehose.startStream` | Start Jetstream connection |
-| `firehose.stopStream` | Stop Jetstream connection |
+| `firehose.startStream` | Start Jetstream connection (admin or direct loopback only) |
+| `firehose.stopStream` | Stop Jetstream connection (admin or direct loopback only) |
 | `firehose.stats` | Current statistics |
 | `firehose.recentPosts` | Last 100 posts |
-| `firehose.exportCSV` | CSV download |
+| `firehose.exportCSV` | Raw corpus CSV (admin or direct loopback only) |
+| `stats.timeline` | Persisted minute event-rate and sentiment history |
+| `stats.timelineByLanguage` | Persisted minute language trends |
+| `stats.timelineByContentType` | Persisted minute content-type trends |
+| `stats.timelineByLabel` | Persisted minute moderation-label trends |
 | `stats.hourly` | Hourly time-series |
 | `stats.languages` | Language distribution |
 | `stats.hashtags` | Hashtag trends |
@@ -87,7 +92,7 @@ All at `/api/trpc`:
 
 Connect to `/socket.io`:
 
-- `post` - emitted per processed post (respects client sample rate)
+- `post` - emitted for every processed post (not sampled)
 - `stats` - every 1 second, always full accuracy
 
 ## License

@@ -21,6 +21,7 @@ import {
 import { InsertPost } from '../drizzle/schema';
 import { buildMediaBundle, type MediaBundle } from './media';
 import { getProfileEnricher } from './profileEnricher';
+import { completedObservedMinuteRate, medianRate } from './rate';
 
 const FIREHOSE_URI = 'wss://jetstream2.us-east.bsky.network/subscribe?wantedCollections=app.bsky.feed.post';
 const MAX_TEXT_LENGTH = 10000;
@@ -103,6 +104,7 @@ export class FirehoseService extends EventEmitter {
   private fallbackPostsPerMinute = 0;
 
   private currentMinuteTs = Math.floor(Date.now() / 60_000) * 60_000;
+  private currentMinuteObservedAt = Date.now();
   private minuteCounts: MinuteSentimentCounts = { total: 0, positive: 0, neutral: 0, negative: 0 };
   private minuteByLanguage = new Map<string, MinuteSentimentCounts>();
   private minuteByContentType = new Map<MinuteContentType, number>();
@@ -144,9 +146,7 @@ export class FirehoseService extends EventEmitter {
       .slice(-5)
       .map(row => row.postsCount)
       .sort((a, b) => a - b);
-    this.fallbackPostsPerMinute = recentCounts.length > 0
-      ? recentCounts[Math.floor(recentCounts.length / 2)]
-      : 0;
+    this.fallbackPostsPerMinute = medianRate(recentCounts);
   }
 
   private startGlobalFlushLoop() {
@@ -192,8 +192,14 @@ export class FirehoseService extends EventEmitter {
     const minuteTs = Math.floor(Date.now() / 60_000) * 60_000;
     if (minuteTs !== this.currentMinuteTs) {
       void this.flushMinuteBucket();
-      this.fallbackPostsPerMinute = this.minuteCounts.total;
+      const observedSeconds = (Date.now() - this.currentMinuteObservedAt) / 1000;
+      this.fallbackPostsPerMinute = completedObservedMinuteRate(
+        this.minuteCounts.total,
+        observedSeconds,
+        this.fallbackPostsPerMinute,
+      );
       this.currentMinuteTs = minuteTs;
+      this.currentMinuteObservedAt = Date.now();
       this.minuteCounts = { total: 0, positive: 0, neutral: 0, negative: 0 };
       this.minuteByLanguage = new Map();
       this.minuteByContentType = new Map();

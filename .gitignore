@@ -84,6 +84,8 @@ temp_*
 
 # Database
 *.db
+*.db-wal
+*.db-shm
 *.sqlite
 *.sqlite3
 
