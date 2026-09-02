@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { Virtuoso } from 'react-virtuoso';
 import {
   Area,
   AreaChart,
@@ -15,7 +16,6 @@ import { trpc } from '@/lib/trpc';
 import { useSocket } from '@/hooks/useSocket';
 import type { BskyProfile, FirehosePost, FirehoseStats, MediaBundle } from '@/variants/types';
 
-const SESSION_POST_LIMIT = 600;
 const TREND_MINUTES = 60;
 const TIMEFRAMES = [
   { label: '15m', minutes: 15 },
@@ -55,6 +55,10 @@ function compactTime(value: Date | string | number) {
   return new Date(value).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
 }
 
+function postKey(post: FirehosePost) {
+  return post.uri || `${post.author?.did}:${post.createdAt}:${post.text}`;
+}
+
 export default function Dashboard() {
   const { connected, stats: socketStats, postBatch, profiles } = useSocket();
   const [posts, setPosts] = useState<FirehosePost[]>([]);
@@ -65,6 +69,7 @@ export default function Dashboard() {
   const [timeframe, setTimeframe] = useState(60);
   const [viewPaused, setViewPaused] = useState(false);
   const [, setTick] = useState(0);
+  const seenPostKeys = useRef(new Set<string>());
 
   const statsQuery = trpc.firehose.stats.useQuery(undefined, { enabled: !connected, refetchInterval: 5_000 });
   const recentPostsQuery = trpc.firehose.recentPosts.useQuery({ limit: 100 }, { refetchOnWindowFocus: false });
@@ -90,20 +95,20 @@ export default function Dashboard() {
 
   useEffect(() => {
     if (!recentPostsQuery.data || posts.length > 0) return;
-    setPosts(recentPostsQuery.data as FirehosePost[]);
+    const initialPosts = [...recentPostsQuery.data].reverse() as FirehosePost[];
+    initialPosts.forEach(post => seenPostKeys.current.add(postKey(post)));
+    setPosts(initialPosts);
   }, [posts.length, recentPostsQuery.data]);
 
   useEffect(() => {
     if (viewPaused || postBatch.length === 0) return;
-    setPosts(previous => {
-      const seen = new Set<string>();
-      return [...postBatch].reverse().concat(previous).filter(post => {
-        const key = post.uri || `${post.author?.did}:${post.createdAt}:${post.text}`;
-        if (seen.has(key)) return false;
-        seen.add(key);
-        return true;
-      }).slice(0, SESSION_POST_LIMIT);
+    const freshPosts = postBatch.filter(post => {
+      const key = postKey(post);
+      if (seenPostKeys.current.has(key)) return false;
+      seenPostKeys.current.add(key);
+      return true;
     });
+    if (freshPosts.length > 0) setPosts(previous => previous.concat(freshPosts));
   }, [postBatch, viewPaused]);
 
   const stats: FirehoseStats = socketStats ?? statsQuery.data ?? {
@@ -238,7 +243,7 @@ export default function Dashboard() {
           <button type="button" onClick={applySearch} className="min-h-10 rounded-md border border-border px-5 text-sm font-medium hover:bg-muted">Search</button>
           <button type="button" onClick={resetFilters} disabled={!filtersActive && !query} className="min-h-10 rounded-md border border-border px-5 text-sm font-medium hover:bg-muted disabled:opacity-40">Reset</button>
         </div>
-        {filtersActive && <p className="mt-2 text-xs text-muted-foreground">Showing {visiblePosts.length.toLocaleString()} matching posts in this session window.</p>}
+        {filtersActive && <p className="mt-2 text-xs text-muted-foreground">Showing {visiblePosts.length.toLocaleString()} matching posts received since page load.</p>}
       </section>
 
       <section aria-label="Live network summary" className="border-b border-border px-3 py-2 sm:px-4 sm:py-3 md:px-6">
@@ -289,12 +294,23 @@ export default function Dashboard() {
               </select>
               <button type="button" onClick={() => document.getElementById('feed-stream')?.scrollIntoView({ behavior: 'smooth', block: 'start' })} className="min-h-10 rounded-md border border-border px-3 text-xs font-medium hover:bg-muted">Focus feed</button>
             </div>
-            <div id="feed-stream" className="max-h-[58rem] min-h-[34rem] space-y-3 overflow-y-auto p-3 sm:p-4" tabIndex={0} aria-label="Live Bluesky posts">
+            <div id="feed-stream" className="h-[70vh] min-h-[34rem] max-h-[58rem]" aria-label="Live Bluesky posts">
               {visiblePosts.length === 0 ? (
                 <p className="py-20 text-center text-sm text-muted-foreground">Waiting for matching posts…</p>
-              ) : visiblePosts.map(post => (
-                <PostCard key={post.uri || `${post.author.did}-${post.createdAt}-${post.text}`} post={post} profile={profiles[post.author.did]} />
-              ))}
+              ) : (
+                <Virtuoso
+                  data={visiblePosts}
+                  alignToBottom
+                  followOutput="smooth"
+                  computeItemKey={(_index, post) => postKey(post)}
+                  aria-label="Unsampled live Bluesky post stream"
+                  itemContent={(_index, post) => (
+                    <div className="px-3 pb-3 first:pt-3 sm:px-4">
+                      <PostCard post={post} profile={profiles[post.author.did]} />
+                    </div>
+                  )}
+                />
+              )}
             </div>
           </section>
 
