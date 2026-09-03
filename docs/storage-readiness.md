@@ -48,6 +48,23 @@ A failed gate does not authorize manual edits to public artifacts. Preserve the
 failed report, inspect publisher logs and state, correct the source cause, and
 republish atomically.
 
+### Monitor launch
+
+Commit `a05389b` was deployed on drummer on September 3. A pre-publication
+canary at 09:28 UTC pinned dataset revision
+`0b115d4dfe9b50777856edd84915af4610e11ee3`, confirmed that its manifest still
+contained zero data files, reached both public routes, counted 82 local sealed
+pairs, and wrote a mode-0600 report owned by `coolhand`. This is the expected
+state before the first complete publication, not completion of the gate.
+
+The first live integrity audit then synchronized Galactus and verified 82 of 82
+source/destination pairs. The restore drill copied and verified
+`events-20260903T090640Z-1281969-0050.ndjson.zst` in an isolated temporary
+directory and removed the temporary copy. The daily readiness and integrity
+timers and weekly restore timer are active; their first scheduled runs are
+September 4 at 04:00 UTC, September 4 at approximately 04:30 UTC, and September
+6 at approximately 05:00 UTC, respectively.
+
 ## Seventy-two-hour readiness window
 
 Run from the first complete publication through three daily verifier reports.
