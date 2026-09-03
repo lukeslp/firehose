@@ -118,10 +118,13 @@ volume by `firehose-archive-backup.timer` on drummer. Beast's internal data
 volume is not used: the remote script fails closed unless Galactus is mounted.
 Galactus had about 6.3 TiB free when this job was installed on 2026-09-02.
 
-Operational alert: Galactus became unmounted after the successful 2026-09-02
-19:04 UTC run. The hourly service has failed closed since 20:04 UTC rather than
-falling back to Beast's internal disk. Remount the volume and rerun the service
-before the 24-hour local spool prunes segments that have not reached Galactus.
+Recovery note: Galactus became unmounted after the successful 2026-09-02
+19:04 UTC run, and the hourly service failed closed rather than falling back to
+Beast's internal disk. It was remounted on 2026-09-03 and a 01:20 UTC catch-up
+verified 26 new segments. Galactus then held 49 manifests and 49 verification
+markers. The same Firehose subtree was copied additively to geepers and an
+rsync checksum dry run reported no differences. The broad Galactus-to-geepers
+mirror remains capacity-constrained; geepers was 96% used with 38 GiB free.
 
 Destination:
 
