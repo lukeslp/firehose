@@ -214,6 +214,8 @@ class PublisherTests(unittest.TestCase):
                 observatory._coverage = lambda _date, _minutes: "complete"  # type: ignore[method-assign]
                 with mock.patch("huggingface_hub.HfApi", return_value=api):
                     first = observatory.publish()
+            with mock.patch.object(publisher, "utc_now", return_value=datetime(2026, 9, 5, 1, tzinfo=UTC)):
+                with mock.patch("huggingface_hub.HfApi", return_value=api):
                     second = observatory.publish()
             self.assertTrue(first["committed"])
             self.assertEqual(second, {"committed": False, "reason": "no changes"})

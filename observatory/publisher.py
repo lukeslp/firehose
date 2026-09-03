@@ -823,12 +823,21 @@ examples.
             commit_timestamp = utc_now().isoformat()
             cursor_bounds = [{"date": row["date"], "firstCursor": row["first_cursor"], "lastCursor": row["last_cursor"]} for row in self._daily_rows()]
             published_data_files = [dict(row) for row in self.conn.execute("SELECT path, row_count AS rows, sha256 FROM published_files WHERE path LIKE 'data/%' ORDER BY path")]
-            manifest = {
-                "schemaVersion": 1, "generatedAt": commit_timestamp, "collectorGitSha": self.collector_sha(),
+            manifest_content = {
+                "schemaVersion": 1, "collectorGitSha": self.collector_sha(),
                 "files": published_data_files, "cursorBounds": cursor_bounds,
                 "aggregateFreshnessAt": commit_timestamp if aggregate_changed else self._meta("aggregate_published_at"),
                 "sampleFreshnessAt": commit_timestamp if sample_changed else self._meta("sample_published_at"),
             }
+            manifest_signature = hashlib.sha256(
+                json.dumps(manifest_content, sort_keys=True, separators=(",", ":")).encode()
+            ).hexdigest()
+            manifest_generated_at = (
+                self._meta("manifest_generated_at")
+                if self._meta("manifest_content_sha256") == manifest_signature
+                else commit_timestamp
+            ) or commit_timestamp
+            manifest = {**manifest_content, "generatedAt": manifest_generated_at}
             docs["manifest.json"] = json.dumps(manifest, sort_keys=True, indent=2) + "\n"
             for path_in_repo, body in docs.items():
                 destination = temporary_path(suffix=".json" if path_in_repo.endswith(".json") else ".md")
@@ -854,6 +863,8 @@ examples.
             if sample_changed:
                 self._set_meta("sample_published_at", commit_timestamp)
                 self._set_meta("published_sample_bins", json.dumps(self._current_sample_bins(self.conn), sort_keys=True))
+            self._set_meta("manifest_content_sha256", manifest_signature)
+            self._set_meta("manifest_generated_at", manifest_generated_at)
             self.conn.commit()
             self.write_snapshot()
             return {"committed": True, "operations": len(operations)}
