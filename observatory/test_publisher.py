@@ -141,7 +141,9 @@ class PublisherTests(unittest.TestCase):
         try:
             with mock.patch.object(publisher, "utc_now", return_value=on_september_four):
                 observatory.ingest()
+                observatory.finalize_samples()
             self.assertEqual(observatory.conn.execute("SELECT COUNT(*) FROM published_samples").fetchone()[0], 0)
+            self.assertEqual(observatory.conn.execute("SELECT COUNT(*) FROM candidates").fetchone()[0], 3)
             with mock.patch.object(publisher, "utc_now", return_value=on_september_five):
                 observatory.finalize_samples()
             rows = observatory.conn.execute("SELECT sampling_weight FROM published_samples").fetchall()

@@ -1,0 +1,25 @@
+[Unit]
+Description=Restore-test one sealed Bluesky firehose segment from Galactus
+After=network-online.target
+Wants=network-online.target
+ConditionPathExists=/home/coolhand/.ssh/config
+
+[Service]
+Type=oneshot
+User=coolhand
+Group=coolhand
+WorkingDirectory=/home/coolhand
+ExecStart=/usr/bin/ssh -F /home/coolhand/.ssh/config -o IdentityAgent=none -o BatchMode=yes -o ConnectTimeout=15 -o ControlMaster=no -o ControlPath=none beast /Users/luke/bin/firehose-archive-backup.sh restore-drill
+TimeoutStartSec=30min
+Nice=10
+IOSchedulingClass=idle
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=read-only
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+LockPersonality=true
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6

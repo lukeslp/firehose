@@ -115,16 +115,19 @@ find /home/coolhand/firehose-data/raw -type f -name '*.manifest.json' -print
 
 The recorder's local spool is copied hourly to Beast's mounted Galactus backup
 volume by `firehose-archive-backup.timer` on drummer. Beast's internal data
-volume is not used: the remote script fails closed unless Galactus is mounted.
-Galactus had about 6.3 TiB free when this job was installed on 2026-09-02.
+volume is not used: the remote script fails closed unless Galactus is mounted
+and has at least 100 GiB free. Galactus had about 6.2 TiB free when the guard
+and integrity jobs were validated on 2026-09-03.
 
 Recovery note: Galactus became unmounted after the successful 2026-09-02
 19:04 UTC run, and the hourly service failed closed rather than falling back to
-Beast's internal disk. It was remounted on 2026-09-03 and a 01:20 UTC catch-up
-verified 26 new segments. Galactus then held 49 manifests and 49 verification
-markers. The same Firehose subtree was copied additively to geepers and an
-rsync checksum dry run reported no differences. The broad Galactus-to-geepers
-mirror remains capacity-constrained; geepers was 96% used with 38 GiB free.
+Beast's internal disk. It was remounted on 2026-09-03 and the hourly job has
+remained healthy. At the 09:06 UTC readiness baseline, drummer held 80 sealed
+pairs (696,909,376 compressed bytes) and Galactus held 80 verified pairs. The
+targeted Firehose subtree on geepers held 49 verified pairs, but geepers was 96%
+used with about 37 GiB free. Broad Galactus mirroring is therefore suspended;
+its 100 GiB destination guard must remain in force until space is reclaimed or
+storage is added.
 
 Destination:
 
@@ -140,13 +143,20 @@ segment is checked against the manifest byte count and SHA-256 before a local
 
 The Beast-side script is source-controlled at
 `deploy/beast/firehose-archive-backup.sh` and installed at
-`/Users/luke/bin/firehose-archive-backup.sh`. The scheduler deliberately runs
-on always-on drummer because a newly-created Beast LaunchAgent was denied
-background access to the external volume by macOS. Inspect with:
+`/Users/luke/bin/firehose-archive-backup.sh`. Its default `backup` mode performs
+the bounded hourly transfer. `audit` recomputes every destination checksum and
+compares a consistent source manifest inventory; `restore-drill` additionally
+copies the newest sealed pair to an isolated temporary directory, verifies it,
+and removes the temporary copy. Audit and restore modes never apply retention.
+The scheduler deliberately runs on always-on drummer because a newly-created
+Beast LaunchAgent was denied background access to the external volume by
+macOS. Inspect with:
 
 ```bash
 systemctl status firehose-archive-backup.timer
 systemctl status firehose-archive-backup.service
+systemctl status firehose-archive-integrity.timer
+systemctl status firehose-archive-restore-drill.timer
 journalctl -u firehose-archive-backup.service
 ```
 
@@ -211,10 +221,38 @@ firehose-observatory-ingest.service
 firehose-observatory-ingest.timer
 firehose-observatory-publish.service
 firehose-observatory-publish.timer
+firehose-observatory-readiness.service
+firehose-observatory-readiness.timer
 ```
 
-Rollback is independent of the dashboard: disable those two timers and remove
-the Caddy alias. The live stream and raw archive continue unchanged.
+The publisher runs at 03:15 UTC. The readiness verifier follows at 04:00 UTC
+and writes mode-0600 JSON reports beneath
+`/home/coolhand/firehose-data/observatory/readiness/`. It downloads every
+artifact from one immutable Hugging Face revision, requires exact agreement
+between the remote manifest and local `published_files` ledger, validates the
+latest complete month's Parquet schemas, counts, and checksums, compares stable
+aggregate fields to local SQLite state, rejects descriptions newer than the
+two-complete-day correction window, and probes both public browser routes.
+
+Run the verifier without `--require-complete` during the initial partial day.
+Once the first complete UTC date is due, the timer uses `--require-complete` so
+a missing publication fails visibly:
+
+```bash
+observatory/.venv/bin/python observatory/readiness.py
+observatory/.venv/bin/python observatory/readiness.py --require-complete
+```
+
+The archive integrity audit runs daily at 04:30 UTC. The sealed-segment restore
+drill runs Sundays at 05:00 UTC. Both execute the same installed Beast script
+used by the hourly backup, so mount and free-space checks apply consistently.
+
+Rollback is independent of the dashboard: disable the observatory timers and
+remove the Caddy alias. The live stream and raw archive continue unchanged.
+
+The storage-tier responsibilities, first-publication gate, 72-hour observation
+window, and encrypted-cloud decision gate are in
+[`docs/storage-readiness.md`](docs/storage-readiness.md).
 
 ## Routine checks
 

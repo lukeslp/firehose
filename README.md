@@ -131,7 +131,10 @@ SQLite state and never exposes sampled descriptions through tRPC.
 The publisher lives in `observatory/`, with pinned PyArrow and Hugging Face
 dependencies. Its local state defaults to
 `/home/coolhand/firehose-data/observatory`. See `OPERATIONS.md` before enabling
-its ingest or publish timers.
+its ingest, publish, or readiness timers. The daily readiness verifier pins one
+Hugging Face revision, checks manifest-to-ledger equality, Parquet schemas,
+checksums and row counts, correction-window withholding, and both public browser
+routes.
 
 ## License
 
