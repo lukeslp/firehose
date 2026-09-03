@@ -84,6 +84,23 @@ drifts, a source pair is missing at the destination, a public ledger diverges,
 the correction window is breached, Galactus falls below 100 GiB free, or
 geepers loses further material headroom.
 
+### Pre-window observation — September 3 10:10 UTC
+
+- Drummer held 85 sealed segment/manifest pairs totaling 727,085,097 compressed
+  bytes. The 10:00 UTC Galactus backup completed successfully, as did the most
+  recent ingest and pre-publication publisher runs.
+- Geepers still exposed only 39,276,978,176 available bytes at 96% filesystem
+  use. Broad mirroring remains suspended; no recovery data was removed.
+- Both configured cloud-provider roots existed on Beast. The Proton Drive
+  client process was running; no Google Drive client process was observed.
+  Root presence and a running client are availability signals only, not sync or
+  restore evidence. Neither provider is approved as a recovery tier.
+
+These measurements precede the first complete publication and do not count as
+one of the three daily readiness reports. Repeat the provider checks read-only
+inside the window and defer all cloud writes until measured growth determines
+the retention and size ceiling.
+
 ## Encrypted cloud gate
 
 Choose one provider only after the 72-hour measurements. The first cloud copy
