@@ -12,6 +12,7 @@ EnvironmentFile=/etc/dreamer/firehose-observatory.env
 Environment=HOME=/home/coolhand
 Environment=HF_HOME=/home/coolhand/firehose-data/observatory/huggingface
 Environment=HF_XET_CACHE=/home/coolhand/firehose-data/observatory/huggingface/xet
+Environment=HF_TOKEN_PATH=/home/coolhand/.cache/huggingface/token
 ExecStart=/home/coolhand/servers/firehose/observatory/.venv/bin/python /home/coolhand/servers/firehose/observatory/publisher.py publish
 NoNewPrivileges=true
 PrivateTmp=true
