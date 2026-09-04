@@ -68,6 +68,8 @@ class PublisherTests(unittest.TestCase):
             self.assertEqual((language["language"], language["images_with_alt"]), ("en", 2))
             snapshot = json.loads((self.state / "public-snapshot.json").read_text())
             self.assertNotIn("did", json.dumps(snapshot))
+            self.assertFalse(snapshot["status"]["hasPublishedAggregates"])
+            self.assertIsNone(snapshot["status"]["aggregateFreshnessAt"])
             again = observatory.ingest()
             self.assertEqual(again["processed"], 0)
             self.assertEqual(observatory.conn.execute("SELECT post_total FROM daily_metrics").fetchone()[0], 2)
@@ -223,6 +225,9 @@ class PublisherTests(unittest.TestCase):
             self.assertEqual(second, {"committed": False, "reason": "no changes"})
             self.assertEqual(len(api.commits), 1)
             self.assertEqual(json.loads(observatory._meta("published_sample_bins") or "{}")["len_1_25"], 1)
+            status = json.loads((self.state / "public-snapshot.json").read_text())["status"]
+            self.assertTrue(status["hasPublishedAggregates"])
+            self.assertEqual(status["aggregateFreshnessAt"], fixed_now.isoformat())
 
             delete = {"kind": "commit", "time_us": "1788307201000000", "did": "did:plc:author", "commit": {"collection": "app.bsky.feed.post", "operation": "delete", "rkey": "one"}}
             write_segment(self.raw, "b", [delete])
@@ -262,6 +267,9 @@ class PublisherTests(unittest.TestCase):
                         observatory.publish()
             self.assertEqual(observatory.conn.execute("SELECT COUNT(*) FROM published_files").fetchone()[0], 0)
             self.assertEqual(observatory.conn.execute("SELECT path, sha256 FROM segments").fetchall(), checkpoint)
+            status = json.loads((self.state / "public-snapshot.json").read_text())["status"]
+            self.assertFalse(status["hasPublishedAggregates"])
+            self.assertIsNone(status["aggregateFreshnessAt"])
         finally:
             observatory.close()
 

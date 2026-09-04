@@ -260,13 +260,17 @@ export default function AccessibilityObservatory() {
             <Metric
               label="Aggregate freshness"
               value={
-                status?.state === "ready"
+                status?.hasPublishedAggregates
                   ? "Published"
                   : status?.state === "paused"
                     ? "Paused"
-                    : "Partial"
+                    : "Awaiting publication"
               }
-              detail={time(status?.aggregateFreshnessAt)}
+              detail={
+                status?.hasPublishedAggregates
+                  ? time(status.aggregateFreshnessAt)
+                  : "Waiting for first publication"
+              }
             />
           </div>
           {last && last.coverage_state !== "complete" && (
@@ -684,7 +688,7 @@ export default function AccessibilityObservatory() {
               Aggregate fields/schema may be reused under CC0; sampled
               descriptions retain their authors’ rights.
             </p>
-            {status?.firstCompleteDate ? (
+            {status?.hasPublishedAggregates ? (
               <p>
                 <a
                   href="https://huggingface.co/datasets/lukeslp/bluesky-alt-text-observatory"
@@ -699,7 +703,7 @@ export default function AccessibilityObservatory() {
             ) : (
               <p role="status">
                 Parquet downloads and the full dataset documentation will be
-                linked here after the first complete UTC day is published.
+                linked here after aggregate publication is confirmed.
               </p>
             )}
           </div>

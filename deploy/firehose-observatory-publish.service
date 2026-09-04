@@ -10,6 +10,8 @@ Group=coolhand
 WorkingDirectory=/home/coolhand/servers/firehose
 EnvironmentFile=/etc/dreamer/firehose-observatory.env
 Environment=HOME=/home/coolhand
+Environment=HF_HOME=/home/coolhand/firehose-data/observatory/huggingface
+Environment=HF_XET_CACHE=/home/coolhand/firehose-data/observatory/huggingface/xet
 ExecStart=/home/coolhand/servers/firehose/observatory/.venv/bin/python /home/coolhand/servers/firehose/observatory/publisher.py publish
 NoNewPrivileges=true
 PrivateTmp=true

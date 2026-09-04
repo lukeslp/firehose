@@ -33,6 +33,7 @@ export interface ObservatoryStatus {
   aggregateFreshnessAt: string | null;
   sampleFreshnessAt: string | null;
   firstCompleteDate: string | null;
+  hasPublishedAggregates: boolean;
   archiveFormatVersion: number;
   samplingPaused: boolean;
   sampleUploadPaused: boolean;

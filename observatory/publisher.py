@@ -614,9 +614,26 @@ class Observatory:
         first_complete = next((row["date"] for row in daily if row["coverage_state"] == "complete"), None)
         sampling_paused = self._meta("sampling_paused") == "1"
         sample_upload_paused = self._meta("sample_upload_paused") == "1"
-        state = "paused" if sampling_paused or sample_upload_paused else "ready" if first_complete else "partial"
+        aggregate_published_at = self._meta("aggregate_published_at")
+        published_aggregate_paths = {
+            str(row[0])
+            for row in self.conn.execute(
+                "SELECT path FROM published_files WHERE path LIKE 'data/daily_%'"
+            )
+        }
+        has_published_aggregates = bool(
+            aggregate_published_at
+            and any(path.startswith("data/daily_metrics/") for path in published_aggregate_paths)
+            and any(path.startswith("data/daily_language_metrics/") for path in published_aggregate_paths)
+        )
+        state = "paused" if sampling_paused or sample_upload_paused else "ready" if first_complete and has_published_aggregates else "partial"
         updated = utc_now().isoformat()
         pause_reason = self._meta("sampling_pause_reason") if sampling_paused else self._meta("sample_upload_pause_reason") if sample_upload_paused else None
+        message = pause_reason
+        if not message and not first_complete:
+            message = "UTC day is still partial; aggregates publish after the next complete day."
+        elif not message and not has_published_aggregates:
+            message = "Complete local aggregates are awaiting confirmed public publication."
         snapshot = {
             "schemaVersion": 1,
             "generatedAt": updated,
@@ -624,11 +641,12 @@ class Observatory:
             "dailyLanguageMetrics": languages,
             "sampleLengthDistribution": sample_bins,
             "status": {
-                "state": state, "updatedAt": updated, "aggregateFreshnessAt": self._meta("last_ingest_at") if daily else None,
+                "state": state, "updatedAt": updated, "aggregateFreshnessAt": aggregate_published_at,
                 "sampleFreshnessAt": self._meta("sample_published_at"), "firstCompleteDate": first_complete,
+                "hasPublishedAggregates": has_published_aggregates,
                 "archiveFormatVersion": 2, "samplingPaused": sampling_paused,
                 "sampleUploadPaused": sample_upload_paused,
-                "message": pause_reason if pause_reason else ("UTC day is still partial; aggregates publish after the next complete day." if not first_complete else None),
+                "message": message,
             },
         }
         output = self.config.state_dir / "public-snapshot.json"

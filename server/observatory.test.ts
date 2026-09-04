@@ -66,6 +66,7 @@ describe("public observatory snapshot boundary", () => {
           aggregateFreshnessAt: "2026-09-02T00:00:00Z",
           sampleFreshnessAt: null,
           firstCompleteDate: "2026-09-01",
+          hasPublishedAggregates: true,
           archiveFormatVersion: 2,
           samplingPaused: false,
           sampleUploadPaused: false,
@@ -95,6 +96,7 @@ describe("public observatory snapshot boundary", () => {
     });
     expect(observatory.observatoryStatus()).toMatchObject({
       state: "ready",
+      hasPublishedAggregates: true,
       archiveFormatVersion: 2,
       sampleLengthDistribution: { len_1_25: 2 },
     });

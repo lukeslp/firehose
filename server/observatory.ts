@@ -62,6 +62,7 @@ const EMPTY_STATUS: ObservatoryStatus = {
   aggregateFreshnessAt: null,
   sampleFreshnessAt: null,
   firstCompleteDate: null,
+  hasPublishedAggregates: false,
   archiveFormatVersion: 2,
   samplingPaused: false,
   sampleUploadPaused: false,
@@ -99,6 +100,7 @@ function statusFrom(value: unknown): ObservatoryStatus {
       typeof status.firstCompleteDate === "string"
         ? status.firstCompleteDate
         : null,
+    hasPublishedAggregates: status.hasPublishedAggregates === true,
     archiveFormatVersion:
       typeof status.archiveFormatVersion === "number" &&
       Number.isInteger(status.archiveFormatVersion)
