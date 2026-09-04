@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Bar,
   BarChart,
@@ -11,6 +11,11 @@ import {
   YAxis,
 } from "recharts";
 import { trpc } from "@/lib/trpc";
+import {
+  type AccessibilitySummary,
+  safeMean,
+  summarizeAccessibility,
+} from "@/lib/accessibilityMetrics";
 
 type Daily = {
   date: string;
@@ -39,6 +44,10 @@ const rate = (numerator: number, denominator: number) =>
 const percent = (value: number | null) =>
   value == null ? "—" : `${(value * 100).toFixed(1)}%`;
 const whole = (value: number) => value.toLocaleString();
+const decimal = (value: number | null) =>
+  value == null
+    ? "—"
+    : value.toLocaleString(undefined, { maximumFractionDigits: 1 });
 const time = (value: string | null | undefined) =>
   value
     ? new Intl.DateTimeFormat(undefined, {
@@ -48,17 +57,16 @@ const time = (value: string | null | undefined) =>
       }).format(new Date(value)) + " UTC"
     : "Waiting for first publication";
 
-function total(rows: Daily[]) {
-  return rows.reduce(
-    (result, row) => ({
-      images: result.images + row.images,
-      imagesWithAlt: result.imagesWithAlt + row.images_with_alt,
-      imagePosts: result.imagePosts + row.image_posts,
-      fullyDescribed: result.fullyDescribed + row.fully_described_image_posts,
-    }),
-    { images: 0, imagesWithAlt: 0, imagePosts: 0, fullyDescribed: 0 }
-  );
-}
+type HistoryWindow = 7 | 30 | 90;
+type HistoryLens = "rates" | "counts" | "depth";
+type HistoryRow = Daily & {
+  coverage: string;
+  imageAltPercent: number | null;
+  completePercent: number | null;
+  imagesMissingAlt: number;
+  averageWords: number | null;
+  averageCharacters: number | null;
+};
 
 function goatEvent() {
   const counter = (
@@ -75,6 +83,8 @@ function goatEvent() {
 }
 
 export default function AccessibilityObservatory() {
+  const [historyWindow, setHistoryWindow] = useState<HistoryWindow>(30);
+  const [historyLens, setHistoryLens] = useState<HistoryLens>("rates");
   const liveQuery = trpc.stats.accessibilityTimeline.useQuery(
     { minutes: 1440 },
     { refetchInterval: 60_000 }
@@ -84,7 +94,7 @@ export default function AccessibilityObservatory() {
     { refetchInterval: 5 * 60_000 }
   );
   const languageQuery = trpc.stats.accessibilityLanguages.useQuery(
-    { days: 30, top: 12 },
+    { days: historyWindow, top: 12 },
     { refetchInterval: 5 * 60_000 }
   );
   const statusQuery = trpc.stats.observatoryStatus.useQuery(undefined, {
@@ -92,10 +102,11 @@ export default function AccessibilityObservatory() {
   });
   const daily = (dailyQuery.data ?? []) as Daily[];
   const last = daily.at(-1);
-  const trailing = total(daily.slice(-30));
+  const selectedDaily = daily.slice(-historyWindow);
+  const selectedSummary = summarizeAccessibility(selectedDaily);
   const completeDaily = daily.filter(row => row.coverage_state === "complete");
-  const recent30 = total(completeDaily.slice(-30));
-  const previous30 = total(completeDaily.slice(-60, -30));
+  const recent30 = summarizeAccessibility(completeDaily.slice(-30));
+  const previous30 = summarizeAccessibility(completeDaily.slice(-60, -30));
   const delta =
     rate(recent30.imagesWithAlt, recent30.images) == null ||
     rate(previous30.imagesWithAlt, previous30.images) == null
@@ -124,6 +135,13 @@ export default function AccessibilityObservatory() {
     { label: "151–300", count: distribution.len_151_300 ?? 0 },
     { label: "301+", count: distribution.len_301_plus ?? 0 },
   ];
+  const aggregateBins = [
+    { label: "1–25", count: selectedSummary.lengthBins.len_1_25 },
+    { label: "26–75", count: selectedSummary.lengthBins.len_26_75 },
+    { label: "76–150", count: selectedSummary.lengthBins.len_76_150 },
+    { label: "151–300", count: selectedSummary.lengthBins.len_151_300 },
+    { label: "301+", count: selectedSummary.lengthBins.len_301_plus },
+  ];
   const loading =
     liveQuery.isLoading ||
     dailyQuery.isLoading ||
@@ -134,7 +152,7 @@ export default function AccessibilityObservatory() {
     dailyQuery.isError ||
     languageQuery.isError ||
     statusQuery.isError;
-  const shortDaily = daily.slice(-30).map(row => ({
+  const historyRows = selectedDaily.map(row => ({
     ...row,
     coverage:
       row.coverage_state === "complete"
@@ -148,9 +166,12 @@ export default function AccessibilityObservatory() {
       row.fully_described_post_rate == null
         ? null
         : row.fully_described_post_rate * 100,
+    imagesMissingAlt: Math.max(0, row.images - row.images_with_alt),
+    averageWords: safeMean(row.alt_words, row.alt_descriptions),
+    averageCharacters: safeMean(row.alt_characters, row.alt_descriptions),
   }));
   const observedMinuteBuckets = liveQuery.data?.length ?? 0;
-  const hasDailyTrend = shortDaily.length > 0;
+  const hasDailyTrend = historyRows.length > 0;
   const hasReleasedSample = bins.some(bin => bin.count > 0);
 
   useEffect(() => {
@@ -283,64 +304,72 @@ export default function AccessibilityObservatory() {
         </section>
 
         <section
+          aria-labelledby="history-controls-title"
+          className="mt-10 border-y border-border bg-card px-4 py-5 sm:px-5"
+        >
+          <div className="flex flex-wrap items-end justify-between gap-5">
+            <div>
+              <h2 id="history-controls-title" className="text-section-title">
+                Explore published history
+              </h2>
+              <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
+                These controls affect the daily aggregates and declared-language
+                table below. The rolling 24-hour cards above remain live.
+              </p>
+            </div>
+            <p
+              className="text-sm font-semibold tabular-nums"
+              aria-live="polite"
+            >
+              {historyRows.length} observed{" "}
+              {historyRows.length === 1 ? "date" : "dates"}
+              {historyRows.length < historyWindow
+                ? ` available in the ${historyWindow}-day window`
+                : " shown"}
+            </p>
+          </div>
+          <div className="mt-5 grid gap-5 md:grid-cols-2">
+            <ChoiceGroup
+              legend="Time window"
+              name="history-window"
+              value={String(historyWindow)}
+              options={[
+                { value: "7", label: "7 days" },
+                { value: "30", label: "30 days" },
+                { value: "90", label: "90 days" },
+              ]}
+              onChange={value =>
+                setHistoryWindow(Number(value) as HistoryWindow)
+              }
+            />
+            <ChoiceGroup
+              legend="Daily chart view"
+              name="history-lens"
+              value={historyLens}
+              options={[
+                { value: "rates", label: "Rates" },
+                { value: "counts", label: "Counts" },
+                { value: "depth", label: "Description depth" },
+              ]}
+              onChange={value => setHistoryLens(value as HistoryLens)}
+            />
+          </div>
+        </section>
+
+        <section
           aria-labelledby="daily-trends-title"
           className="mt-10 border-t border-border pt-6"
         >
           <h2 id="daily-trends-title" className="text-section-title">
-            Daily image-description coverage
+            Daily published record · {historyWindow} days
           </h2>
           <p className="mt-2 max-w-3xl text-sm text-muted-foreground">
             Exact counts and written coverage states are shown below the chart.
             Partial and gapped days should not be compared as full days.
           </p>
+          <HistorySummary lens={historyLens} summary={selectedSummary} />
           {hasDailyTrend ? (
-            <div
-              className="mt-4"
-              role="img"
-              aria-label="Line chart showing daily image alternative-text coverage and fully-described image-post rate for the last 30 days"
-            >
-              <ResponsiveContainer width="100%" height={280}>
-                <LineChart
-                  data={shortDaily}
-                  margin={{ top: 8, right: 16, bottom: 0, left: 0 }}
-                >
-                  <CartesianGrid stroke="var(--border)" strokeOpacity={0.75} />
-                  <XAxis
-                    dataKey="date"
-                    tick={{ fontSize: 11 }}
-                    minTickGap={36}
-                  />
-                  <YAxis
-                    domain={[0, 100]}
-                    unit="%"
-                    tick={{ fontSize: 11 }}
-                    width={48}
-                  />
-                  <Tooltip
-                    formatter={(value: number) => `${value.toFixed(1)}%`}
-                  />
-                  <Line
-                    type="linear"
-                    dataKey="imageAltPercent"
-                    name="Images with alt"
-                    stroke="var(--bsky-blue)"
-                    strokeWidth={3}
-                    dot={{ r: 2 }}
-                    isAnimationActive={false}
-                  />
-                  <Line
-                    type="linear"
-                    dataKey="completePercent"
-                    name="Fully described posts"
-                    stroke="var(--sentiment-positive)"
-                    strokeWidth={2}
-                    strokeDasharray="6 4"
-                    dot={false}
-                    isAnimationActive={false}
-                  />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
+            <DailyHistoryChart rows={historyRows} lens={historyLens} />
           ) : (
             <p
               role="status"
@@ -352,13 +381,18 @@ export default function AccessibilityObservatory() {
           )}
           <details className="mt-4 rounded-md border border-border p-3">
             <summary className="cursor-pointer font-semibold">
-              Show exact daily coverage table
+              Show exact daily evidence table
             </summary>
-            <div className="mt-3 overflow-x-auto">
+            <div
+              className="mt-3 overflow-x-auto"
+              role="region"
+              aria-label="Daily accessibility evidence"
+              tabIndex={0}
+            >
               <table className="w-full text-left text-sm">
                 <caption className="mb-2 text-left text-xs text-muted-foreground">
-                  Daily observed image coverage. Rates use exact image and
-                  image-post denominators.
+                  Daily published aggregates with exact denominators and
+                  description-depth measures.
                 </caption>
                 <thead>
                   <tr className="border-b border-border">
@@ -377,10 +411,19 @@ export default function AccessibilityObservatory() {
                     <th scope="col" className="p-2 text-right">
                       Image posts
                     </th>
+                    <th scope="col" className="p-2 text-right">
+                      Missing alt
+                    </th>
+                    <th scope="col" className="p-2 text-right">
+                      Mean words / alt
+                    </th>
+                    <th scope="col" className="p-2 text-right">
+                      Mean chars / alt
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
-                  {shortDaily.map(row => (
+                  {historyRows.map(row => (
                     <tr key={row.date} className="border-b border-border">
                       <th scope="row" className="p-2 font-medium">
                         {row.date}
@@ -402,11 +445,20 @@ export default function AccessibilityObservatory() {
                       <td className="p-2 text-right tabular-nums">
                         {whole(row.image_posts)}
                       </td>
+                      <td className="p-2 text-right tabular-nums">
+                        {whole(row.imagesMissingAlt)}
+                      </td>
+                      <td className="p-2 text-right tabular-nums">
+                        {decimal(row.averageWords)}
+                      </td>
+                      <td className="p-2 text-right tabular-nums">
+                        {decimal(row.averageCharacters)}
+                      </td>
                     </tr>
                   ))}
-                  {!shortDaily.length && (
+                  {!historyRows.length && (
                     <tr>
-                      <td colSpan={5} className="p-3 text-muted-foreground">
+                      <td colSpan={8} className="p-3 text-muted-foreground">
                         No daily aggregate rows are available yet.
                       </td>
                     </tr>
@@ -436,7 +488,7 @@ export default function AccessibilityObservatory() {
             >
               <ResponsiveContainer width="100%" height={250}>
                 <BarChart
-                  data={shortDaily}
+                  data={historyRows}
                   margin={{ top: 8, right: 16, bottom: 0, left: 0 }}
                 >
                   <CartesianGrid stroke="var(--border)" strokeOpacity={0.75} />
@@ -468,15 +520,24 @@ export default function AccessibilityObservatory() {
             </p>
           )}
           <p className="mt-2 text-sm text-muted-foreground">
-            Last 30 days: {whole(trailing.imagesWithAlt)} of{" "}
-            {whole(trailing.images)} images had non-empty alt (
-            {percent(rate(trailing.imagesWithAlt, trailing.images))}).
+            Selected {historyWindow}-day window:{" "}
+            {whole(selectedSummary.imagesWithAlt)} of{" "}
+            {whole(selectedSummary.images)} images had non-empty alt (
+            {percent(
+              rate(selectedSummary.imagesWithAlt, selectedSummary.images)
+            )}
+            ).
           </p>
           <details className="mt-4 rounded-md border border-border p-3">
             <summary className="cursor-pointer font-semibold">
               Show exact daily volume table
             </summary>
-            <div className="mt-3 overflow-x-auto">
+            <div
+              className="mt-3 overflow-x-auto"
+              role="region"
+              aria-label="Daily image volume"
+              tabIndex={0}
+            >
               <table className="w-full text-left text-sm">
                 <caption className="mb-2 text-left text-xs text-muted-foreground">
                   Observed daily image and image-post volume.
@@ -498,7 +559,7 @@ export default function AccessibilityObservatory() {
                   </tr>
                 </thead>
                 <tbody>
-                  {shortDaily.map(row => (
+                  {historyRows.map(row => (
                     <tr key={row.date} className="border-b border-border">
                       <th scope="row" className="p-2 font-medium">
                         {row.date}
@@ -512,7 +573,7 @@ export default function AccessibilityObservatory() {
                       <td className="p-2">{row.coverage}</td>
                     </tr>
                   ))}
-                  {!shortDaily.length && (
+                  {!historyRows.length && (
                     <tr>
                       <td colSpan={4} className="p-3 text-muted-foreground">
                         No daily volume rows are available yet.
@@ -526,18 +587,149 @@ export default function AccessibilityObservatory() {
         </section>
 
         <section
+          aria-labelledby="depth-title"
+          className="mt-10 border-t border-border pt-6"
+        >
+          <h2 id="depth-title" className="text-section-title">
+            Description depth · {historyWindow} days
+          </h2>
+          <p className="mt-2 max-w-3xl text-sm text-muted-foreground">
+            These exact aggregates cover every observed non-empty image
+            description in the selected window. Length shows how much was
+            written, not whether a description was useful or accurate.
+          </p>
+          <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <Metric
+              label="Non-empty descriptions"
+              value={whole(selectedSummary.altDescriptions)}
+              detail={`${whole(selectedSummary.altWords)} words across all observed alternatives`}
+            />
+            <Metric
+              label="Mean words / description"
+              value={decimal(
+                safeMean(
+                  selectedSummary.altWords,
+                  selectedSummary.altDescriptions
+                )
+              )}
+              detail="Whitespace-delimited words in non-empty alternatives"
+            />
+            <Metric
+              label="Mean characters / description"
+              value={decimal(
+                safeMean(
+                  selectedSummary.altCharacters,
+                  selectedSummary.altDescriptions
+                )
+              )}
+              detail="Characters after trimming surrounding whitespace"
+            />
+            <Metric
+              label="Images missing alt"
+              value={whole(selectedSummary.imagesMissingAlt)}
+              detail={`${percent(rate(selectedSummary.imagesMissingAlt, selectedSummary.images))} of observed images`}
+            />
+          </div>
+          {selectedSummary.altDescriptions ? (
+            <div
+              className="mt-4"
+              role="img"
+              aria-label={`Bar chart showing ${whole(selectedSummary.altDescriptions)} observed descriptions in five character-length bands for the selected ${historyWindow}-day window`}
+            >
+              <ResponsiveContainer width="100%" height={240}>
+                <BarChart data={aggregateBins}>
+                  <CartesianGrid stroke="var(--border)" strokeOpacity={0.75} />
+                  <XAxis dataKey="label" />
+                  <YAxis allowDecimals={false} width={58} />
+                  <Tooltip />
+                  <Bar
+                    dataKey="count"
+                    name="Observed descriptions"
+                    fill="var(--bsky-blue)"
+                    isAnimationActive={false}
+                  />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          ) : (
+            <p
+              role="status"
+              className="mt-4 rounded-md border border-border bg-muted p-4 text-sm"
+            >
+              No non-empty image descriptions are available in this window.
+            </p>
+          )}
+          <details className="mt-4 rounded-md border border-border p-3">
+            <summary className="cursor-pointer font-semibold">
+              Show exact description-length table
+            </summary>
+            <table className="mt-3 w-full text-left text-sm">
+              <caption className="mb-2 text-left text-xs text-muted-foreground">
+                All observed non-empty descriptions by trimmed character length.
+              </caption>
+              <thead>
+                <tr className="border-b border-border">
+                  <th scope="col" className="p-2">
+                    Characters
+                  </th>
+                  <th scope="col" className="p-2 text-right">
+                    Descriptions
+                  </th>
+                  <th scope="col" className="p-2 text-right">
+                    Share
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {aggregateBins.map(bin => (
+                  <tr key={bin.label} className="border-b border-border">
+                    <th scope="row" className="p-2 font-medium">
+                      {bin.label}
+                    </th>
+                    <td className="p-2 text-right tabular-nums">
+                      {whole(bin.count)}
+                    </td>
+                    <td className="p-2 text-right tabular-nums">
+                      {percent(
+                        rate(bin.count, selectedSummary.altDescriptions)
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </details>
+          <aside className="mt-4 border-l-4 border-border bg-muted p-4 text-sm">
+            <h3 className="font-semibold">Accessibility terms · planned</h3>
+            <p className="mt-1 max-w-3xl text-muted-foreground">
+              Mentions such as “alt text,” “screen reader,” or “captions” are
+              not in today’s public aggregates. A future release will use a
+              versioned literal-term taxonomy and publish only
+              privacy-suppressed counts after the retained v2 archive is
+              replayed; unavailable dates will remain unavailable rather than
+              estimated.
+            </p>
+          </aside>
+        </section>
+
+        <section
           aria-labelledby="languages-title"
           className="mt-10 border-t border-border pt-6"
         >
           <h2 id="languages-title" className="text-section-title">
-            Declared-language coverage · last 30 days
+            Declared-language detail · {historyWindow} days
           </h2>
           <p className="mt-2 max-w-3xl text-sm text-muted-foreground">
             Languages are the post author’s declared primary BCP-47 tag,
             normalized to its primary subtag. <code>unknown</code> means no
             usable declaration; it is not model-inferred.
           </p>
-          <div className="mt-4 overflow-x-auto">
+          <div
+            className="mt-4 overflow-x-auto"
+            role="region"
+            aria-label="Declared-language accessibility detail"
+            tabIndex={0}
+          >
             <table className="w-full text-left text-sm">
               <caption className="mb-2 text-left text-xs text-muted-foreground">
                 Languages with the most observed images; sorted by image
@@ -555,6 +747,12 @@ export default function AccessibilityObservatory() {
                     With alt
                   </th>
                   <th scope="col" className="p-2 text-right">
+                    Mean words / alt
+                  </th>
+                  <th scope="col" className="p-2 text-right">
+                    Mean chars / alt
+                  </th>
+                  <th scope="col" className="p-2 text-right">
                     Fully described posts
                   </th>
                 </tr>
@@ -569,16 +767,26 @@ export default function AccessibilityObservatory() {
                       {whole(row.images)}
                     </td>
                     <td className="p-2 text-right tabular-nums">
+                      {whole(row.images_with_alt)} ·{" "}
                       {percent(row.image_alt_rate)}
                     </td>
                     <td className="p-2 text-right tabular-nums">
+                      {decimal(safeMean(row.alt_words, row.alt_descriptions))}
+                    </td>
+                    <td className="p-2 text-right tabular-nums">
+                      {decimal(
+                        safeMean(row.alt_characters, row.alt_descriptions)
+                      )}
+                    </td>
+                    <td className="p-2 text-right tabular-nums">
+                      {whole(row.fully_described_image_posts)} ·{" "}
                       {percent(row.fully_described_post_rate)}
                     </td>
                   </tr>
                 ))}
                 {!languageQuery.data?.length && (
                   <tr>
-                    <td colSpan={4} className="p-3 text-muted-foreground">
+                    <td colSpan={6} className="p-3 text-muted-foreground">
                       No declared-language aggregate rows are available yet.
                     </td>
                   </tr>
@@ -695,8 +903,8 @@ export default function AccessibilityObservatory() {
                   onClick={goatEvent}
                   className="font-semibold text-accent underline underline-offset-4"
                 >
-                  Download Parquet data and read the full methodology on
-                  Hugging Face
+                  Download Parquet data and read the full methodology on Hugging
+                  Face
                 </a>
                 .
               </p>
@@ -723,6 +931,255 @@ export default function AccessibilityObservatory() {
           datapoems.io
         </a>
       </footer>
+    </div>
+  );
+}
+
+function ChoiceGroup({
+  legend,
+  name,
+  value,
+  options,
+  onChange,
+}: {
+  legend: string;
+  name: string;
+  value: string;
+  options: { value: string; label: string }[];
+  onChange: (value: string) => void;
+}) {
+  return (
+    <fieldset>
+      <legend className="text-stat-label text-muted-foreground">
+        {legend}
+      </legend>
+      <div className="mt-2 flex flex-wrap gap-2">
+        {options.map(option => (
+          <label key={option.value} className="cursor-pointer">
+            <input
+              className="peer sr-only"
+              type="radio"
+              name={name}
+              value={option.value}
+              checked={value === option.value}
+              onChange={() => onChange(option.value)}
+            />
+            <span className="flex min-h-11 items-center rounded-md border border-border bg-background px-4 py-2 text-sm font-semibold peer-checked:border-foreground peer-checked:bg-foreground peer-checked:text-background peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-accent">
+              {option.label}
+            </span>
+          </label>
+        ))}
+      </div>
+    </fieldset>
+  );
+}
+
+function HistorySummary({
+  lens,
+  summary,
+}: {
+  lens: HistoryLens;
+  summary: AccessibilitySummary;
+}) {
+  const metrics =
+    lens === "rates"
+      ? [
+          {
+            label: "Images with alt",
+            value: percent(rate(summary.imagesWithAlt, summary.images)),
+            detail: `${whole(summary.imagesWithAlt)} of ${whole(summary.images)} images`,
+          },
+          {
+            label: "Fully described posts",
+            value: percent(rate(summary.fullyDescribed, summary.imagePosts)),
+            detail: `${whole(summary.fullyDescribed)} of ${whole(summary.imagePosts)} image posts`,
+          },
+          {
+            label: "Missing alt",
+            value: percent(rate(summary.imagesMissingAlt, summary.images)),
+            detail: `${whole(summary.imagesMissingAlt)} observed images`,
+          },
+          {
+            label: "Observed image posts",
+            value: whole(summary.imagePosts),
+            detail: `${whole(summary.postTotal)} posts of all content types`,
+          },
+        ]
+      : lens === "counts"
+        ? [
+            {
+              label: "All posts",
+              value: whole(summary.postTotal),
+              detail: "Observed create events",
+            },
+            {
+              label: "Image posts",
+              value: whole(summary.imagePosts),
+              detail: "Posts containing one or more images",
+            },
+            {
+              label: "Images",
+              value: whole(summary.images),
+              detail: `${whole(summary.imagesWithAlt)} with non-empty alt`,
+            },
+            {
+              label: "Missing alt",
+              value: whole(summary.imagesMissingAlt),
+              detail: "Derived from the exact image denominator",
+            },
+          ]
+        : [
+            {
+              label: "Descriptions",
+              value: whole(summary.altDescriptions),
+              detail: "Observed non-empty alternatives",
+            },
+            {
+              label: "Words",
+              value: whole(summary.altWords),
+              detail: `${decimal(safeMean(summary.altWords, summary.altDescriptions))} mean per description`,
+            },
+            {
+              label: "Characters",
+              value: whole(summary.altCharacters),
+              detail: `${decimal(safeMean(summary.altCharacters, summary.altDescriptions))} mean per description`,
+            },
+            {
+              label: "301+ characters",
+              value: whole(summary.lengthBins.len_301_plus),
+              detail: percent(
+                rate(summary.lengthBins.len_301_plus, summary.altDescriptions)
+              ),
+            },
+          ];
+
+  return (
+    <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      {metrics.map(metric => (
+        <Metric key={metric.label} {...metric} />
+      ))}
+    </div>
+  );
+}
+
+function DailyHistoryChart({
+  rows,
+  lens,
+}: {
+  rows: HistoryRow[];
+  lens: HistoryLens;
+}) {
+  if (lens === "counts") {
+    return (
+      <div
+        className="mt-4"
+        role="img"
+        aria-label="Stacked bar chart showing daily images with non-empty alt and images missing alt"
+      >
+        <ResponsiveContainer width="100%" height={280}>
+          <BarChart
+            data={rows}
+            margin={{ top: 8, right: 16, bottom: 0, left: 0 }}
+          >
+            <CartesianGrid stroke="var(--border)" strokeOpacity={0.75} />
+            <XAxis dataKey="date" tick={{ fontSize: 11 }} minTickGap={36} />
+            <YAxis tick={{ fontSize: 11 }} width={58} />
+            <Tooltip />
+            <Bar
+              dataKey="images_with_alt"
+              name="Images with alt"
+              stackId="images"
+              fill="var(--bsky-blue)"
+              isAnimationActive={false}
+            />
+            <Bar
+              dataKey="imagesMissingAlt"
+              name="Images missing alt"
+              stackId="images"
+              fill="var(--sentiment-neutral)"
+              isAnimationActive={false}
+            />
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
+    );
+  }
+
+  if (lens === "depth") {
+    return (
+      <div
+        className="mt-4"
+        role="img"
+        aria-label="Line chart showing the daily mean word count of non-empty image descriptions"
+      >
+        <ResponsiveContainer width="100%" height={280}>
+          <LineChart
+            data={rows}
+            margin={{ top: 8, right: 16, bottom: 0, left: 0 }}
+          >
+            <CartesianGrid stroke="var(--border)" strokeOpacity={0.75} />
+            <XAxis dataKey="date" tick={{ fontSize: 11 }} minTickGap={36} />
+            <YAxis tick={{ fontSize: 11 }} width={48} />
+            <Tooltip />
+            <Line
+              type="linear"
+              dataKey="averageWords"
+              name="Mean words per description"
+              stroke="var(--bsky-blue)"
+              strokeWidth={3}
+              dot={{ r: 3 }}
+              connectNulls={false}
+              isAnimationActive={false}
+            />
+          </LineChart>
+        </ResponsiveContainer>
+      </div>
+    );
+  }
+
+  return (
+    <div
+      className="mt-4"
+      role="img"
+      aria-label="Line chart showing daily image alternative-text coverage and fully-described image-post rate"
+    >
+      <ResponsiveContainer width="100%" height={280}>
+        <LineChart
+          data={rows}
+          margin={{ top: 8, right: 16, bottom: 0, left: 0 }}
+        >
+          <CartesianGrid stroke="var(--border)" strokeOpacity={0.75} />
+          <XAxis dataKey="date" tick={{ fontSize: 11 }} minTickGap={36} />
+          <YAxis
+            domain={[0, 100]}
+            unit="%"
+            tick={{ fontSize: 11 }}
+            width={48}
+          />
+          <Tooltip formatter={(value: number) => `${value.toFixed(1)}%`} />
+          <Line
+            type="linear"
+            dataKey="imageAltPercent"
+            name="Images with alt"
+            stroke="var(--bsky-blue)"
+            strokeWidth={3}
+            dot={{ r: 2 }}
+            connectNulls={false}
+            isAnimationActive={false}
+          />
+          <Line
+            type="linear"
+            dataKey="completePercent"
+            name="Fully described posts"
+            stroke="var(--sentiment-positive)"
+            strokeWidth={2}
+            strokeDasharray="6 4"
+            dot={false}
+            connectNulls={false}
+            isAnimationActive={false}
+          />
+        </LineChart>
+      </ResponsiveContainer>
     </div>
   );
 }
