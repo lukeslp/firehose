@@ -320,7 +320,11 @@ before it binds its port.
   spool below its hard cap. The dashboard continues; inspect sealed/partial
   sizes and destination capacity.
 - `pausedReason: minimum free disk floor reached`: free space is below the
-  configured floor. Do not lower the floor casually.
+  configured floor. Do not lower the floor casually. Both capacity pauses
+  (this one and the quota pause) clear on their own within a minute of space
+  returning, as of PR #2. Before that, they lasted until a restart: the
+  archive was silent from Sept 27 to Nov 2, 2026 while drummer had recovered
+  to 21 GB free.
 - `pausedReason: writer error`: zstd or the filesystem failed. Preserve the
   `.partial` file, fix the cause, then restart after checking capacity.
 - `eventsDropped > 0`: raw archive completeness is not guaranteed for the
@@ -328,7 +332,12 @@ before it binds its port.
   the provider's lookback window.
 - No dashboard posts: check `connected`, `lastEventAt`, service logs, and the
   upstream Jetstream connection. Do not infer a database problem; the display
-  does not depend on raw rows.
+  does not depend on raw rows. On Oct 14, 2026 at 16:30 UTC, both Jetstream
+  sockets went silent without closing and stayed `OPEN` until the Nov 2
+  restart, because the watchdog only checked socket state. Since PR #4, a
+  socket silent for a minute is replaced and logs `Watchdog restarting a silent
+  stream`. The per-minute `[Filtering] Stats` lines are the quickest sign the
+  main feed is alive.
 
 Use graceful systemd restarts. Do not remove SQLite WAL/SHM files or raw archive
 partials while the service is running.
