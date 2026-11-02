@@ -1,9 +1,11 @@
 import fs from 'node:fs';
+import type { AddressInfo } from 'node:net';
 import os from 'node:os';
 import path from 'node:path';
 import { zstdDecompressSync } from 'node:zlib';
 import { afterEach, describe, expect, it } from 'vitest';
-import { archiveEventDetails, RawArchiveWriter } from './rawArchive';
+import { WebSocketServer, type WebSocket } from 'ws';
+import { archiveEventDetails, RawArchiveRecorder, RawArchiveWriter } from './rawArchive';
 
 const roots: string[] = [];
 
@@ -18,6 +20,14 @@ function files(root: string, suffix: string): string[] {
   return fs.readdirSync(root, { recursive: true, encoding: 'utf8' })
     .map(entry => path.join(root, entry))
     .filter(file => file.endsWith(suffix));
+}
+
+async function waitFor(condition: () => boolean, timeoutMs = 2_000) {
+  const deadline = Date.now() + timeoutMs;
+  while (!condition()) {
+    if (Date.now() > deadline) throw new Error('condition not met in time');
+    await new Promise(resolve => setTimeout(resolve, 10));
+  }
 }
 
 afterEach(() => {
@@ -142,5 +152,44 @@ describe('RawArchiveWriter', () => {
     now += 60_000;
     expect(writer.record('{"time_us":1}', '1', 'one')).toBe(true);
     expect(writer.status().recording).toBe(true);
+  });
+});
+
+describe('RawArchiveRecorder', () => {
+  it('replaces an upstream socket that stays open but goes silent', async () => {
+    const server = new WebSocketServer({ host: '127.0.0.1', port: 0 });
+    await new Promise(resolve => server.once('listening', resolve));
+    const sockets: WebSocket[] = [];
+    const feeds: NodeJS.Timeout[] = [];
+    let time = 0;
+    server.on('connection', socket => {
+      sockets.push(socket);
+      // The first upstream socket stays open and never sends, as on Oct 14.
+      if (sockets.length === 1) return;
+      feeds.push(setInterval(() => {
+        time += 1;
+        socket.send(JSON.stringify({ kind: 'commit', time_us: time, did: 'did:plc:one', commit: { collection: 'app.bsky.feed.post', operation: 'create', rkey: `r${time}` } }));
+      }, 10));
+    });
+    const previousUrl = process.env.RAW_ARCHIVE_JETSTREAM_URL;
+    process.env.RAW_ARCHIVE_JETSTREAM_URL = `ws://127.0.0.1:${(server.address() as AddressInfo).port}/subscribe`;
+    const writer = new RawArchiveWriter({ enabled: true, rootDir: temporaryRoot(), minFreeBytes: 1, maxBytes: 10_000_000 });
+    const recorder = new RawArchiveRecorder(writer, { stallMs: 150, watchdogMs: 25 });
+    try {
+      recorder.start();
+      await waitFor(() => sockets.length === 2);
+      await waitFor(() => sockets[0].readyState === sockets[0].CLOSED);
+      // Several stall windows later the replacement is still the only socket.
+      await new Promise(resolve => setTimeout(resolve, 450));
+      expect(sockets).toHaveLength(2);
+      expect(recorder.status()).toMatchObject({ connected: true, recording: true });
+      expect(recorder.status().eventsRecorded).toBeGreaterThan(0);
+    } finally {
+      feeds.forEach(clearInterval);
+      await recorder.stop();
+      await new Promise(resolve => server.close(resolve));
+      if (previousUrl === undefined) delete process.env.RAW_ARCHIVE_JETSTREAM_URL;
+      else process.env.RAW_ARCHIVE_JETSTREAM_URL = previousUrl;
+    }
   });
 });

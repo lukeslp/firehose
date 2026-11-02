@@ -4,6 +4,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { constants as zlibConstants, createZstdCompress, type ZstdCompress } from 'node:zlib';
 import WebSocket from 'ws';
+import { STREAM_STALL_MS, STREAM_WATCHDOG_MS, streamRestartReason } from './streamHealth';
 
 const GIB = 1024 ** 3;
 const MIB = 1024 ** 2;
@@ -508,22 +509,34 @@ export class RawArchiveWriter extends EventEmitter {
   }
 }
 
+export interface RawArchiveRecorderOptions {
+  stallMs?: number;
+  watchdogMs?: number;
+}
+
 export class RawArchiveRecorder {
   private readonly writer: RawArchiveWriter;
   private ws: WebSocket | null = null;
   private reconnectTimer: NodeJS.Timeout | null = null;
+  private watchdogTimer: NodeJS.Timeout | null = null;
   private running = false;
   private connected = false;
+  private lastActivityAt = 0;
+  private readonly stallMs: number;
+  private readonly watchdogMs: number;
   private readonly recentKeys = new Set<string>();
 
-  constructor(writer = new RawArchiveWriter()) {
+  constructor(writer = new RawArchiveWriter(), options: RawArchiveRecorderOptions = {}) {
     this.writer = writer;
+    this.stallMs = options.stallMs ?? STREAM_STALL_MS;
+    this.watchdogMs = options.watchdogMs ?? STREAM_WATCHDOG_MS;
   }
 
   start() {
     if (!this.writer.isEnabled || this.running) return;
     this.running = true;
     this.connect();
+    this.watchdogTimer = setInterval(() => this.watchdog(), this.watchdogMs);
   }
 
   async stop() {
@@ -531,6 +544,8 @@ export class RawArchiveRecorder {
     this.connected = false;
     if (this.reconnectTimer) clearTimeout(this.reconnectTimer);
     this.reconnectTimer = null;
+    if (this.watchdogTimer) clearInterval(this.watchdogTimer);
+    this.watchdogTimer = null;
     this.ws?.close();
     this.ws = null;
     await this.writer.stop();
@@ -547,18 +562,43 @@ export class RawArchiveRecorder {
     if (this.writer.resumeCursor) url.searchParams.set('cursor', this.writer.resumeCursor);
     const ws = new WebSocket(url);
     this.ws = ws;
+    this.lastActivityAt = Date.now();
 
     ws.on('open', () => {
+      if (this.ws !== ws) return;
       this.connected = true;
+      this.lastActivityAt = Date.now();
       console.log(`[RawArchive] Connected; retention=${this.writer.status().retentionHours}h quota=${this.writer.status().maxBytes} bytes`);
     });
-    ws.on('message', data => this.handleMessage(Buffer.isBuffer(data) ? data : Buffer.from(data as ArrayBuffer)));
+    ws.on('message', data => {
+      this.lastActivityAt = Date.now();
+      this.handleMessage(Buffer.isBuffer(data) ? data : Buffer.from(data as ArrayBuffer));
+    });
     ws.on('error', error => console.error('[RawArchive] WebSocket error:', error.message));
     ws.on('close', () => {
+      // A socket the watchdog already replaced must not clear its successor.
+      if (this.ws !== ws) return;
       this.connected = false;
       this.ws = null;
-      if (this.running) this.reconnectTimer = setTimeout(() => this.connect(), 5_000);
+      if (!this.running) return;
+      this.reconnectTimer = setTimeout(() => {
+        this.reconnectTimer = null;
+        this.connect();
+      }, 5_000);
     });
+  }
+
+  private watchdog() {
+    const open = this.ws?.readyState === WebSocket.OPEN;
+    const reason = streamRestartReason(open, this.reconnectTimer !== null, this.lastActivityAt, Date.now(), this.stallMs);
+    if (!this.running || !reason) return;
+    console.warn(`[RawArchive] Watchdog restarting a ${reason} stream`);
+    this.connected = false;
+    // terminate() drops a dead peer at once; close() would wait for its reply.
+    const stale = this.ws;
+    this.ws = null;
+    stale?.terminate();
+    this.connect();
   }
 
   private handleMessage(data: Buffer) {
