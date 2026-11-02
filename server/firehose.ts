@@ -24,6 +24,7 @@ import { InsertPost } from '../drizzle/schema';
 import { buildMediaBundle, type MediaBundle } from './media';
 import { getProfileEnricher } from './profileEnricher';
 import { completedObservedMinuteRate, medianRate } from './rate';
+import { STREAM_WATCHDOG_MS, streamRestartReason } from './streamHealth';
 
 const FIREHOSE_URI = 'wss://jetstream2.us-east.bsky.network/subscribe?wantedCollections=app.bsky.feed.post';
 const MAX_TEXT_LENGTH = 10000;
@@ -116,11 +117,11 @@ export class FirehoseService extends EventEmitter {
   private minuteFlushTimer: NodeJS.Timeout | null = null;
   private globalFlushTimer: NodeJS.Timeout | null = null;
   private watchdogTimer: NodeJS.Timeout | null = null;
+  private lastActivityAt = Date.now();
   private readonly startedAtMs = Date.now();
 
   private static readonly MINUTE_FLUSH_INTERVAL_MS = 10_000;
   private static readonly GLOBAL_FLUSH_INTERVAL_MS = 30_000;
-  private static readonly WATCHDOG_INTERVAL_MS = 30_000;
   private static readonly MINUTE_RETENTION_HOURS = 48;
 
   constructor() {
@@ -237,14 +238,19 @@ export class FirehoseService extends EventEmitter {
   private startWatchdog() {
     this.watchdogTimer = setInterval(() => {
       const socketOpen = this.ws?.readyState === WebSocket.OPEN;
-      if ((this.running && socketOpen) || this.reconnectTimer) return;
-      console.warn('[Firehose] Watchdog restarting an unhealthy stream');
+      const reason = this.running
+        ? streamRestartReason(socketOpen, this.reconnectTimer !== null, this.lastActivityAt, Date.now())
+        : 'stopped';
+      if (!reason) return;
+      console.warn(`[Firehose] Watchdog restarting a ${reason} stream`);
       this.running = false;
       this.connected = false;
-      this.ws?.close();
+      // terminate() drops a dead peer at once; close() would wait for its reply.
+      const stale = this.ws;
       this.ws = null;
+      stale?.terminate();
       this.start();
-    }, FirehoseService.WATCHDOG_INTERVAL_MS);
+    }, STREAM_WATCHDOG_MS);
   }
 
   private loadCollectionState() {
@@ -400,43 +406,54 @@ export class FirehoseService extends EventEmitter {
     }
 
     try {
-      this.ws = new WebSocket(FIREHOSE_URI);
+      const ws = new WebSocket(FIREHOSE_URI);
+      this.ws = ws;
+      this.lastActivityAt = Date.now();
 
-      this.ws.on('open', () => {
+      ws.on('open', () => {
+        if (this.ws !== ws) return;
         console.log('[Firehose] Connected to Bluesky firehose');
         this.connected = true;
+        this.lastActivityAt = Date.now();
         this.emit('connected');
       });
 
-      this.ws.on('message', (data: Buffer) => {
+      ws.on('message', (data: Buffer) => {
+        this.lastActivityAt = Date.now();
         this.handleMessage(data);
       });
 
-      this.ws.on('error', (error) => {
+      ws.on('error', (error) => {
         console.error('[Firehose] WebSocket error:', error.message);
         this.emit('error', error);
       });
 
-      this.ws.on('close', () => {
+      ws.on('close', () => {
+        // A socket the watchdog already replaced must not clear its successor.
+        if (this.ws !== ws) return;
         console.log('[Firehose] Connection closed');
         this.connected = false;
         this.ws = null;
         
         if (this.running) {
           console.log(`[Firehose] Reconnecting in ${RECONNECT_DELAY / 1000}s...`);
-          this.reconnectTimer = setTimeout(() => {
-            this.connect();
-          }, RECONNECT_DELAY);
+          this.scheduleReconnect();
         }
       });
     } catch (error) {
       console.error('[Firehose] Connection error:', error);
       if (this.running) {
-        this.reconnectTimer = setTimeout(() => {
-          this.connect();
-        }, RECONNECT_DELAY);
+        this.scheduleReconnect();
       }
     }
+  }
+
+  private scheduleReconnect() {
+    if (this.reconnectTimer) return;
+    this.reconnectTimer = setTimeout(() => {
+      this.reconnectTimer = null;
+      this.connect();
+    }, RECONNECT_DELAY);
   }
 
   private handleMessage(data: Buffer) {
