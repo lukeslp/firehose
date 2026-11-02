@@ -332,9 +332,12 @@ before it binds its port.
   the provider's lookback window.
 - No dashboard posts: check `connected`, `lastEventAt`, service logs, and the
   upstream Jetstream connection. Do not infer a database problem; the display
-  does not depend on raw rows. On Oct 14, 2026 at 16:30 UTC, the main feed
-  stopped logging and did not reconnect until the Nov 2 restart. The per-minute
-  `[Filtering] Stats` lines are the quickest sign it is alive.
+  does not depend on raw rows. On Oct 14, 2026 at 16:30 UTC, both Jetstream
+  sockets went silent without closing and stayed `OPEN` until the Nov 2
+  restart, because the watchdog only checked socket state. Since PR #4, a
+  socket silent for a minute is replaced and logs `Watchdog restarting a silent
+  stream`. The per-minute `[Filtering] Stats` lines are the quickest sign the
+  main feed is alive.
 
 Use graceful systemd restarts. Do not remove SQLite WAL/SHM files or raw archive
 partials while the service is running.
