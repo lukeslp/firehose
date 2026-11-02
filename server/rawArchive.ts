@@ -8,6 +8,10 @@ import WebSocket from 'ws';
 const GIB = 1024 ** 3;
 const MIB = 1024 ** 2;
 const DEFAULT_JETSTREAM = 'wss://jetstream2.us-east.bsky.network/subscribe';
+// A paused writer seals nothing, so maintain() would otherwise never run again
+// to notice that space came back. Re-check capacity pauses from record().
+const CAPACITY_RECHECK_MS = 60_000;
+const CAPACITY_PAUSES = new Set(['archive byte quota reached', 'minimum free disk floor reached']);
 
 export interface RawArchiveOptions {
   enabled?: boolean;
@@ -194,6 +198,7 @@ export class RawArchiveWriter extends EventEmitter {
   private lastSealedAt: string | null = null;
   private checkpoint: Checkpoint | null = null;
   private segmentSequence = 0;
+  private lastCapacityCheckAt = 0;
 
   constructor(options: RawArchiveOptions = {}) {
     super();
@@ -227,6 +232,10 @@ export class RawArchiveWriter extends EventEmitter {
   }
 
   record(payload: Buffer | string, cursor: string, eventKey: string) {
+    if (this.enabled && this.pausedReason && CAPACITY_PAUSES.has(this.pausedReason)
+      && this.now() - this.lastCapacityCheckAt >= CAPACITY_RECHECK_MS) {
+      this.maintain();
+    }
     if (!this.enabled || this.pausedReason) {
       this.eventsDropped += 1;
       return false;
@@ -277,6 +286,7 @@ export class RawArchiveWriter extends EventEmitter {
   maintain() {
     if (!this.enabled) return;
     const now = this.now();
+    this.lastCapacityCheckAt = now;
     const cutoff = now - this.retentionHours * 60 * 60_000;
     let inventory = archiveFiles(this.rootDir);
 

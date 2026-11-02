@@ -114,4 +114,33 @@ describe('RawArchiveWriter', () => {
     expect(writer.status().pausedReason).toContain('quota');
     expect(writer.record('{}', '1', 'one')).toBe(false);
   });
+
+  it('resumes recording once the quota frees up, re-checking at most once a minute', async () => {
+    const root = temporaryRoot();
+    const interrupted = path.join(root, 'interrupted.ndjson.zst.partial');
+    fs.writeFileSync(interrupted, Buffer.alloc(2_000));
+    let now = Date.now();
+    const writer = new RawArchiveWriter({ enabled: true, rootDir: root, minFreeBytes: 1, maxBytes: 1_000, now: () => now });
+    expect(writer.status().pausedReason).toContain('quota');
+
+    fs.rmSync(interrupted);
+    now += 30_000;
+    expect(writer.record('{"time_us":1}', '1', 'one')).toBe(false);
+    now += 30_000;
+    expect(writer.record('{"time_us":2}', '2', 'two')).toBe(true);
+    await writer.seal();
+    expect(writer.status()).toMatchObject({ recording: true, pausedReason: null, eventsRecorded: 1, eventsDropped: 1 });
+  });
+
+  it('resumes recording once free disk space is back above the floor', () => {
+    const root = temporaryRoot();
+    let now = Date.now();
+    const writer = new RawArchiveWriter({ enabled: true, rootDir: root, minFreeBytes: Number.MAX_SAFE_INTEGER, maxBytes: 10_000_000, now: () => now });
+    expect(writer.status().pausedReason).toBe('minimum free disk floor reached');
+
+    (writer as unknown as { minFreeBytes: number }).minFreeBytes = 1;
+    now += 60_000;
+    expect(writer.record('{"time_us":1}', '1', 'one')).toBe(true);
+    expect(writer.status().recording).toBe(true);
+  });
 });
